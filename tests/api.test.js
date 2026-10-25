@@ -27,6 +27,16 @@ describe('API publique', () => {
     });
   });
 
+  test('EP-01b : le bandeau ne propose que des chaînes lisibles', async () => {
+    await withServer({}, async ({ client }) => {
+      const { json } = await client('/api/config');
+      assert.ok(json.hero.channels.length >= 1, 'au moins une chaîne en vedette');
+      for (const channel of json.hero.channels) {
+        assert.equal(channel.blocked, false, `${channel.name} est bloquée et pourtant en tête de page`);
+      }
+    });
+  });
+
   test('EP-02/EP-19 : liste paginée, contrats de carte et plafond de 60', async () => {
     await withServer({}, async ({ client }) => {
       const page = await client('/api/channels?page=1&pageSize=5');

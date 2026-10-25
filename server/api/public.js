@@ -31,15 +31,18 @@ function resolveHero(app, visible) {
   if (settings.heroMode === 'first') {
     return { mode: 'first', channels: visible.slice(0, 4).map(projectCard) };
   }
+  // Le bandeau ne propose que des chaînes lisibles : une chaîne bloquée en tête de page
+  // est la première impression que le visiteur garde du site.
+  const lisibles = visible.filter((channel) => !channel.blocked);
   if (settings.heroMode === 'featured') {
-    const list = featuredOrder.length ? featuredOrder : visible.filter((channel) => channel.featured);
+    const list = featuredOrder.length ? featuredOrder.filter((channel) => !channel.blocked) : lisibles.filter((channel) => channel.featured);
     if (list.length) return { mode: 'featured', channels: list.slice(0, 4).map(projectCard) };
   }
   // Sélection quotidienne stable : la même journée donne le même bandeau.
   const seed = Number(new Date().toISOString().slice(0, 10).replace(/-/g, ''));
-  const pool = visible.filter((channel) => channel.logo);
+  const pool = (lisibles.length >= 4 ? lisibles : visible).filter((channel) => channel.logo);
   const picked = [];
-  const source = pool.length >= 4 ? pool : visible;
+  const source = pool.length >= 4 ? pool : (lisibles.length ? lisibles : visible);
   for (let i = 0; i < 4 && source.length; i += 1) {
     picked.push(source[(seed + i * 37) % source.length]);
   }
