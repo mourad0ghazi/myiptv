@@ -10,6 +10,7 @@ import { AppError } from './errors.js';
 import { dedupe, finalizeEntries } from './dedupe.js';
 import { parseM3U } from './m3u.js';
 import { categorizeEntry, compileRules } from './classify.js';
+import { effectiveRules } from './learning.js';
 import { normalizeKey } from './text.js';
 
 const JOB_TTL_MS = 20 * 60 * 1000;
@@ -139,7 +140,7 @@ export class Ingest {
     }
     const deduped = dedupe(parsed.entries);
     const entries = finalizeEntries(deduped.entries);
-    const table = this.tableRef || compileRules(this.store.learning.rules);
+    const table = this.tableRef || compileRules(effectiveRules(this.store.learning));
 
     const existingById = new Map(this.store.channels.map((channel) => [channel.id, channel]));
     const existingBySignature = new Map();

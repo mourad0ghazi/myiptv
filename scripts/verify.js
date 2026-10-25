@@ -14,6 +14,8 @@ import { DEFAULTS, validateSettings } from '../server/core/settings.js';
 import { parseM3U } from '../server/core/m3u.js';
 import { ERR_TO_MESSAGE, FAMILIES, MESSAGES, MESSAGE_BY_ID } from '../server/core/messages.js';
 import { decodeEpgBody, parseXmltv } from '../server/core/epg.js';
+import { learnFromCorrections } from '../server/core/learning.js';
+import { verifyRoundTrip } from '../server/core/migrate.js';
 import { gzipSync } from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -41,7 +43,7 @@ async function main() {
   await store.init();
 
   /* ---------------------------------------------------- contrat des données */
-  check('version du logiciel', VERSION === '3.1.0', VERSION);
+  check('version du logiciel', VERSION === '3.2.0', VERSION);
   check('20 codes d’erreur', Object.keys(ERRORS).length === 20, `${Object.keys(ERRORS).length} codes`);
   check('82 messages du §9', MESSAGES.length === 82, `${MESSAGES.length} messages`);
   check('6 familles de messages', FAMILIES.length === 6, `${FAMILIES.length} familles`);
@@ -168,6 +170,13 @@ async function main() {
   check('analyse XMLTV opérationnelle', parsedGuide.ok && parsedGuide.programmes.length === 1,
     `${parsedGuide.programmes.length} programme(s)`);
   check('gzip reconnu à la signature', decodeEpgBody(gzipSync(Buffer.from(xmltv))).ok === true);
+
+  /* ---------------------------------------------------- F-22 / F-24 */
+  const learned = learnFromCorrections(store.learning.corrections || []);
+  check('apprentissage des corrections', Array.isArray(Object.keys(learned.rules)) && learned.stats.usable >= 0,
+    `${store.learning.corrections?.length || 0} correction(s), ${learned.stats.terms} terme(s)`);
+  const roundTrip = verifyRoundTrip(active);
+  check('migration SQL réversible', roundTrip.ok, `${roundTrip.checked} chaîne(s) relues à l’identique`);
 
   /* ---------------------------------------------------------------- rapport */
   const failed = checks.filter((entry) => !entry.ok);

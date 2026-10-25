@@ -3,6 +3,44 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.2.0] — 2026-10-25
+
+Deux algorithmes du §5 restaient sans implémentation : `F-22` (apprentissage des corrections) et
+`F-24` (migration JSON → SQL). Ils sont livrés, testés et branchés dans la console. Aucune
+dépendance ajoutée, aucun `npm install`.
+
+### Ajouté
+
+- `server/core/learning.js` — `F-22` : TF-IDF simple sur les corrections manuelles, support
+  minimal de 2 corrections, poids bornés à [0,30 ; 0,90] (jamais au-dessus d’une règle manuelle),
+  fusion sans doublon (`mergeRules`, `effectiveRules`). Branché dans le classement d’ingestion,
+  dans `/api/admin/rules` (`learned`, `learnedStats`, `effective`) et affiché dans l’onglet Santé.
+- `server/core/migrate.js` + `scripts/migrate.js` — `F-24` : schéma PostgreSQL 15 (36 colonnes
+  typées), `INSERT … ON CONFLICT` idempotents, manifeste avec empreintes SHA-256, journal
+  `migration.export`, aller-retour vérifiable (`channelsFromSql`) et retour arrière
+  (`--reverse`). Modes `--plan`, `--verify`, `--write`, `--reverse`.
+- Console : panneau « Règles apprises des corrections » (Santé) et « Sortie vers PostgreSQL 15 »
+  (Sauvegardes) avec pourcentage du seuil de bascule.
+- `stats.migration` dans `/api/admin/stats` : seuil, chaînes, ratio, table cible, commande.
+
+### Vérifié
+
+- `npm test` : **184 tests, 10 suites, 0 échec** (`learning.test.js` 12, `migrate.test.js` 14).
+- `node scripts/verify.js` : **39/40** contrôles, dont « apprentissage des corrections » et
+  « migration SQL réversible » sur les 1 475 chaînes réelles.
+- `node scripts/migrate.js --verify` : aller-retour identique, idempotence confirmée,
+  réversibilité confirmée ; `--write` produit 2,4 Ko de schéma et 1,17 Mo de données.
+
+### Modifié
+
+- Version du logiciel et du cache du service worker : `3.2.0` / `streamtv-v3.2.0`.
+- `RUNBOOK.md` §6 réécrit : procédure exécutable (préparer, appliquer, revenir en arrière) et
+  limites explicites.
+- `README.md`, `CONFORMITE.md`, `docs/PV-RECETTE.md` : compteurs, preuves F-22/F-24 et réserves
+  mises à jour.
+
+---
+
 ## [3.1.0] — 2026-10-25
 
 Compléments du cahier des charges qui restaient déclaratifs en 3.0.0 : catalogue exhaustif des

@@ -1,13 +1,13 @@
-# Procès-verbal de recette — StreamTV v3.1.0
+# Procès-verbal de recette — StreamTV v3.2.0
 
 | Élément | Valeur |
 |---|---|
 | Objet | recette du site StreamTV, conforme au cahier des charges *StreamTV v2* |
-| Version livrée | 3.1.0 |
+| Version livrée | 3.2.0 |
 | Date de recette | 25 octobre 2026 |
 | Environnement | Node.js 22.22.3 (compatible 20 LTS), 8 cœurs, 16 Go de mémoire, Linux, réseau local |
 | Dossier de recette | machine vierge, `data/` recréé depuis `data/seed/seed.m3u` |
-| Référentiel de preuve | `npm test` (8 suites, 158 tests), `scripts/verify.js` (38 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
+| Référentiel de preuve | `npm test` (10 suites, 184 tests), `scripts/verify.js` (40 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
 | Décision | **Recette prononcée avec réserves** (voir §7) |
 
 ---
@@ -35,9 +35,8 @@ régime normal.
 Commande : `npm test`
 
 ```text
-# tests 158
-# suites 25
-# pass 158
+# tests 184
+# pass 184
 # fail 0
 # cancelled 0
 # skipped 0
@@ -56,6 +55,8 @@ Détail par suite :
 | `tests/security.test.js` | 15 | conforme | scrypt, jetons, TTL, plafond de sessions, force brute, audit sans secret, CSP, injection, traversée de chemin, sauvegarde corrompue, fichiers publics sans script en ligne |
 | `tests/client.test.js` | 25 | conforme | jetons CSS, quatre points de rupture, classes présentes, 12 mires distinctes, 7 états, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, PWA |
 | `tests/conformite.test.js` | 11 | conforme | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
+| `tests/learning.test.js` | 12 | conforme | F-22 : découpage des noms, support minimal, bornes de poids, priorité du manuel, effet réel sur le classement d’une chaîne, exposition dans l’administration |
+| `tests/migrate.test.js` | 14 | conforme | F-24 : DDL idempotent et typé, échappement SQL, aller-retour exact (accents, guillemets, arabe, tabulations), `ON CONFLICT`, modes `--plan`/`--write`/`--verify`/`--reverse`, journal `migration.export` |
 | `tests/messages.test.js` | 9 | conforme | 82 messages du §9 (identifiants, ordre, familles), textes exacts mot pour mot, zéro jargon, substitution des variables, table `ERR → message` complète, catalogue servi par l’API |
 | `tests/epg.test.js` | 25 | conforme | XMLTV valide et cassé, gzip reconnu à la signature, fuseaux ±HHMM, entités et accents, plafonds (20 Mo, 200 000 programmes), appariement `epgId`/`tvgId`, grille et direct, cache TTL et verrou |
 | `tests/alerts.test.js` | 11 | conforme | douze seuils du §10.4 (déclenchement au-delà, silence en deçà), priorité des alertes bloquantes, exposition dans `/api/admin/stats`, guide servi par `/api/epg` avec source locale réelle |
@@ -67,20 +68,22 @@ Détail par suite :
 Commande : `node scripts/verify.js --base http://127.0.0.1:3000`
 
 ```text
-37/38 contrôles réussis, 1 avertissement(s).
+39/40 contrôles réussis, 1 avertissement(s).
 
 Avertissements :
   ! mot de passe par défaut changé (mot de passe par défaut encore actif — à changer avant mise en ligne)
 ```
 
-Les 37 contrôles réussis couvrent : version, 20 codes, 82 messages et 6 familles, table
+Les 39 contrôles réussis couvrent : version, 20 codes, 82 messages et 6 familles, table
 `ERR → message` complète, 17 réglages, 18 catégories, validité des réglages, catalogue non vide
 (1 475), 36 champs obligatoires présents, identifiants sha1 tronqués, catégories connues,
 confiances bornées, aucun doublon d’identifiant, numéros uniques, cinq fichiers de données,
 sauvegarde présente et vérifiée, scrypt N = 16 384, journal d’audit lisible et sans secret,
 service en ligne, contrat `/api/config`, plafond de pagination, console protégée (401), fiche
 inconnue en 404, catalogue des messages servi, `/api/epg` sans erreur, CSP présente, `nosniff`
-présent, parseur opérationnel, analyse XMLTV et reconnaissance du gzip.
+présent, parseur opérationnel, analyse XMLTV et reconnaissance du gzip, apprentissage des
+corrections lisible, migration SQL réversible sur le catalogue complet (1 475 chaînes relues à
+l’identique).
 
 L’avertissement est **attendu** sur une installation de démonstration : le mot de passe `admin`
 est actif et signalé par un bandeau dans l’interface. Il devient une exigence bloquante avant
@@ -196,8 +199,10 @@ conditionnent la mise en production.
    l’API répond `enabled: false` et le guide n’affiche aucun programme. Le jeu de démonstration
    est identifié comme tel dans chaque description ; aucune grille factice n’est présentée
    comme réelle.
-4. **Migration PostgreSQL non livrée** (F-24). Le seuil de bascule (30 000 chaînes, 40 Mo) et la
-   procédure cible sont documentés dans `RUNBOOK.md` §6.
+4. **Migration PostgreSQL préparée, non automatisée** (F-24). `scripts/migrate.js` produit un
+   schéma et des INSERT idempotents, vérifiés par aller-retour sur les 1 475 chaînes, avec retour
+   arrière. La bascule du `store` vers un client PostgreSQL n’est pas livrée : elle imposerait une
+   dépendance d’exécution. Procédure : `RUNBOOK.md` §6.
 5. **Phases 3 et 4 hors périmètre** : comptes, contrôle parental, applications mobiles et TV,
    abonnements, CDN, analytique.
 6. **Mot de passe de démonstration actif.** À changer impérativement avant exposition publique.
@@ -232,7 +237,7 @@ node scripts/measure-tagger.js                      # attendu : toutes cibles �
 
 | Contrôle | Exigence | Résultat |
 |---|---|---|
-| `npm test` | 0 échec | conforme (158/158) |
+| `npm test` | 0 échec | conforme (184/184) |
 | `verify.js` | 0 erreur | conforme (1 avertissement attendu) |
 | `measure-tagger.js` | toutes cibles tenues | conforme |
 | Sauvegarde récente | < 26 h | conforme |

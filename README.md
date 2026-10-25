@@ -1,4 +1,4 @@
-# StreamTV v3.1.0
+# StreamTV v3.2.0
 
 > Toute ta télévision, dans un seul endroit.
 
@@ -30,7 +30,7 @@ Au premier lancement, le serveur :
 
 ```text
 [2026-10-25T11:49:37.138Z] catalogue de démonstration créé : 1475 chaînes
-[2026-10-25T12:12:04.733Z] StreamTV v3.1.0 — 1475 chaînes, 41 routes
+[2026-10-25T12:30:00.000Z] StreamTV v3.2.0 — 1475 chaînes, 41 routes
 [2026-10-25T11:49:37.215Z] écoute sur http://0.0.0.0:3000
 ```
 
@@ -116,6 +116,8 @@ server/
     messages.js          §9 — les 82 messages affichables, familles et textes exacts
     epg.js               F-23 — XMLTV tolérant, gzip, fuseaux, grille, cache TTL
     alerts.js            §10.4 — douze seuils d’exploitation (valeur, seuil, action)
+    learning.js          F-22 — règles apprises des corrections (TF-IDF simple, bornées)
+    migrate.js           F-24 — export SQL idempotent, réversible et lisible en retour
     ingest.js            F-20 — aperçu sans écriture, verrou global, commit, annulation
     exports.js           exports M3U et JSON
     engine.js            mesure du moteur (débit, précision, accord de genre)
@@ -132,7 +134,7 @@ public/
   sw.js, offline.html    PWA : coquille en cache, API jamais mise en cache
   vendor/hls.min.js      hls.js 1.5.17 épinglé, Apache-2.0, servi localement
 scripts/                 ingest.js, measure-tagger.js, backup.js, verify.js
-tests/                   158 tests node:test (core, api, sécurité, client, messages, epg, alertes, conformité)
+tests/                   184 tests node:test (core, api, sécurité, client, messages, epg, alertes, apprentissage, migration, conformité)
 docs/PV-RECETTE.md       procès-verbal de recette
 ```
 
@@ -250,7 +252,11 @@ node scripts/measure-tagger.js                     # mesure du moteur (cibles §
 node scripts/backup.js                             # sauvegarde immédiate
 node scripts/backup.js --list                      # inventaire + vérification des empreintes
 node scripts/make-epg-demo.js                      # régénère public/epg-demo.xml (guide de démonstration)
-node scripts/verify.js --base http://127.0.0.1:3000 # 38 contrôles de santé
+node scripts/migrate.js --plan                     # préparation de la bascule PostgreSQL (aucune écriture)
+node scripts/migrate.js --verify                   # aller-retour SQL sur le catalogue réel
+node scripts/migrate.js --write                    # écrit schema.sql, data.sql et manifest.json
+node scripts/migrate.js --reverse <data.sql>       # retour arrière vers un JSON de chaînes
+node scripts/verify.js --base http://127.0.0.1:3000 # 40 contrôles de santé
 ```
 
 `verify.js` sort en code 0 si tout passe, 1 en cas d’erreur réelle. Le mot de passe par défaut
@@ -261,7 +267,7 @@ est signalé comme **avertissement** (attendu en démonstration, à corriger ava
 ## 7. Tests
 
 ```bash
-npm test            # 8 suites, 158 tests, aucune dépendance
+npm test            # 10 suites, 184 tests, aucune dépendance
 ```
 
 | Suite | Ce qu’elle prouve |
@@ -273,6 +279,8 @@ npm test            # 8 suites, 158 tests, aucune dépendance
 | `tests/messages.test.js` | 82 messages du §9 : identifiants, ordre, familles, textes exacts, absence de jargon, variables `{…}` substituées, table `ERR → message`, réponse de `/api/errors/catalog` |
 | `tests/epg.test.js` | 25 tests : XMLTV valide, cassé, gzip, fuseaux, entités, plafonds, appariement `epgId`/`tvgId`, suffixe de qualité, grille, direct, cache et verrou, guide livré lu sur disque, refus de remontée de dossier |
 | `tests/alerts.test.js` | douze seuils du §10.4, priorité des alertes, exposition dans `/api/admin/stats`, guide servi par `/api/epg` |
+| `tests/learning.test.js` | 12 tests : découpage des noms, seuil de support, bornes de poids, priorité du manuel, effet réel sur le classement, exposition dans l’administration |
+| `tests/migrate.test.js` | 14 tests : schéma (36 colonnes typées), échappement SQL, aller-retour exact (accents, guillemets, arabe, tabulations), idempotence, tables annexes, script `--plan`/`--write`/`--verify`/`--reverse` et journal d’audit |
 | `tests/conformite.test.js` | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
 
 Les tests démarrent chacun leur propre serveur sur un dossier temporaire : le catalogue réel n’est

@@ -4,6 +4,7 @@ data/*.json.*
 data/audit.log
 data/logs/
 data/backups/
+data/migrations/
 data/channels.corrupt-*.json
 
 # Catalogue de démonstration : seule la source brute est versionnée.

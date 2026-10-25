@@ -1,4 +1,4 @@
-# RUNBOOK — exploitation de StreamTV v3.1.0
+# RUNBOOK — exploitation de StreamTV v3.2.0
 
 Ce document décrit l’exploitation courante, les gestes d’urgence et les procédures de reprise.
 Il est écrit pour être suivi sans connaissance préalable du code : chaque procédure indique ce
@@ -10,7 +10,7 @@ qu’elle fait, quand l’appliquer, les commandes exactes et le résultat atten
 
 | Élément | Valeur |
 |---|---|
-| Application | StreamTV 3.1.0 (conformité *StreamTV v2*) |
+| Application | StreamTV 3.2.0 (conformité *StreamTV v2*) |
 | Runtime | Node.js 20 LTS ou plus, aucun paquet npm |
 | Écoute | `0.0.0.0:3000` (modifiable par `PORT` / `HOST`) |
 | Données | `./data` (modifiable par `DATA_DIR`) |
@@ -34,7 +34,7 @@ PORT=3000 ADMIN_PASSWORD='…' node server/index.js
 Résultat attendu dans les 5 secondes :
 
 ```text
-StreamTV v3.1.0 — 1475 chaînes, 41 routes
+StreamTV v3.2.0 — 1475 chaînes, 41 routes
 écoute sur http://0.0.0.0:3000
 ```
 
@@ -340,18 +340,44 @@ Toutes les sessions sont fermées immédiatement.
 
 ## 6. Bascule vers PostgreSQL (au-delà de 30 000 chaînes)
 
-Le stockage JSON est prévu pour un catalogue de quelques dizaines de milliers de chaînes.
-Au-delà de 30 000 chaînes ou de 40 Mo de données :
+Le stockage JSON reste la référence jusqu’à 30 000 chaînes (ou 40 Mo). La préparation est
+**exécutable** : `scripts/migrate.js` produit le schéma et les données, sans dépendance ni pilote.
 
-1. provisionner PostgreSQL 15 ;
-2. créer les tables `channels`, `variants`, `settings`, `sources`, `ingestions`, `health` ;
-3. reprendre `data/channels.json` (export JSON déjà disponible via `GET /api/admin/export.json`) ;
-4. conserver la même API HTTP : seule la couche `store` change ;
-5. rejouer la recette `tests/api.test.js` avec la nouvelle implémentation du store.
+### 6.1 Préparer et contrôler
 
-**Non livré dans cette version** : le module de migration n’est pas fourni ; cette section décrit
-la procédure cible, pas une capacité présente. Le critère AC-045 de migration reste donc hors
-périmètre (voir `CONFORMITE.md`).
+```bash
+node scripts/migrate.js --plan      # inventaire, taille, seuil — aucune écriture
+node scripts/migrate.js --verify    # aller-retour SQL sur le catalogue réel (doit dire « identiques oui »)
+node scripts/migrate.js --write     # data/migrations/<horodatage>/{schema.sql,data.sql,manifest.json}
+```
+
+`--write` journalise `migration.export` dans `data/audit.log` et fige les empreintes SHA-256 dans
+`manifest.json`. Les fichiers sont **idempotents** : les rejouer met à jour sans doublon.
+
+### 6.2 Appliquer
+
+```bash
+export STREAMTV_PG_URL='postgresql://streamtv:secret@127.0.0.1:5432/streamtv'
+psql "$STREAMTV_PG_URL" -v ON_ERROR_STOP=1 -f data/migrations/<horodatage>/schema.sql
+psql "$STREAMTV_PG_URL" -v ON_ERROR_STOP=1 -f data/migrations/<horodatage>/data.sql
+psql "$STREAMTV_PG_URL" -c 'select count(*) from channels;'   # attendu : nombre de chaînes actives
+```
+
+Le schéma crée `channels` (36 colonnes typées issues du contrat), `settings`, `sources`,
+`learning`, `ingestions`, `audit_log`, les index utiles et la table de version `streamtv_schema`.
+
+### 6.3 Revenir en arrière
+
+```bash
+node scripts/migrate.js --reverse data/migrations/<horodatage>/data.sql
+# produit data/migrations/reversed-<horodatage>.json ; restaurer via /api/admin/restore
+```
+
+### 6.4 Ce qui n’est pas automatisé
+
+La bascule du `store` vers un client PostgreSQL n’est pas livrée : elle imposerait une dépendance
+d’exécution, interdite par le cahier des charges. Le déclencheur reste humain : `stats.migration`
+(onglet Sauvegardes) affiche le pourcentage du seuil et `alerts.store.size` prévient à 40 Mo.
 
 ---
 

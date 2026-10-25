@@ -7,6 +7,37 @@ import { statCard } from '../../components.js';
 import { confirmModal, apiGuard } from './common.js';
 import { channelModal } from './catalogue.js';
 
+/* ------------------------------------------------------------------ F-22 : apprentissage */
+
+/** Ce que l'administration a appris des corrections : visible, borné, jamais opaque. */
+function learningPanel(learning, onRefresh) {
+  const data = learning || { corrections: 0, usable: 0, categories: 0, terms: 0, minSupport: 2, top: [], manualRules: 0 };
+  const top = Array.isArray(data.top) ? data.top : [];
+  return h('section', { class: 'panel', style: { marginTop: '16px' } },
+    h('div', { class: 'section-head' },
+      h('div', {}, h('p', { class: 'eyebrow' }, 'Apprentissage'), h('h2', { style: { fontSize: '20px' } }, 'Règles apprises des corrections')),
+      h('span', { class: 'badge' }, icon('sparkles', 12), `${fmtNumber(data.terms)} terme${data.terms > 1 ? 's' : ''} appris`)),
+    h('p', { class: 'muted', style: { margin: '0 0 12px' } },
+      'Chaque correction manuelle nourrit un lexique pondéré (TF-IDF simple, support minimal de '
+      + `${data.minSupport} corrections). Les règles manuelles gardent la priorité : un apprentissage ne peut jamais annuler une décision explicite.`),
+    h('div', { class: 'stat-grid' },
+      statCard('Corrections', fmtNumber(data.corrections), `${fmtNumber(data.usable)} exploitables`, 'ok'),
+      statCard('Termes appris', fmtNumber(data.terms), `${fmtNumber(data.categories)} catégories`, data.terms ? 'ok' : ''),
+      statCard('Règles manuelles', fmtNumber(data.manualRules), 'priorité absolue', 'ok'),
+      statCard('Support minimal', fmtNumber(data.minSupport), 'corrections identiques')),
+    top.length
+      ? h('div', { class: 'table-wrap', style: { marginTop: '12px' } }, h('table', {},
+        h('thead', {}, h('tr', {}, h('th', {}, 'Terme appris'), h('th', {}, 'Catégorie'), h('th', {}, 'Poids'))),
+        h('tbody', {}, top.map((entry) => h('tr', {},
+          h('td', { dir: 'auto' }, entry.term),
+          h('td', {}, entry.category),
+          h('td', { class: 'tabular' }, entry.weight.toFixed(2)))))))
+      : h('p', { class: 'muted', style: { margin: '12px 0 0' } },
+        'Aucune règle apprise pour l’instant : corrigez deux fois le même mot dans une catégorie pour la voir apparaître ici.'),
+    h('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: { marginTop: '12px' }, onClick: onRefresh },
+      icon('retry', 14), 'Recalculer'));
+}
+
 /* ------------------------------------------------------------------ alertes */
 
 const SEVERITY_LABEL = { error: 'Bloquante', warn: 'À surveiller', ok: 'Situation normale' };
@@ -113,6 +144,7 @@ async function renderHealth(host, ctx, state, { refreshStats, stats }) {
           h('span', { class: 'tabular' }, fmtNumber(bucket.count))))),
       h('p', { class: 'muted', style: { marginTop: '12px', fontSize: '13px' } },
         `Décisions : ${Object.entries(current.sources).map(([key, value]) => `${key} ${fmtNumber(value)}`).join(' · ')} — ${fmtNumber(engine.total)} chaînes mesurées en ${engine.durationMs} ms.`)),
+    learningPanel(current.learning, () => renderHealth(host, ctx, state, { refreshStats, stats })),
     h('section', { class: 'panel', style: { marginTop: '16px' } },
       h('div', { class: 'section-head' },
         h('div', {}, h('p', { class: 'eyebrow' }, 'Qualité'), h('h2', { style: { fontSize: '20px' } }, 'File « à vérifier »')),

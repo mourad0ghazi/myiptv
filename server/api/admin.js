@@ -8,6 +8,7 @@ import {
   assertMassWrite, buildChannel, categoryLabel, isPublic, projectDetail, sanitizeChannel,
 } from '../core/channels.js';
 import { categorizeEntry, classify, compileRules, reclassifyAll, reviewQueue } from '../core/classify.js';
+import { effectiveRules, learnFromCorrections } from '../core/learning.js';
 import { DEFAULTS, schemaForClient, validateSettings } from '../core/settings.js';
 import { assertPasswordPolicy, hashPassword } from '../core/auth.js';
 import { exportJson, exportM3U } from '../core/exports.js';
@@ -37,7 +38,18 @@ function adminView(app, channel) {
 }
 
 function table(app) {
-  return compileRules(app.store.learning.rules);
+  return compileRules(effectiveRules(app.store.learning));
+}
+
+/**
+ * F-22 — recalcule les règles apprises à partir des corrections, sans toucher aux règles
+ * manuelles. Appelé après chaque correction ; jamais bloquant (une erreur laisse l'existant).
+ */
+function refreshLearned(app) {
+  const { rules, stats } = learnFromCorrections(app.store.learning.corrections, { minSupport: 2 });
+  app.store.learning.learned = rules;
+  app.store.learning.learnedStats = { ...stats, updatedAt: new Date().toISOString() };
+  return app.store.learning.learnedStats;
 }
 
 function parseUrlField(value, field = 'url') {
@@ -273,7 +285,10 @@ export function registerAdminRoutes(router, app) {
 
     await app.store.saveChannels('channel.update');
     app.index.add(channel);
-    if (categoryChanged) await app.store.saveLearning('correction');
+    if (categoryChanged) {
+      refreshLearned(app);
+      await app.store.saveLearning('correction');
+    }
     await app.store.audit('channel.update', {
       channelIds: [channel.id],
       detail: `${before.name} → ${channel.name}${categoryChanged ? ` (${previousCategory} → ${channel.category})` : ''}`,
@@ -413,6 +428,7 @@ export function registerAdminRoutes(router, app) {
     channel.updatedAt = now();
     app.store.learning.corrections.push({ channelId: channel.id, name: channel.name, from: previous, to: category, at: now() });
     app.store.learning.corrections = app.store.learning.corrections.slice(-500);
+    refreshLearned(app);
     await app.store.saveChannels('channel.tag');
     await app.store.saveLearning('correction');
     app.index.add(channel);
@@ -509,7 +525,7 @@ export function registerAdminRoutes(router, app) {
   // EP-27 — règles de catégorisation.
   router.get('/api/admin/rules', () => {
     const custom = app.store.learning.rules || {};
-    const compiled = compileRules(custom);
+    const compiled = compileRules(effectiveRules(app.store.learning));
     const effective = {};
     for (const [keyword, categories] of compiled) {
       for (const [category, weight] of categories) {
@@ -521,6 +537,8 @@ export function registerAdminRoutes(router, app) {
       body: {
         categories: Object.values(CATEGORY_BY_ID).map((category) => ({ id: category.id, label: category.label, count: app.store.channels.filter((channel) => channel.category === category.id).length })),
         custom,
+        learned: app.store.learning.learned || {},
+        learnedStats: app.store.learning.learnedStats || { corrections: 0, usable: 0, categories: 0, terms: 0, minSupport: 2 },
         effective,
         corrections: app.store.learning.corrections.slice(-20).reverse(),
         updatedAt: app.store.learning.updatedAt,
@@ -543,7 +561,10 @@ export function registerAdminRoutes(router, app) {
       clean[category] = keywords.map((keyword) => String(keyword).trim().slice(0, 40)).filter(Boolean).slice(0, 200);
     }
     app.store.learning.rules = clean;
-    const changed = reclassifyAll(app.store.channels.filter((channel) => !channel.deleted), { table: compileRules(clean) });
+    refreshLearned(app);
+    const changed = reclassifyAll(app.store.channels.filter((channel) => !channel.deleted), {
+      table: compileRules(effectiveRules(app.store.learning)),
+    });
     await app.store.saveChannels('rules.update');
     await app.store.saveLearning('rules.update');
     app.index.rebuild(app.store.channels.filter((channel) => !channel.deleted));
@@ -631,6 +652,32 @@ export function registerAdminRoutes(router, app) {
         queue,
         storage: { sizes, backups, sizeTotal: Object.values(sizes).reduce((sum, value) => sum + value, 0) },
         alerts: await app.alerts({ renderCards: Number(app.store.settings.pageSize) || 0 }),
+        learning: (() => {
+          const learned = app.store.learning.learned || {};
+          const top = [];
+          for (const [category, entries] of Object.entries(learned)) {
+            for (const entry of entries) {
+              const [term, weight] = String(entry).split('|');
+              top.push({ category, term, weight: Number(weight) || 1 });
+            }
+          }
+          top.sort((a, b) => b.weight - a.weight || a.term.localeCompare(b.term));
+          return {
+            ...(app.store.learning.learnedStats || { corrections: 0, usable: 0, categories: 0, terms: 0, minSupport: 2 }),
+            manualRules: Object.values(app.store.learning.rules || {}).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0),
+            top: top.slice(0, 12),
+          };
+        })(),
+        migration: {
+          schemaVersion: 'streamtv-sql-1',
+          thresholdChannels: 30_000,
+          channels: active.length,
+          ratio: Math.round((active.length / 30_000) * 1000) / 1000,
+          atThreshold: active.length >= 30_000,
+          targetTable: app.store.settings.targetTable || 0,
+          command: 'node scripts/migrate.js --plan',
+          reversible: true,
+        },
         sessions: app.sessions.count(),
         ingestion: app.ingest.activeJob(),
         ingestions: await app.ingest.history(),

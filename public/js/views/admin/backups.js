@@ -2,9 +2,35 @@
 // Toute restauration exige le mot « RESTAURER » et une empreinte SHA-256 valide.
 
 import { Admin, auth, download } from '../../api.js';
-import { h, icon, modal, toast, emptyState, fmtDate } from '../../ui.js';
+import { h, icon, modal, toast, emptyState, fmtDate, fmtNumber } from '../../ui.js';
 import { statCard } from '../../components.js';
 import { field, confirmModal, apiGuard } from './common.js';
+
+/* ------------------------------------------------------------------ F-24 : sortie SQL */
+
+/** État de préparation de la bascule PostgreSQL, sans jamais la déclencher depuis l'interface. */
+function migrationPanel(migration) {
+  const plan = migration || { thresholdChannels: 30000, channels: 0, ratio: 0, atThreshold: false, targetTable: 0 };
+  const percentage = Math.round((plan.ratio || 0) * 100);
+  const tone = plan.atThreshold ? 'warn' : 'ok';
+  return h('section', { class: 'panel', style: { marginTop: '16px' } },
+    h('div', { class: 'section-head' },
+      h('div', {}, h('p', { class: 'eyebrow' }, 'Passage à l’échelle'), h('h2', { style: { fontSize: '20px' } }, 'Sortie vers PostgreSQL 15')),
+      h('span', { class: 'badge', dataset: { tone } },
+        icon(plan.atThreshold ? 'alert' : 'check', 12),
+        plan.atThreshold ? 'Seuil atteint' : `${percentage} % du seuil`)),
+    h('p', { class: 'muted', style: { margin: '0 0 12px' } },
+      'Le stockage JSON reste la référence jusqu’à 30 000 chaînes. Au-delà, la migration produit un schéma et des INSERT rejouables, que psql applique : elle est réversible (aller-retour vérifié) et idempotente.'),
+    h('div', { class: 'stat-grid' },
+      statCard('Chaînes', fmtNumber(plan.channels), `seuil ${fmtNumber(plan.thresholdChannels)}`, plan.atThreshold ? 'warn' : 'ok'),
+      statCard('Table cible', plan.targetTable ? fmtNumber(plan.targetTable) : 'non définie', 'réglage targetTable'),
+      statCard('Schéma', plan.schemaVersion || 'streamtv-sql-1', 'PostgreSQL 15', 'ok'),
+      statCard('Réversibilité', plan.reversible ? 'oui' : 'non', 'aller-retour vérifié', plan.reversible ? 'ok' : 'warn')),
+    h('p', { class: 'muted', style: { margin: '12px 0 0' } },
+      h('span', { class: 'tabular' }, 'node scripts/migrate.js --plan'),
+      ' — puis --write pour produire schema.sql, data.sql et manifest.json.'),
+  );
+}
 
 /* ------------------------------------------------------------------ sauvegardes */
 
@@ -127,6 +153,7 @@ async function renderBackups(host, ctx, { refreshStats, stats }) {
           },
         }),
       }, icon('lock', 14), 'Fermer toutes les sessions'))),
+    migrationPanel(current.migration),
     h('section', { class: 'panel', style: { marginTop: '16px' } },
       h('h2', { style: { fontSize: '18px', marginBottom: '12px' } }, 'Occupation du stockage'),
       h('div', { class: 'stat-grid' },

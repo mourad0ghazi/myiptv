@@ -45,7 +45,7 @@ export class Store {
     this.channels = [];
     this.settings = { ...DEFAULTS };
     this.sources = [];
-    this.learning = { rules: {}, corrections: [], updatedAt: null };
+    this.learning = { rules: {}, learned: {}, learnedStats: null, corrections: [], updatedAt: null };
     this.security = { passwordHash: '', salt: '', iterations: 16384, defaultPassword: true, updatedAt: null };
     this.notices = [];
     this.loadedAt = null;
@@ -140,6 +140,8 @@ export class Store {
     if (!corrupt && data && typeof data === 'object') {
       this.learning = {
         rules: data.rules && typeof data.rules === 'object' ? data.rules : {},
+        learned: data.learned && typeof data.learned === 'object' ? data.learned : {},
+        learnedStats: data.learnedStats && typeof data.learnedStats === 'object' ? data.learnedStats : null,
         corrections: Array.isArray(data.corrections) ? data.corrections.slice(-500) : [],
         updatedAt: data.updatedAt || null,
       };
@@ -247,6 +249,8 @@ export class Store {
         updatedAt: this.learning.updatedAt,
         reason,
         rules: this.learning.rules,
+        learned: this.learning.learned,
+        learnedStats: this.learning.learnedStats,
         corrections: this.learning.corrections,
       });
     });
