@@ -1,4 +1,4 @@
-// public/js/views/admin/common.js — briques partagées des cinq onglets.
+// public/js/views/admin/common.js · briques partagées des cinq onglets.
 // Chaque élément produit ici est vérifié par tests/client.test.js (styles présents, ARIA).
 
 import { COPY } from '../../copy.js';

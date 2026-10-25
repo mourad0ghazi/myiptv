@@ -1,4 +1,4 @@
-// public/js/views/admin/backups.js — onglet Sauvegardes : création immédiate, rotation 7+4, restauration confirmée.
+// public/js/views/admin/backups.js · onglet Sauvegardes : création immédiate, rotation 7+4, restauration confirmée.
 // Toute restauration exige le mot « RESTAURER » et une empreinte SHA-256 valide.
 
 import { Admin, auth, download } from '../../api.js';
@@ -28,7 +28,7 @@ function migrationPanel(migration) {
       statCard('Réversibilité', plan.reversible ? 'oui' : 'non', 'aller-retour vérifié', plan.reversible ? 'ok' : 'warn')),
     h('p', { class: 'muted', style: { margin: '12px 0 0' } },
       h('span', { class: 'tabular' }, 'node scripts/migrate.js --plan'),
-      ' — puis --write pour produire schema.sql, data.sql et manifest.json.'),
+      ' · puis --write pour produire schema.sql, data.sql et manifest.json.'),
   );
 }
 
@@ -64,7 +64,7 @@ async function renderBackups(host, ctx, { refreshStats, stats }) {
         h('td', { style: { fontFamily: 'ui-monospace, monospace', fontSize: '12px' } }, backup.file),
         h('td', { class: 'num' }, backup.date || fmtDate(backup.createdAt)),
         h('td', { class: 'num' }, `${Math.round((backup.size || 0) / 1024)} Ko`),
-        h('td', { style: { fontFamily: 'ui-monospace, monospace', fontSize: '11px' } }, (backup.sha256 || '').slice(0, 16) || '—'),
+        h('td', { style: { fontFamily: 'ui-monospace, monospace', fontSize: '12px' } }, (backup.sha256 || '').slice(0, 16) || 'Non renseigné'),
         h('td', {}, h('button', {
           class: 'btn btn-quiet btn-sm', type: 'button',
           onClick: () => confirmModal({

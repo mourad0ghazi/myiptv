@@ -1,4 +1,4 @@
-// public/js/views/admin.js — écran 7 : console d'administration, sept onglets.
+// public/js/views/admin.js · écran 7 : console d'administration, sept onglets.
 // La coquille ne rend que les compteurs et les onglets ; chaque onglet vit dans views/admin/.
 
 import { Admin, auth } from '../api.js';

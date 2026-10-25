@@ -1,4 +1,4 @@
-// public/js/api.js — client HTTP unique. Toute erreur devient une phrase française.
+// public/js/api.js · client HTTP unique. Toute erreur devient une phrase française.
 
 import { withBase } from './base.js';
 

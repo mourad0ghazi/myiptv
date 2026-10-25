@@ -1,4 +1,4 @@
-// public/js/views/favorites.js — écran 5 : favoris et historique, strictement locaux (AC-033).
+// public/js/views/favorites.js · écran 5 : favoris et historique, strictement locaux (AC-033).
 // Aucune requête réseau : ces listes vivent dans le stockage du navigateur.
 
 import { api } from '../api.js';
@@ -13,7 +13,7 @@ function row(item, { onPlay, onOpen, onRemove }) {
     h('div', { style: { flex: '1 1 auto', minWidth: 0 } },
       h('p', { dir: 'auto', style: { fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis' } }, item.name),
       h('p', { class: 'card-sub' },
-        `N° ${item.number || '—'}`,
+        `N° ${item.number || 'Non renseigné'}`,
         item.categoryLabel ? ` · ${item.categoryLabel}` : '',
         item.at ? ` · ${fmtRelative(item.at)}` : '')),
     h('button', {

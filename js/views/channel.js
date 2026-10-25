@@ -1,4 +1,4 @@
-// public/js/views/channel.js — écran 4 : fiche d'une chaîne (détail, variantes, chaînes proches).
+// public/js/views/channel.js · écran 4 : fiche d'une chaîne (détail, variantes, chaînes proches).
 
 import { api } from '../api.js';
 import { COPY } from '../copy.js';
@@ -83,17 +83,17 @@ export async function renderChannel(container, ctx, id) {
   const isFavorite = prefs.isFavorite(channel.id);
 
   const favoriteBtn = h('button', {
-    class: 'btn btn-ghost', type: 'button', 'aria-pressed': String(isFavorite),
+    class: 'btn btn-ghost fav-btn', type: 'button', 'aria-pressed': String(isFavorite),
     onClick: () => {
       const nowFavorite = prefs.toggleFavorite(channel);
       favoriteBtn.setAttribute('aria-pressed', String(nowFavorite));
       favoriteBtn.replaceChildren(
-        icon('star', 16),
+        icon('heart', 16),
         nowFavorite ? COPY.actions.removeFavorite : COPY.actions.addFavorite,
       );
       toast(nowFavorite ? 'Ajoutée à vos favoris sur cet appareil.' : 'Retirée de vos favoris.', { tone: 'info', duration: 3000 });
     },
-  }, icon('star', 16), isFavorite ? COPY.actions.removeFavorite : COPY.actions.addFavorite);
+  }, icon('heart', 16), isFavorite ? COPY.actions.removeFavorite : COPY.actions.addFavorite);
 
   const playButton = h('button', {
     class: 'btn btn-primary', type: 'button',
@@ -128,7 +128,7 @@ export async function renderChannel(container, ctx, id) {
           channel.country ? h('span', { class: 'badge' }, countryName(channel.country)) : null,
           channel.language ? h('span', { class: 'badge' }, languageName(channel.language)) : null,
           healthBadge(channel.health),
-          channel.featured ? h('span', { class: 'badge', dataset: { tone: 'warn' } }, icon('sparkles', 12), 'En vedette') : null),
+          channel.featured ? h('span', { class: 'badge', dataset: { tone: 'warn' } }, 'En vedette') : null),
         h('div', { class: 'hero-actions', style: { marginTop: '18px' } }, playButton, favoriteBtn, copyBtn)),
     ),
     channel.blocked ? (() => {
@@ -145,16 +145,16 @@ export async function renderChannel(container, ctx, id) {
       metaItem('Qualité', channel.quality === 'AUTO' ? 'Automatique' : channel.quality),
       metaItem('Pays', channel.country ? countryName(channel.country) : 'Non précisé'),
       metaItem('Langue', channel.language ? languageName(channel.language) : 'Non précisée'),
-      metaItem('Groupe d’origine', channel.group || '—'),
-      metaItem('Identifiant EPG', channel.epgId || '—'),
-      metaItem('Source', channel.sourceId || '—'),
+      metaItem('Groupe d’origine', channel.group || 'Non renseigné'),
+      metaItem('Identifiant EPG', channel.epgId || 'Non renseigné'),
+      metaItem('Source', channel.sourceId || 'Non renseigné'),
       metaItem('Ajoutée', fmtRelative(channel.lastSeenInSourceAt)),
       metaItem('Classement', `${Math.round((channel.confidence || 0) * 100)} % de confiance · ${channel.categorySource}`),
-      metaItem('Droits', channel.licenseNote || '—')),
+      metaItem('Droits', channel.licenseNote || 'Non renseigné')),
     h('div', { class: 'panel', style: { marginTop: '18px' } },
       h('h2', { style: { fontSize: '16px', marginBottom: '10px' } }, 'Adresse du flux'),
       h('div', { class: 'url-box' },
-        h('code', { dir: 'ltr', text: channel.url || '—' }),
+        h('code', { dir: 'ltr', text: channel.url || 'Non renseigné' }),
         h('button', {
           class: 'btn btn-quiet btn-sm', type: 'button',
           onClick: async () => { const done = await copyText(channel.url); toast(done ? COPY.actions.copied : 'Copie impossible.', { tone: done ? 'success' : 'error' }); },
@@ -173,6 +173,25 @@ export async function renderChannel(container, ctx, id) {
           onClick: () => {
             prefs.pushHistory(channel);
             getPlayer().open({ ...channel, id: variant.id, name: `${channel.name} · ${variant.quality}`, url: variant.url, quality: variant.quality, blocked: false });
+          },
+        }, icon('play', 14), COPY.actions.watch))))) : null,
+
+    payload.alternatives?.length ? h('section', { style: { marginTop: '24px' } },
+      h('div', { class: 'section-head' }, h('div', {},
+        h('p', { class: 'eyebrow' }, 'Recherche multi-sources'),
+        h('h2', {}, 'Autres sources de la même chaîne'))),
+      h('p', { class: 'muted', style: { fontSize: '13px' } },
+        'Retrouvée dans une autre source ingérée, par identifiant de guide ou par nom normalisé. Si le flux principal ne répond pas, le lecteur l’essaie automatiquement.'),
+      h('div', { class: 'rows' }, payload.alternatives.map((alt) => h('div', { class: 'variant' },
+        h('span', { dir: 'auto', text: alt.name }),
+        h('span', { class: 'badge' }, alt.match === 'tvg-id' ? 'Même identifiant' : 'Même nom'),
+        h('span', { class: 'badge' }, alt.quality),
+        alt.blockedReason ? h('span', { class: 'badge', dataset: { tone: 'warn' } }, 'Lecture limitée') : null,
+        h('button', {
+          class: 'btn btn-ghost btn-sm', type: 'button', disabled: Boolean(alt.blockedReason),
+          onClick: () => {
+            prefs.pushHistory(channel);
+            getPlayer().open({ ...channel, url: alt.url, quality: alt.quality, blocked: false, alternatives: [] });
           },
         }, icon('play', 14), COPY.actions.watch))))) : null,
 

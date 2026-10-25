@@ -1,4 +1,4 @@
-// public/js/views/admin/catalogue.js — onglet Catalogue : table paginée, actions groupées, fiche d'édition.
+// public/js/views/admin/catalogue.js · onglet Catalogue : table paginée, actions groupées, fiche d'édition.
 // Aucune donnée métier n'est recalculée ici : l'API reste la seule source de vérité.
 
 import { Admin, ApiError } from '../../api.js';
@@ -51,7 +51,7 @@ async function renderCatalogue(host, ctx, state, { refreshStats }) {
         } catch (error) { apiGuard(ctx, error); }
       },
     }),
-  }, icon('sparkles', 14), 'Reclasser');
+  }, icon('grid', 14), 'Reclasser');
 
   toolbar.append(
     h('div', { class: 'toolbar-card-row' }, search, category, visibility),
@@ -164,7 +164,7 @@ async function renderCatalogue(host, ctx, state, { refreshStats }) {
                 h('span', { class: 'guide-logo' }, logoNode(channel, 26)),
                 h('span', { dir: 'auto', text: channel.name }),
                 channel.manualOverride ? h('span', { class: 'badge', title: 'Décision manuelle protégée' }, icon('lock', 11)) : null,
-                channel.featured ? h('span', { class: 'badge', dataset: { tone: 'warn' } }, icon('sparkles', 11)) : null,
+                channel.featured ? h('span', { class: 'badge', dataset: { tone: 'warn' } }, icon('star', 11)) : null,
                 channel.blocked ? h('span', { class: 'badge', dataset: { tone: 'danger' } }, icon('alert', 11)) : null)),
             h('td', {}, h('span', { text: channel.categoryLabel }),
               h('span', { class: 'card-sub' }, channel.categorySource === 'manual' ? 'manuel' : channel.categorySource)),
@@ -249,7 +249,7 @@ async function channelModal(ctx, id, { onDone }) {
   const quality = h('select', {}, ['AUTO', 'SD', 'HD', 'FHD', '4K', '8K'].map((value) => h('option', { value, selected: channel?.quality === value }, value === 'AUTO' ? 'Automatique' : value)));
   const category = h('select', {}, h('option', { value: '' }, 'Laisser le moteur décider'),
     categories.map((item) => h('option', { value: item.id, selected: channel?.category === item.id }, item.label)));
-  const license = h('select', {}, ['libre accès public', 'accord de distribution', 'catalogue propre', 'retiré — demande de tiers']
+  const license = h('select', {}, ['libre accès public', 'accord de distribution', 'catalogue propre', 'retiré · demande de tiers']
     .map((value) => h('option', { value, selected: channel?.licenseNote === value }, value)));
   const visible = h('input', { type: 'checkbox', checked: channel ? channel.visible : true });
   const featured = h('input', { type: 'checkbox', checked: Boolean(channel?.featured) });

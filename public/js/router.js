@@ -1,4 +1,4 @@
-// public/js/router.js — routage History API, interception des liens, nettoyage des vues.
+// public/js/router.js · routage History API, interception des liens, nettoyage des vues.
 // Aucun rechargement complet : une seule coquille HTML, des vues montées puis démontées.
 
 import { BASE, resolve, withoutBase } from './base.js';

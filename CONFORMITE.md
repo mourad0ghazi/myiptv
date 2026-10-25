@@ -2,7 +2,7 @@
 
 Version évaluée : **3.6.0**, 25 octobre 2026.
 Référentiel : cahier des charges *StreamTV v2* (§1 à §13, 118 critères).
-Preuves : `npm test` (11 suites, 207 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
+Preuves : `npm test` (43 suites, 242 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
 (43 contrôles), `node scripts/measure-tagger.js`, smoke tests DOM (jsdom) des 12 routes.
 
 Légende des statuts :
@@ -430,6 +430,25 @@ ajoute les deux, sans modifier les 17 réglages ni les invariants de suppression
 | Console | inventaire en lecture seule, aucune écriture hors routes du catalogue | `server/api/console.js` |
 | Session | toutes les routes `/api/admin/*` de la console exigent un jeton | `tests/reports.test.js` |
 
+## 4.11 Interface et postes de lecture (3.8.0)
+
+La 3.8.0 ne change aucune règle de catalogue. Elle rend l'interface vérifiable et ajoute les
+postes de lecture demandés : galerie d'accueil, cœur persistant, lecteur cinéma, mode
+télévision, installation PWA, recherche multi-sources.
+
+| Point | Règle appliquée | Preuve |
+|---|---|---|
+| Design opposable | dix règles écrites, aucune non testée | `DESIGN_RULES.md`, `tests/design.test.js` |
+| Un seul accent | `--accent` déclaré une fois, aucune couleur d'accent recopiée dans le client | `tests/design.test.js` règle 9 |
+| Sobriété | zéro dégradé, zéro ombre de survol, zéro déplacement, zéro cadratin, zéro emoji | règles 1 à 4 |
+| Échelle | aucun texte sous 12 px, largeur de contenu bornée à 1280 px | règles 5 et 6 |
+| Jetons | aucune couleur hexadécimale hors `:root` | règle 7 |
+| État du cœur | `aria-pressed` et couleur d'état, remplissage par la feuille de style | règle 10 |
+| Lecture | une seule reprise automatique, puis variante, autre source, chaîne proche | `public/js/player.js` (`this.attempts < 1`, `tryFallback`) |
+| Recherche multi-sources | `tvg-id` d'abord, puis nom normalisé, dans toutes les sources ingérées | `findAlternatives`, `tests/api.test.js` |
+| Mode télévision | détection matérielle, aucune fonction perdue, cibles de 56 px | `public/js/tv.js`, `docs/PV-RECETTE.md` §8 |
+| Installation | PWA `standalone`, aucun APK, aucun IPA | `manifest.webmanifest`, page d'aide |
+
 Les textes qui promettaient un masquage immédiat à réception ont été corrigés : l'ancienne
 formulation décrivait un mécanisme qui n'existait pas, vers une adresse de domaine réservé.
 
@@ -513,7 +532,7 @@ Les 37 routes du cahier des charges sont toutes servies ; quatre routes utilitai
 
 ```bash
 node server/index.js &                     # service sur :3000
-npm test                                   # 184 tests, 10 suites
+npm test                                   # 242 tests, 43 suites
 node scripts/verify.js --base http://127.0.0.1:3000
 node scripts/measure-tagger.js
 node scripts/backup.js --list

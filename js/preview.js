@@ -1,4 +1,4 @@
-// public/js/preview.js — aperçu muet au survol, puis coupure (AC-089 : budget réseau).
+// public/js/preview.js · aperçu muet au survol, puis coupure (AC-089 : budget réseau).
 // Un seul flux à la fois, jamais au doigt, jamais sur une chaîne déclarée indisponible,
 // coupure automatique après 20 s. Le son reste coupé : l'aperçu informe, il n'impose rien.
 

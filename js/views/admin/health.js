@@ -1,4 +1,4 @@
-// public/js/views/admin/health.js — onglet Santé : sonde bornée, états up/flaky/down/unknown.
+// public/js/views/admin/health.js · onglet Santé : sonde bornée, états up/flaky/down/unknown.
 // Une sonde ne bloque jamais la console : elle est plafonnée en durée et en nombre.
 
 import { Admin } from '../../api.js';
@@ -16,7 +16,7 @@ function learningPanel(learning, onRefresh) {
   return h('section', { class: 'panel', style: { marginTop: '16px' } },
     h('div', { class: 'section-head' },
       h('div', {}, h('p', { class: 'eyebrow' }, 'Apprentissage'), h('h2', { style: { fontSize: '20px' } }, 'Règles apprises des corrections')),
-      h('span', { class: 'badge' }, icon('sparkles', 12), `${fmtNumber(data.terms)} terme${data.terms > 1 ? 's' : ''} appris`)),
+      h('span', { class: 'badge' }, icon('database', 12), `${fmtNumber(data.terms)} terme${data.terms > 1 ? 's' : ''} appris`)),
     h('p', { class: 'muted', style: { margin: '0 0 12px' } },
       'Chaque correction manuelle nourrit un lexique pondéré (TF-IDF simple, support minimal de '
       + `${data.minSupport} corrections). Les règles manuelles gardent la priorité : un apprentissage ne peut jamais annuler une décision explicite.`),
@@ -42,7 +42,7 @@ function learningPanel(learning, onRefresh) {
 
 const SEVERITY_LABEL = { error: 'Bloquante', warn: 'À surveiller', ok: 'Situation normale' };
 
-/** §10.4 — chaque alerte affiche sa valeur, son seuil et l'action attendue. */
+/** §10.4 · chaque alerte affiche sa valeur, son seuil et l'action attendue. */
 function alertPanel(alerts, onRefresh) {
   const items = Array.isArray(alerts.items) ? alerts.items : [];
   const tone = alerts.level === 'error' ? 'danger' : alerts.level === 'warn' ? 'warn' : 'ok';
@@ -143,7 +143,7 @@ async function renderHealth(host, ctx, state, { refreshStats, stats }) {
           h('span', { class: 'hist-bar' }, h('span', { style: { width: `${Math.round((bucket.count / maxCount) * 100)}%` } })),
           h('span', { class: 'tabular' }, fmtNumber(bucket.count))))),
       h('p', { class: 'muted', style: { marginTop: '12px', fontSize: '13px' } },
-        `Décisions : ${Object.entries(current.sources).map(([key, value]) => `${key} ${fmtNumber(value)}`).join(' · ')} — ${fmtNumber(engine.total)} chaînes mesurées en ${engine.durationMs} ms.`)),
+        `Décisions : ${Object.entries(current.sources).map(([key, value]) => `${key} ${fmtNumber(value)}`).join(' · ')} · ${fmtNumber(engine.total)} chaînes mesurées en ${engine.durationMs} ms.`)),
     learningPanel(current.learning, () => renderHealth(host, ctx, state, { refreshStats, stats })),
     h('section', { class: 'panel', style: { marginTop: '16px' } },
       h('div', { class: 'section-head' },
@@ -157,7 +157,7 @@ async function renderHealth(host, ctx, state, { refreshStats, stats }) {
             h('td', { dir: 'auto' }, item.name),
             h('td', {}, item.categoryLabel),
             h('td', { class: 'num' }, `${Math.round(item.confidence * 100)} %`),
-            h('td', { class: 'muted', style: { fontSize: '12px' } }, item.reasons?.[0] || '—'),
+            h('td', { class: 'muted', style: { fontSize: '12px' } }, item.reasons?.[0] || 'Non renseigné'),
             h('td', {}, h('button', {
               class: 'btn btn-quiet btn-sm', type: 'button',
               onClick: () => channelModal(ctx, item.id, { onDone: () => renderHealth(host, ctx, state, { refreshStats, stats }) }),
@@ -171,7 +171,7 @@ async function renderHealth(host, ctx, state, { refreshStats, stats }) {
           h('td', { class: 'num' }, String(item.number)),
           h('td', { dir: 'auto' }, item.name),
           h('td', {}, healthLabel(item.status)),
-          h('td', { class: 'num' }, item.httpStatus ? String(item.httpStatus) : '—'),
+          h('td', { class: 'num' }, item.httpStatus ? String(item.httpStatus) : 'Non renseigné'),
           h('td', { class: 'num' }, `${item.latencyMs} ms`),
           h('td', { class: 'muted' }, item.reason))))))) : null);
   host.append(host2);

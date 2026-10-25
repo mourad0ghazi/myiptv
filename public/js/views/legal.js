@@ -1,4 +1,4 @@
-// public/js/views/legal.js — pages d'information : mentions, confidentialité, signalement, aide, messages.
+// public/js/views/legal.js · pages d'information : mentions, confidentialité, signalement, aide, messages.
 // Aucune de ces pages ne modifie l'état du site : elles sont lisibles hors connexion après un premier passage.
 
 import { Public } from '../api.js';
@@ -208,7 +208,7 @@ export function renderHelp(container, ctx) {
       'Chercher : la barre accepte les accents, les apostrophes, l’arabe et les numéros de chaîne. « cafe » trouve « Café ».',
       'Filtrer : les pastilles de catégories se combinent avec le tri et la pagination.',
       'Regarder : un clic sur une carte lance la lecture en superposition ; Échap ferme le lecteur.',
-      'Retrouver : l’étoile range la chaîne dans vos favoris, sur cet appareil uniquement.',
+      'Retrouver : le cœur range la chaîne dans vos favoris, sur cet appareil uniquement. Le bouton « Mes favoris » filtre tout le catalogue.',
     ])),
     section('Raccourcis du lecteur',
       h('div', { class: 'rows' }, COPY.player.shortcuts.map(([keys, label]) => h('div', { class: 'variant' },
@@ -228,6 +228,17 @@ export function renderHelp(container, ctx) {
       paragraph('Certaines chaînes sont masquées : catégorie adulte ou décision du propriétaire. Le badge « chaînes masquées » donne le compte exact et le lien vers le réglage.'),
       h('h3', { style: { marginTop: '12px' } }, 'Pourquoi les favoris ne suivent-ils pas d’un appareil à l’autre ?'),
       paragraph('Ils sont stockés localement, sans compte : c’est le choix de confidentialité de cette version.')),
+    section('Installer sur l’écran d’accueil',
+      paragraph('StreamTV s’installe comme une application : plein écran, icône sur l’écran d’accueil, aucune boutique, aucun compte.'),
+      h('div', { class: 'install-row' },
+        h('button', { class: 'btn btn-ghost btn-sm', type: 'button', id: 'install-btn', hidden: true }, 'Installer l’application')),
+      h('p', { class: 'install-note', text: 'Android et ordinateur : touchez le bouton ci-dessus, ou le menu du navigateur puis « Installer l’application ». iPhone et iPad : bouton Partager, puis « Sur l’écran d’accueil ». Télévision : le mode télévision s’active seul sur Android TV, Tizen et webOS ; sinon ouvrez le site avec ?tv=1.' })),
+    section('Mode télévision', list([
+      'Flèches : déplacer le focus. OK : ouvrir la chaîne ou lancer la lecture.',
+      'Retour : revenir à la page précédente. Échap : fermer le lecteur.',
+      'Chiffres : taper le numéro d’une chaîne lance sa lecture.',
+      'Texte agrandi, cibles de 56 px minimum et focus visible de 3 px.',
+    ])),
     section('Accessibilité',
       list([
         'Navigation complète au clavier, focus visible de 3 px, ordre de tabulation logique.',
@@ -247,11 +258,11 @@ export function renderHelp(container, ctx) {
 
 
 function messageFamilySection(family) {
-  const heading = `${family.label} — ${family.messages.length} message${family.messages.length > 1 ? 's' : ''}`;
+  const heading = `${family.label} · ${family.messages.length} message${family.messages.length > 1 ? 's' : ''}`;
   const rows = family.messages.map((entry) => h('tr', {},
     h('td', { class: 'tabular' }, entry.id),
     h('td', { dir: 'auto' }, entry.text),
-    h('td', { class: 'muted', dir: 'auto' }, entry.cause || '—')));
+    h('td', { class: 'muted', dir: 'auto' }, entry.cause || 'Non renseigné')));
   return section(heading,
     paragraph(family.promise, 'muted'),
     h('div', { class: 'table-wrap' }, h('table', {},
@@ -282,7 +293,7 @@ export async function renderErrors(container, ctx) {
         h('tbody', {}, [
           ...catalog.families.map((family) => h('tr', {},
             h('td', { dir: 'auto' }, family.label),
-            h('td', { class: 'tabular' }, family.messages[0]?.id?.replace(/\d+$/, '') || '—'),
+            h('td', { class: 'tabular' }, family.messages[0]?.id?.replace(/\d+$/, '') || 'Non renseigné'),
             h('td', { class: 'tabular' }, String(family.messages.length)),
             h('td', { class: 'muted', dir: 'auto' }, family.promise))),
         ]))),
@@ -294,7 +305,7 @@ export async function renderErrors(container, ctx) {
         : h('p', { class: 'count-label', style: { marginTop: '12px' } },
           `${loaded} message${loaded > 1 ? 's' : ''} documenté${loaded > 1 ? 's' : ''} sur ${catalog.total || loaded}`)),
     ...families.map(messageFamilySection),
-    section('Lecteur — les 12 mires',
+    section('Lecteur · les 12 mires',
       h('div', { class: 'table-wrap' }, h('table', {},
         h('thead', {}, h('tr', {}, h('th', {}, 'Code'), h('th', {}, 'Titre'), h('th', {}, 'Cause'), h('th', {}, 'Action'))),
         h('tbody', {}, mires.map((mire) => h('tr', {},
@@ -302,7 +313,7 @@ export async function renderErrors(container, ctx) {
           h('td', { dir: 'auto' }, mire.title),
           h('td', { class: 'muted' }, mire.explanation),
           h('td', { class: 'muted' }, mire.actions.join(' · ')))))))),
-    section('Service — les 20 codes d’erreur',
+    section('Service · les 20 codes d’erreur',
       h('div', { class: 'table-wrap' }, h('table', {},
         h('thead', {}, h('tr', {}, h('th', {}, 'Code'), h('th', {}, 'Statut'), h('th', {}, 'Message'))),
         h('tbody', {}, ERRORS_CODES.map((entry) => h('tr', {},

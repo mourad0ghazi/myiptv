@@ -1,12 +1,20 @@
-// public/js/player.js — lecteur : 7 états, détection de cause, 12 mires (§8).
+// public/js/player.js · lecteur : 7 états, détection de cause, 12 mires (§8).
 // Invariants : une seule reprise automatique, hls.destroy() à chaque sortie, aucun minuteur orphelin.
 
 import { api } from './api.js';
 import { COPY } from './copy.js';
 import { h, icon, toast, copyText, logoNode } from './ui.js';
 import { prefs } from './prefs.js';
+import { nowFor, heureCourte, progression } from './epg-now.js';
 
 const MIRES = COPY.player.mires;
+
+/** Trois habillages, mémorisés sur l'appareil : poste ancien, plein cadre, minimal. */
+const SKINS = [
+  { id: 'cadre', label: 'Cadre TV' },
+  { id: 'plein', label: 'Plein écran' },
+  { id: 'minimal', label: 'Minimal' },
+];
 const RETRYABLE = new Set(['P-03', 'P-04', 'P-10', 'P-12', 'P-07']);
 
 class Player {
@@ -31,6 +39,14 @@ class Player {
     this.previousOverflow = '';
     this.liveRegion = null;
     this.mireVisible = false;
+    // 3.8.0 : niveaux HLS, chaînes proches et repli de source.
+    this.levels = [];
+    this.levelSelect = null;
+    this.similarList = [];
+    this.triedUrls = new Set();
+    this.fallbackChannel = '';
+    this.dock = null;
+    this.similarBtn = null;
   }
 
   ensureRoot() {
@@ -62,6 +78,9 @@ class Player {
     this.teardown(false);
     this.channel = channel;
     this.attempts = 0;
+    this.triedUrls = new Set([channel.url]);
+    this.fallbackChannel = '';
+    this.similarList = [];
     this.previousFocus = document.activeElement;
     this.previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -86,6 +105,11 @@ class Player {
         qualityOptions.map((item) => h('option', { value: item.url }, `${item.quality || 'AUTO'} · ${item.label || 'variante'}`)))
       : null;
 
+    this.levelSelect = h('select', {
+      class: 'select', id: 'player-level', hidden: true, 'aria-label': 'Qualité du flux',
+      onChange: (event) => this.switchLevel(Number(event.target.value)),
+    }, h('option', { value: '-1' }, 'Qualité auto'));
+
     const favBtn = h('button', {
       class: 'player-btn', type: 'button', id: 'player-fav',
       'aria-label': COPY.actions.addFavorite, 'aria-pressed': String(prefs.isFavorite(channel.id)),
@@ -93,11 +117,10 @@ class Player {
         const added = prefs.toggleFavorite(channel);
         favBtn.setAttribute('aria-pressed', String(added));
         favBtn.setAttribute('aria-label', added ? COPY.actions.removeFavorite : COPY.actions.addFavorite);
-        if (added) favBtn.replaceChildren(icon('star', 18, 'fill="currentColor"'));
-        else favBtn.replaceChildren(icon('star', 18));
+        favBtn.replaceChildren(icon('heart', 18));
         toast(added ? 'Ajoutée aux favoris.' : 'Retirée des favoris.', { tone: 'success', duration: 2500 });
       },
-    }, icon('star', 18, prefs.isFavorite(channel.id) ? 'fill="currentColor"' : ''));
+    }, icon('heart', 18));
 
     this.closeBtn = h('button', { class: 'player-btn', type: 'button', 'aria-label': 'Fermer le lecteur', onClick: () => this.close() }, icon('close', 18));
     this.playBtn = h('button', { class: 'player-btn primary', type: 'button', 'aria-label': 'Lecture ou pause', onClick: () => this.toggle() }, icon('pause', 20));
@@ -107,7 +130,7 @@ class Player {
       type: 'range', min: '0', max: '1', step: '0.05', value: String(this.video.volume),
       'aria-label': 'Volume', onInput: (event) => this.setVolume(Number(event.target.value)),
     });
-    // OSD §7.2 : nom, numéro, catégorie, qualité — rien d'autre (l'état de santé reste sur la carte).
+    // OSD §7.2 : nom, numéro, catégorie, qualité · rien d'autre (l'état de santé reste sur la carte).
     this.osd = h('div', { class: 'osd', dataset: { hidden: 'false' }, 'aria-hidden': 'true' },
       h('strong', { text: `#${channel.number} · ${channel.name}` }),
       h('small', { text: [channel.categoryLabel || 'Catégorie inconnue',
@@ -120,7 +143,13 @@ class Player {
         h('div', {},
           h('div', { class: 'player-live' }, h('i', { 'aria-hidden': 'true' }), COPY.player.live),
           h('div', { class: 'player-title', text: channel.name }),
-          h('div', { class: 'player-sub', text: `Chaîne ${channel.number} · ${channel.categoryLabel || 'Catégorie inconnue'}` })),
+          h('div', { class: 'player-sub', text: `Chaîne ${channel.number} · ${channel.categoryLabel || 'Catégorie inconnue'}` }),
+          this.programme = h('div', { class: 'player-sub player-programme', id: 'player-programme' }, 'Programme : chargement du guide…'),
+          h('div', { class: 'skin-switch', role: 'group', 'aria-label': 'Habillage du lecteur' },
+            SKINS.map((skin) => h('button', {
+              type: 'button', dataset: { skin: skin.id }, 'aria-pressed': String(prefs.skin() === skin.id),
+              onClick: () => this.setSkin(skin.id),
+            }, skin.label)))),
         h('div', { style: { display: 'flex', gap: '8px' } }, favBtn, this.closeBtn)),
       this.osd,
       this.mireHost,
@@ -131,14 +160,25 @@ class Player {
         h('button', { class: 'player-btn', type: 'button', 'aria-label': COPY.actions.next, disabled: this.queue.length < 2, onClick: () => this.zap(1) }, icon('next', 18)),
         h('div', { class: 'volume' }, this.muteBtn, this.volumeRange),
         h('span', { class: 'spacer' }),
+        this.levelSelect,
         qualitySelect,
+        this.similarBtn = h('button', {
+          class: 'player-btn', type: 'button', 'aria-label': 'Chaînes similaires', 'aria-expanded': 'false',
+          onClick: () => this.toggleSimilar(),
+        }, icon('grid', 18)),
         h('button', { class: 'player-btn', type: 'button', 'aria-label': 'Image dans l’image', onClick: () => this.pictureInPicture() }, icon('pip', 18)),
         h('button', { class: 'player-btn', type: 'button', 'aria-label': 'Plein écran', onClick: () => this.fullscreen() }, icon('full', 18)),
         h('button', { class: 'player-btn', type: 'button', 'aria-label': 'Raccourcis du lecteur', onClick: () => this.showShortcuts() }, icon('settings', 18))));
 
-    this.overlay = h('div', { class: 'player-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Lecteur : ${channel.name}` }, stage);
+    this.dock = h('div', { class: 'player-dock', hidden: true, 'aria-label': 'Chaînes proches' },
+      h('div', { class: 'player-similar', id: 'player-similar' }));
+    this.overlay = h('div', {
+      class: 'player-overlay', role: 'dialog', 'aria-modal': 'true',
+      'aria-label': `Lecteur : ${channel.name}`, dataset: { skin: prefs.skin() },
+    }, stage, this.dock);
     this.ensureRoot().replaceChildren(this.overlay);
 
+    this.loadProgramme(channel);
     this.bindMediaEvents();
     this.bindKeys();
     this.bindGestures(stage);
@@ -194,7 +234,7 @@ class Player {
         });
         this.hls.loadSource(url);
         this.hls.attachMedia(video);
-        this.hls.on(window.Hls.Events.MANIFEST_PARSED, () => this.attemptAutoplay());
+        this.hls.on(window.Hls.Events.MANIFEST_PARSED, () => { this.buildLevels(); this.attemptAutoplay(); });
         this.hls.on(window.Hls.Events.ERROR, (_event, data) => {
           if (!data.fatal) return;
           this.handleFatalError(data);
@@ -272,8 +312,50 @@ class Player {
       }, 800);
       return;
     }
+    if (this.tryFallback()) return;
     this.setState('ERROR');
     this.showMire(code, params);
+  }
+
+  toastFallback(message) {
+    try { toast(message, { tone: 'info', duration: 5000 }); } catch { /* sans importance */ }
+  }
+
+  /**
+   * Repli après la reprise unique : une variante, une autre source, puis une chaîne proche.
+   * Chaque piste n'est tentée qu'une fois, pour ne jamais boucler.
+   */
+  tryFallback() {
+    const variante = (this.channel?.variants || []).find((item) => item.url && !this.triedUrls.has(item.url));
+    if (variante) {
+      this.triedUrls.add(variante.url);
+      this.announce('Source de secours de la même chaîne.');
+      this.releaseEngine();
+      this.setState('PREPARING');
+      this.startPlayback(variante.url);
+      return true;
+    }
+    // Recherche multi-sources : même tvg-id, puis même nom normalisé, dans toutes les sources ingérées.
+    const autre = (this.channel?.alternatives || []).find((item) => item.url
+      && !item.blockedReason && !this.triedUrls.has(item.url)
+      && !(location.protocol === 'https:' && String(item.url).startsWith('http:')));
+    if (autre) {
+      this.triedUrls.add(autre.url);
+      this.announce(`Autre source trouvée pour cette chaîne (${autre.match === 'tvg-id' ? 'même identifiant' : 'même nom'}).`);
+      this.toastFallback(`Autre source : ${autre.name}${autre.quality !== 'AUTO' ? ` (${autre.quality})` : ''}.`);
+      this.releaseEngine();
+      this.setState('PREPARING');
+      this.startPlayback(autre.url);
+      return true;
+    }
+    const proche = this.similarList.find((item) => item.id !== this.channel?.id && item.id !== this.fallbackChannel);
+    if (proche) {
+      this.fallbackChannel = proche.id;
+      this.announce(`Signal indisponible. Ouverture de ${proche.name}.`);
+      this.switchChannel(proche.id);
+      return true;
+    }
+    return false;
   }
 
   releaseEngine() {
@@ -282,6 +364,149 @@ class Player {
       this.hls = null;
     }
     try { this.video?.removeAttribute('src'); this.video?.load(); } catch { /* sans objet */ }
+  }
+
+  /* ------------------------------------------------ 3.8.0 : habillages, niveaux, proches */
+
+  setSkin(id) {
+    if (!SKINS.some((skin) => skin.id === id)) return;
+    prefs.setSkin(id);
+    this.overlay.dataset.skin = id;
+    this.overlay.querySelectorAll('.skin-switch button').forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.dataset.skin === id));
+    });
+    this.announce(`Habillage ${SKINS.find((skin) => skin.id === id).label}.`);
+  }
+
+  /** Programme en cours dans le lecteur : nom, horaires, progression. Jamais bloquant. */
+  loadProgramme(channel) {
+    if (!this.programme || channel.blocked) return;
+    nowFor(channel.id).then((programme) => {
+      if (!this.programme || !this.overlay?.isConnected) return;
+      if (!programme) { this.programme.textContent = 'Programme non communiqué par la chaîne.'; return; }
+      const pct = Math.round(progression(programme) * 100);
+      this.programme.replaceChildren(
+        h('strong', { text: programme.title }),
+        ` · ${heureCourte(programme.start)} – ${heureCourte(programme.stop)} · ${pct} % écoulé`);
+    }).catch(() => { if (this.programme) this.programme.textContent = 'Programme non communiqué par la chaîne.'; });
+  }
+
+  /** Niveaux du manifeste : « Qualité auto » reste le choix par défaut. */
+  buildLevels() {
+    const levels = Array.isArray(this.hls?.levels) ? this.hls.levels : [];
+    this.levels = levels;
+    if (!this.levelSelect) return;
+    if (levels.length < 2) { this.levelSelect.hidden = true; this.renderStreamInfo(levels[0] ? 0 : -1); return; }
+    this.levelSelect.hidden = false;
+    this.levelSelect.replaceChildren(
+      h('option', { value: '-1' }, 'Qualité auto'),
+      ...levels.map((level, index) => h('option', { value: String(index) },
+        level.height ? `${level.height}p` : `${Math.round((level.bitrate || 0) / 1000)} kb/s`)));
+    this.hls.on(window.Hls.Events.LEVEL_SWITCHED, (_event, data) => this.renderStreamInfo(data?.level ?? -1));
+    this.renderStreamInfo(this.hls.currentLevel >= 0 ? this.hls.currentLevel : this.hls.loadLevel);
+  }
+
+  switchLevel(index) {
+    if (!this.hls) return;
+    this.hls.currentLevel = index; // −1 : retour à l'automatique
+    const label = this.levelSelect?.options?.[index + 1]?.textContent || '';
+    this.announce(index < 0 ? 'Qualité automatique.' : `Qualité ${label}.`);
+    this.renderStreamInfo(index);
+  }
+
+  /** Résolution, débit et codec, lus sur le niveau réellement en service. */
+  renderStreamInfo(index = -1) {
+    const host = this.overlay?.querySelector('.stream-info');
+    if (!host) return;
+    const level = index >= 0 ? this.levels?.[index] || null : (this.hls?.levels?.[this.hls?.currentLevel] || null);
+    const hauteur = level?.height || this.video?.videoHeight || 0;
+    const largeur = level?.width || this.video?.videoWidth || 0;
+    const debit = level?.bitrate ? `${Math.round(level.bitrate / 1000)} kb/s` : 'non communiqué';
+    const codec = level?.videoCodec || level?.attrs?.CODECS || this.video?.codecLabel || 'non communiqué';
+    host.replaceChildren(
+      h('span', {}, 'Résolution ', h('b', { text: hauteur ? `${largeur}×${hauteur}` : 'inconnue' })),
+      h('span', {}, 'Débit ', h('b', { text: debit })),
+      h('span', {}, 'Codec ', h('b', { text: String(codec).split(',')[0] })),
+      h('span', {}, 'Réglage ', h('b', { text: this.hls?.currentLevel >= 0 ? 'manuel' : 'auto' })));
+  }
+
+  toggleSimilar() {
+    if (!this.dock) return;
+    const ouvert = this.dock.hidden;
+    this.dock.hidden = !ouvert;
+    this.similarBtn?.setAttribute('aria-expanded', String(ouvert));
+    if (ouvert) {
+      if (!this.dock.querySelector('.similar-track')) this.dock.querySelector('.player-similar')
+        ?.replaceChildren(h('p', { class: 'player-sub' }, 'Recherche des chaînes proches…'));
+      this.loadSimilar();
+      this.dock.querySelector('button')?.focus({ preventScroll: true });
+    }
+    this.announce(ouvert ? 'Chaînes proches affichées.' : 'Chaînes proches masquées.');
+  }
+
+  /**
+   * Chaînes proches : même catégorie, puis même pays, puis même langue ; « dans la même veine »
+   * regroupe les déclinaisons du même nom (beIN Sports 2 après beIN Sports 1).
+   */
+  async loadSimilar() {
+    const channel = this.channel;
+    const host = this.dock?.querySelector('.player-similar');
+    if (!channel || !host) return;
+    const demander = (url) => api(url).then((payload) => payload.channels || []).catch(() => []);
+    const [categorie, pays, langue] = await Promise.all([
+      channel.category ? demander(`/api/channels?category=${encodeURIComponent(channel.category)}&pageSize=18&sort=confidence`) : [],
+      channel.country ? demander(`/api/channels?country=${encodeURIComponent(channel.country)}&pageSize=18&sort=confidence`) : [],
+      channel.language ? demander(`/api/channels?language=${encodeURIComponent(channel.language)}&pageSize=18&sort=confidence`) : [],
+    ]);
+    const famille = (String(channel.name).match(/^[\p{L}\p{N}]+/u) || [''])[0];
+    const memeNom = famille.length > 3
+      ? (await demander(`/api/channels/search?q=${encodeURIComponent(famille)}&pageSize=18`))
+        .filter((item) => String(item.name).toLowerCase().includes(famille.toLowerCase()))
+      : [];
+    if (!host.isConnected) return;
+
+    const vus = new Set([channel.id]);
+    const prendre = (liste, limite) => {
+      const sortie = [];
+      for (const item of liste) {
+        if (vus.has(item.id)) continue;
+        vus.add(item.id);
+        sortie.push(item);
+        if (sortie.length >= limite) break;
+      }
+      return sortie;
+    };
+    const proches = prendre([...categorie, ...pays, ...langue], 10);
+    const veine = prendre(memeNom, 10);
+    this.similarList = proches;
+
+    const rail = (titre, liste, vide) => h('div', { class: 'similar-block' },
+      h('h3', { text: titre }),
+      liste.length
+        ? h('div', { class: 'similar-track' }, liste.map((item) => h('button', {
+            class: 'similar-item', type: 'button', onClick: () => this.switchChannel(item.id),
+            'aria-label': `Lire ${item.name}`,
+          }, h('strong', { text: item.name }),
+          h('span', { text: `#${item.number} · ${item.categoryLabel || item.category || ''}` }))))
+        : h('p', { class: 'player-sub', text: vide }));
+
+    host.replaceChildren(
+      h('div', { class: 'similar-actions' },
+        h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => this.zap(1) }, icon('next', 15), 'Chaîne suivante'),
+        h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => this.switchChannel(this.similarList[0]?.id) }, icon('grid', 15), 'Similaire')),
+      rail('Chaînes similaires', proches, 'Aucune chaîne de la même famille dans le catalogue.'),
+      rail('Dans la même veine', veine, 'Pas de déclinaison connue pour ce nom.'),
+      h('div', { class: 'stream-info' },
+        h('span', {}, 'Résolution ', h('b', { text: 'inconnue' })),
+        h('span', {}, 'Débit ', h('b', { text: 'non communiqué' })),
+        h('span', {}, 'Codec ', h('b', { text: 'non communiqué' }))));
+    this.renderStreamInfo(this.hls?.currentLevel ?? -1);
+  }
+
+  /** Bascule vers une autre chaîne sans fermer le lecteur. */
+  switchChannel(id) {
+    if (!id || id === this.channel?.id) return;
+    this.open(id, { queue: this.queue, onClose: this.onClose }).catch(() => this.close());
   }
 
   /** Annonce vocale discrète : jamais de doublon, jamais de texte technique. */
@@ -342,7 +567,7 @@ class Player {
     const label = {
       next: COPY.actions.next, retry: COPY.actions.retry, copy: COPY.actions.copy,
       report: COPY.actions.report, admin: COPY.actions.admin, reload: COPY.actions.reload,
-      play: '▶ ' + COPY.actions.watch,
+      play: COPY.actions.watch,
     }[action] || action;
     const primary = action === 'retry' || action === 'play' || action === 'next';
     return h('button', {
@@ -372,7 +597,7 @@ class Player {
       this.playBtn?.replaceChildren(icon('play', 20));
     });
     video.addEventListener('play', () => this.playBtn?.replaceChildren(icon('pause', 20)));
-    /* Tampon réseau : ni erreur ni lecture — l'état BUFFERING est signalé une seule fois. */
+    /* Tampon réseau : ni erreur ni lecture · l'état BUFFERING est signalé une seule fois. */
     video.addEventListener('waiting', () => {
       if (this.state === 'PLAYING' && !this.mireVisible) {
         this.setState('BUFFERING');
@@ -382,6 +607,7 @@ class Player {
     video.addEventListener('stalled', () => {
       if (this.state === 'PLAYING') this.setState('BUFFERING');
     });
+    video.addEventListener('loadedmetadata', () => this.renderStreamInfo(this.hls?.currentLevel ?? -1));
     video.addEventListener('canplay', () => {
       if (this.state === 'BUFFERING') this.setState('PLAYING');
     });

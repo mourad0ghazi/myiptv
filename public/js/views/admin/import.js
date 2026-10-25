@@ -1,4 +1,4 @@
-// public/js/views/admin/import.js — onglet Importation : aperçu obligatoire, puis confirmation unique.
+// public/js/views/admin/import.js · onglet Importation : aperçu obligatoire, puis confirmation unique.
 // L'aperçu ne modifie rien ; le commit est sérialisé côté serveur (verrou global, ERR-13).
 
 import { Admin, ApiError } from '../../api.js';
@@ -122,7 +122,7 @@ async function renderImport(host, ctx, state, { refreshStats }) {
             h('td', { dir: 'auto' }, item.name),
             h('td', {}, item.categoryLabel),
             h('td', { class: 'num' }, `${Math.round(item.confidence * 100)} %`),
-            h('td', {}, item.country || '—'),
+            h('td', {}, item.country || 'Non renseigné'),
             h('td', {}, item.blocked ? 'Lecture limitée' : 'Lisible'))))))) : null,
       h('div', { style: { display: 'flex', gap: '8px', marginTop: '20px', flexWrap: 'wrap' } }, commitBtn, cancelBtn)));
   };
@@ -165,7 +165,7 @@ async function renderImport(host, ctx, state, { refreshStats }) {
                 } catch (error) { apiGuard(ctx, error); }
               },
             }),
-          }, 'Annuler') : h('span', { class: 'muted' }, '—'))))))));
+          }, 'Annuler') : h('span', { class: 'muted' }, 'Non renseigné'))))))));
     } catch (error) {
       apiGuard(ctx, error);
       historyHost.replaceChildren(emptyState({ iconName: 'wifiOff', title: COPY.states.error.title, message: error.message, actionLabel: COPY.actions.retry, onAction: loadHistory }));

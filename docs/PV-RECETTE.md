@@ -1,13 +1,13 @@
-# Procès-verbal de recette — StreamTV v3.6.0
+# Procès-verbal de recette — StreamTV v3.8.0
 
 | Élément | Valeur |
 |---|---|
 | Objet | recette du site StreamTV, conforme au cahier des charges *StreamTV v2* |
-| Version livrée | 3.6.0 |
+| Version livrée | 3.8.0 (recette initiale 3.6.0, compléments 3.7.0 et 3.8.0) |
 | Date de recette | 25 octobre 2026 |
 | Environnement | Node.js 22.22.3 (compatible 20 LTS), 8 cœurs, 16 Go de mémoire, Linux, réseau local |
 | Dossier de recette | machine vierge, `data/` recréé depuis `data/seed/seed.m3u` |
-| Référentiel de preuve | `npm test` (11 suites, 207 tests), `scripts/verify.js` (43 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
+| Référentiel de preuve | `npm test` (43 suites, 242 tests), `scripts/verify.js` (43 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
 | Décision | **Recette prononcée avec réserves** (voir §7) |
 
 ---
@@ -244,7 +244,7 @@ node scripts/measure-tagger.js                      # attendu : toutes cibles �
 
 | Contrôle | Exigence | Résultat |
 |---|---|---|
-| `npm test` | 0 échec | conforme (184/184) |
+| `npm test` | 0 échec | conforme (242/242) |
 | `verify.js` | 0 erreur | conforme (1 avertissement attendu) |
 | `measure-tagger.js` | toutes cibles tenues | conforme |
 | Sauvegarde récente | < 26 h | conforme |
@@ -252,6 +252,28 @@ node scripts/measure-tagger.js                      # attendu : toutes cibles �
 | Mot de passe changé | oui | **à faire avant mise en ligne** |
 
 ---
+
+### Recette des écrans de la 3.8.0
+
+Preuves : `npm test` (242 tests, dont 10 tests de design), vérifications DOM sous jsdom 24,
+et parcours HTTP réel sur le serveur local.
+
+| Point | Vérification | Résultat |
+|---|---|---|
+| Accueil galerie | Héros plein cadre, pastille « En direct », programme en cours (titre, horaires, progression), rangée de suggestions | conforme |
+| Cartes | 48 cartes par page, titre sur deux lignes, cœur visible, survol avec programme, horaires et barre de progression | conforme |
+| Filtre cœur | Ajout d'un favori : compteur à 1, `aria-pressed` à `true`, filtre `/?fav=1` n'affichant que le favori, état vide expliqué | conforme |
+| Rails | « Continuer à regarder », « Pour vous », « Ce soir » (60 programmes du guide), « Par pays » ; un rail vide disparaît | conforme |
+| Lecteur | Trois habillages mémorisés, qualité automatique sur niveaux HLS, résolution/débit/codec, programme en cours, deux rails de proximité | conforme |
+| Repli de lecture | Variante, puis autre source (`tvg-id` puis nom normalisé), puis chaîne proche ; une seule reprise, aucune boucle | conforme |
+| Guide | 60 lignes, pastille « En direct », horaires complets, barre de progression | conforme |
+| Mode télévision | Détection Android TV/BRAVIA, classes posées, consigne affichée, focus déplacé par les flèches | conforme |
+| Installation PWA | Bouton présent, invite réelle quand le navigateur l'expose, marche à suivre iOS écrite | conforme |
+| Design | Zéro dégradé, zéro cadratin, zéro ombre de survol, zéro déplacement, couleurs issues des jetons, largeur 1280 px, accent unique | conforme |
+| Recherche multi-sources | `alternatives` renseigné (ex. Medi 1 TV Maghreb ↔ variante DVR, BFM Business ↔ 576p) | conforme |
+
+Réserve maintenue : aucune sonde réelle n'a été exécutée sur les 1508 chaînes ; la santé
+reste `unknown` et l'interface l'écrit sans détour.
 
 ## 9. Annexes
 

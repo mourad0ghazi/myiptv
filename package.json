@@ -1,6 +1,6 @@
 {
   "name": "streamtv",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "private": true,
   "description": "StreamTV — catalogue IPTV, guide de zapping, lecteur vidéo et console d’administration. Node.js natif, zéro dépendance.",
   "type": "module",

@@ -171,7 +171,7 @@ describe('Contrat de données (§4)', () => {
     assert.equal(LIMITS.backupDaily, 7);
     assert.equal(LIMITS.backupWeekly, 4);
     assert.equal(LIMITS.importMaxMs, 120000);
-    assert.equal(VERSION, '3.7.0');
+    assert.equal(VERSION, '3.8.0');
   });
 });
 

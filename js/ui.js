@@ -1,4 +1,4 @@
-// public/js/ui.js — construction DOM sûre, icônes, toasts, modales, états.
+// public/js/ui.js · construction DOM sûre, icônes, toasts, modales, états.
 // Aucune donnée utilisateur n'est injectée en HTML : tout passe par textContent.
 
 const SVG = {
@@ -34,7 +34,6 @@ const SVG = {
   chevron: '<path d="m9 6 6 6-6 6"></path>',
   chevronDown: '<path d="m6 9 6 6 6-6"></path>',
   external: '<path d="M14 4h6v6"></path><path d="M20 4 11 13"></path><path d="M18 14v5.5A1.5 1.5 0 0 1 16.5 21h-11A1.5 1.5 0 0 1 4 19.5v-11A1.5 1.5 0 0 1 5.5 7H11"></path>',
-  sparkles: '<path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path>',
   news: '<path d="M4 5h13v14H4z"></path><path d="M17 9h3v8.5A1.5 1.5 0 0 1 18.5 19"></path><path d="M7 9h7M7 13h7M7 16h4"></path>',
   music: '<circle cx="7" cy="17" r="2.5"></circle><circle cx="18" cy="15" r="2.5"></circle><path d="M9.5 17V7l11-2v10"></path>',
   kids: '<circle cx="12" cy="12" r="8.5"></circle><path d="M8.5 10h.01M15.5 10h.01M8.5 15c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8"></path>',
@@ -50,7 +49,7 @@ const SVG = {
   lock: '<rect x="4.5" y="10" width="15" height="10.5" rx="2"></rect><path d="M8 10V7.5a4 4 0 0 1 8 0V10"></path>',
   shop: '<path d="M5 8h14l-1.2 12H6.2z"></path><path d="M9 8V6.5a3 3 0 0 1 6 0V8"></path>',
   series: '<rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="m8 3 4 3 4-3"></path>',
-  star4: '<path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6z"></path>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-9.4A4.1 4.1 0 0 1 12 7.4a4.1 4.1 0 0 1 7.5 3.2C19.5 15.4 12 20 12 20z"></path>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M15 6.5V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h1.5"></path>',
   link: '<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.4 1.4"></path><path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.4-1.4"></path>',
   filter: '<path d="M3.5 6h17M6.5 12h11M10 18h4"></path>',
@@ -97,9 +96,9 @@ export function fmtNumber(value) {
 }
 
 export function fmtDate(iso) {
-  if (!iso) return '—';
+  if (!iso) return 'Non renseigné';
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return 'Non renseigné';
   return date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
@@ -155,7 +154,7 @@ export function toast(message, { tone = 'info', actionLabel = '', onAction = nul
   const id = `toast-${++toastCounter}`;
   let timer;
   const el = h('div', { class: 'toast', dataset: { tone }, id, role: 'status' },
-    icon(tone === 'success' ? 'check' : tone === 'error' ? 'alert' : 'sparkles', 16),
+    icon(tone === 'success' ? 'check' : tone === 'error' ? 'alert' : 'news', 16),
     h('p', { text: message }),
     actionLabel ? h('button', {
       class: 'btn btn-quiet btn-sm', type: 'button',

@@ -5,7 +5,7 @@ import { CATEGORIES, LIMITS, SPEC_VERSION, VERSION } from '../core/constants.js'
 import { AppError, ERRORS } from '../core/errors.js';
 import { isPublic, projectCard, projectDetail } from '../core/channels.js';
 import { buildPredicate, paginate, sortChannels } from '../core/search.js';
-import { normalizeQuery } from '../core/text.js';
+import { normalizeQuery, normalizeKey } from '../core/text.js';
 import { buildEpg } from '../core/epg.js';
 import { catalogForClient } from '../core/messages.js';
 import { reportThreshold } from '../core/reports.js';
@@ -13,6 +13,19 @@ import { queryInt, queryString } from '../http/router.js';
 
 function publicChannels(app) {
   return app.store.channels.filter((channel) => isPublic(channel, app.store.settings));
+}
+
+/** Pays les plus représentés du catalogue public : filtre « jusqu'au pays » et rail d'accueil. */
+function countryCounts(app, limit = 12) {
+  const counts = new Map();
+  for (const channel of app.store.channels) {
+    if (!isPublic(channel, app.store.settings) || !channel.country) continue;
+    counts.set(channel.country, (counts.get(channel.country) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([code, count]) => ({ code, count }));
 }
 
 function categoryCounts(app) {
@@ -73,6 +86,36 @@ function listResponse(app, list, { page, pageSize, sort, query }) {
   };
 }
 
+/**
+ * Recherche multi-sources : une même chaîne peut exister dans plusieurs sources ingérées.
+ * On la retrouve par `tvg-id`, puis par nom normalisé, pour proposer une autre adresse
+ * quand le flux principal ne répond pas. Aucun accès n'est élargi : seules les chaînes
+ * publiques du catalogue sont proposées.
+ */
+function findAlternatives(app, channel, settings, limit = 6) {
+  const tvgId = String(channel.tvgId || '').trim().toLowerCase();
+  const nom = normalizeKey(channel.rawName || channel.name);
+  const sortie = [];
+  for (const candidate of app.store.channels) {
+    if (candidate.id === channel.id || !candidate.url) continue;
+    if (!isPublic(candidate, settings)) continue;
+    const memeTvg = tvgId && String(candidate.tvgId || '').trim().toLowerCase() === tvgId;
+    const memeNom = nom && normalizeKey(candidate.rawName || candidate.name) === nom;
+    if (!memeTvg && !memeNom) continue;
+    sortie.push({
+      id: candidate.id,
+      name: candidate.name,
+      number: candidate.number,
+      quality: candidate.quality || 'AUTO',
+      url: candidate.url,
+      blockedReason: candidate.blockedReason || '',
+      match: memeTvg ? 'tvg-id' : 'nom',
+    });
+    if (sortie.length >= limit) break;
+  }
+  return sortie;
+}
+
 export function registerPublicRoutes(router, app) {
   // EP-01 — état du service.
   router.get('/healthz', () => ({
@@ -120,6 +163,7 @@ export function registerPublicRoutes(router, app) {
         reportThreshold: reportThreshold(),
         epgUrl: settings.epgUrl,
         categories: CATEGORIES.map((category) => ({ ...category, count: counts[category.id] || 0 })),
+        countries: countryCounts(app),
         totals: {
           catalog: app.store.channels.length,
           visible: visible.length,
@@ -160,6 +204,9 @@ export function registerPublicRoutes(router, app) {
       featured: query.featured === 'true' ? true : query.featured === 'false' ? false : undefined,
       visibility: 'public',
     };
+    const wanted = String(queryString(query, 'ids', { max: 1200 }) || '')
+      .split(',').map((id) => id.trim()).filter(Boolean).slice(0, LIMITS.pageSizeMax);
+    if (wanted.length) filters.ids = wanted;
     let list = app.store.channels.filter(buildPredicate(filters, settings));
     const q = normalizeQuery(queryString(query, 'q', { max: LIMITS.searchMaxLength }));
     if (q) list = app.index.search(q, (channel) => isPublic(channel, settings));
@@ -186,6 +233,7 @@ export function registerPublicRoutes(router, app) {
       body: {
         channel: projectDetail(channel, settings, app.siteProtocol),
         related,
+        alternatives: findAlternatives(app, channel, settings),
         variants: channel.variants.map((variant) => ({
           id: variant.id,
           name: variant.name,
