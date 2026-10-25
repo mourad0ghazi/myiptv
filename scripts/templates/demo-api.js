@@ -74,6 +74,7 @@ const SORTERS = {
 
 function matches(entry, filters) {
   const card = entry.card;
+  if (filters.ids && !filters.ids.has(card.id)) return false;
   if (filters.category && card.category !== filters.category) return false;
   if (filters.country && card.country !== filters.country) return false;
   if (filters.language && card.language !== filters.language) return false;
@@ -96,6 +97,8 @@ async function list(params, { search = false } = {}) {
     health: params.get('health') || '',
     q: (params.get('q') || '').trim(),
   };
+  const ids = String(params.get('ids') || '').split(',').map((id) => id.trim()).filter(Boolean);
+  if (ids.length) filters.ids = new Set(ids.slice(0, PAGE_MAX));
   const sort = SORTERS[params.get('sort')] ? params.get('sort') : 'number';
   const pageSize = Math.min(PAGE_MAX, Math.max(PAGE_MIN, number(params.get('pageSize'), 48)));
   const found = catalog.filter((entry) => matches(entry, filters));
@@ -130,7 +133,28 @@ async function detail(id) {
   const catalog = await snapshot('catalog');
   const entry = catalog.find((item) => item.card.id === id);
   if (!entry) throw new ApiError('Chaîne introuvable.', { code: 'ERR-10', status: 404 });
-  return { channel: entry.detail };
+  const canal = entry.detail;
+  const nom = plain(canal.rawName || canal.name);
+  const tvgId = String(canal.tvgId || '').trim().toLowerCase();
+  const alternatives = catalog
+    .filter((item) => item.card.id !== canal.id && item.detail.url)
+    .filter((item) => (tvgId && String(item.detail.tvgId || '').trim().toLowerCase() === tvgId)
+      || (nom && plain(item.detail.rawName || item.detail.name) === nom))
+    .slice(0, 6)
+    .map((item) => ({
+      id: item.card.id,
+      name: item.card.name,
+      number: item.card.number,
+      quality: item.card.quality || 'AUTO',
+      url: item.detail.url,
+      blockedReason: item.card.blockedReason || '',
+      match: tvgId && String(item.detail.tvgId || '').trim().toLowerCase() === tvgId ? 'tvg-id' : 'nom',
+    }));
+  const related = catalog
+    .filter((item) => item.card.id !== canal.id && item.card.category === canal.category)
+    .slice(0, 8)
+    .map((item) => item.card);
+  return { channel: canal, related, alternatives };
 }
 
 async function epg(hours) {
