@@ -38,6 +38,21 @@ dépendance ajoutée, aucun `npm install`.
   file « à vérifier »), badge de qualité à `var(--fs-xs)` pour respecter « jamais moins de 12 px ».
 - Pagination : le libellé de page vient de la réponse du serveur, jamais d’un calcul client.
 
+### Publication
+
+- **Démonstration statique publiée** sur `https://mourad0ghazi.github.io/myiptv/` : instantané du
+  catalogue (1 475 chaînes), couche `js/api.js` remplacée par `scripts/templates/demo-api.js`
+  (lecture seule, mêmes formes de réponse), repli `404.html` pour les liens profonds,
+  `.nojekyll`, bandeau « démonstration » et `manifest` adapté à la racine de publication.
+- **Racine de déploiement paramétrable** : `public/js/base.js` (`BASE`, `withBase`,
+  `withoutBase`, `resolve`) permet de servir le site à la racine (`/`, cas du serveur Node) ou
+  dans un sous-dossier (`/myiptv/`, cas de GitHub Pages) sans dupliquer le routeur.
+- `scripts/build-static.js` + `npm run build:static` : construction reproductible de la
+  démonstration à partir d'une instance locale, sans dépendance.
+- `Dockerfile`, `compose.yaml`, `render.yaml`, `fly.toml` et `PUBLIER.md` : publication du vrai
+  serveur sur Render, Fly.io, VPS ou en conteneur, avec disque persistant et `ADMIN_PASSWORD`
+  obligatoire.
+
 ### Modifié
 
 - Version du logiciel et du cache du service worker : `3.3.0` / `streamtv-v3.3.0`.

@@ -1,6 +1,8 @@
 // public/js/router.js — routage History API, interception des liens, nettoyage des vues.
 // Aucun rechargement complet : une seule coquille HTML, des vues montées puis démontées.
 
+import { BASE, resolve, withoutBase } from './base.js';
+
 const ROUTES = [
   { name: 'home', pattern: /^\/$/, title: 'Catalogue' },
   { name: 'search', pattern: /^\/recherche\/?$/, title: 'Recherche' },
@@ -64,7 +66,7 @@ export function createRouter({ render, announce = null }) {
   let pending = 0;
 
   const buildLocation = () => {
-    const route = matchRoute(location.pathname);
+    const route = matchRoute(withoutBase(location.pathname));
     route.query = parseQuery(location.search);
     route.hash = location.hash;
     route.url = location.pathname + location.search;
@@ -93,12 +95,8 @@ export function createRouter({ render, announce = null }) {
   };
 
   const navigate = (to, { replace = false, keepScroll = false, focus = true } = {}) => {
-    let url;
-    try {
-      url = new URL(to, location.href);
-    } catch {
-      return;
-    }
+    const url = resolve(to);
+    if (!url) return;
     if (url.origin !== location.origin) { location.assign(url.href); return; }
     const next = url.pathname + url.search + url.hash;
     const same = next === location.pathname + location.search + location.hash;
@@ -129,7 +127,8 @@ export function createRouter({ render, announce = null }) {
       const target = document.querySelector(url.hash);
       if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     }
-    navigate(url.pathname + url.search + url.hash);
+    // On repasse par une route logique (« /guide ») : navigate() réapplique la racine du déploiement.
+    navigate(withoutBase(url.pathname) + url.search + url.hash);
   };
 
   const onPop = () => {

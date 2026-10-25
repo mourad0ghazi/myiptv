@@ -13,6 +13,25 @@ déduplication → catégorisation → confiance), client HTML/CSS/JS en modules
 
 ---
 
+## 0. Démonstration en ligne
+
+Une version statique du site est publiée sur **https://mourad0ghazi.github.io/myiptv/** :
+catalogue réel de 1 475 chaînes, recherche, guide, fiches, favoris, pages légales et catalogue
+des messages. Elle est **en lecture seule** — GitHub Pages ne peut pas exécuter le serveur Node,
+donc ni connexion administration, ni import ni réglages. La lecture des flux dépend du CORS des
+sources, comme sur le site complet.
+
+Pour la régénérer après une modification : serveur lancé, puis
+
+```bash
+npm run build:static     # écrit dist-static/ et met à jour la copie publiée à la racine
+```
+
+Les fichiers publiés à la racine (`index.html`, `css/`, `js/`, `demo/`, …) sont générés : ne les
+modifiez jamais à la main, modifiez `public/` puis relancez la commande.
+
+---
+
 ## 1. Démarrage en trois commandes
 
 ```bash
@@ -48,8 +67,10 @@ Pour repartir d’un catalogue vierge : arrêter le serveur, supprimer le conten
 | `HTTPS` | vide | force les en-têtes HSTS et considère la requête comme sécurisée |
 | `STREAMTV_ACTOR` | `cli` | auteur inscrit dans le journal d’audit par `scripts/ingest.js` |
 
-En production, `ADMIN_PASSWORD` est obligatoire : sans lui, le serveur conserve le mot de passe
-de démonstration et un bandeau d’alerte reste affiché dans l’interface.
+En production (`NODE_ENV=production`), `ADMIN_PASSWORD` est **obligatoire** : sans lui, le
+serveur refuse de démarrer et l'écrit dans le journal (`AC-101`). Hors production, le mot de
+passe de démonstration `admin` est utilisé et un bandeau d'alerte reste affiché dans l'interface
+jusqu'à son changement.
 
 ### Première connexion
 
@@ -359,6 +380,7 @@ hors éléments explicitement repoussés ci-dessous.
 | `CHANGELOG.md` | historique des versions |
 | `SOURCES.md` | licences des composants et des données |
 | `docs/PV-RECETTE.md` | procès-verbal de recette signé, avec les preuves |
+| `PUBLIER.md` | mise en ligne : Render, Fly.io, VPS/Docker, variables d'environnement, liste de contrôle |
 
 ---
 

@@ -7,6 +7,7 @@ import { h, icon, toast, modal, spinner, debounce } from './ui.js';
 import { createRouter } from './router.js';
 import { getPlayer } from './player.js';
 import { prefs } from './prefs.js';
+import { BASE, withBase } from './base.js';
 
 import { renderHome } from './views/home.js';
 import { renderGuide } from './views/guide.js';
@@ -681,7 +682,7 @@ async function boot() {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    const registration = await navigator.serviceWorker.register(withBase('sw.js'), { scope: BASE });
     registration.addEventListener('updatefound', () => {
       const worker = registration.installing;
       if (!worker) return;
