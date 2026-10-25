@@ -3,6 +3,47 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.3.0] — 2026-10-25
+
+L’interface du site est alignée sur les contrats DOM du §7 et sur les états du §8 : carte,
+recherche, chargement incrémental, pagination, guide au clavier et OSD du lecteur. Aucune
+dépendance ajoutée, aucun `npm install`.
+
+### Ajouté
+
+- **Liste de suggestions de recherche** (§7.3) : panneau `role="listbox"` alimenté par
+  `/api/channels/search`, navigation `↑ ↓`, `Entrée` pour ouvrir la fiche, `Échap` pour refermer,
+  `aria-activedescendant` tenu à jour, `aria-expanded` publié sur le champ.
+- **Bouton « Charger plus »** sur l’écran 1 (§7.2) : ajout de 48 cartes sans rechargement de page,
+  compteur serveur tenu à jour, plafond strict de 120 cartes dans le DOM ; au-delà, le site
+  propose la page suivante ou le guide au lieu d’empiler les cartes.
+- **Pagination contractuelle** (§7.3) : « Page N sur M · X chaînes » avec Précédent/Suivant,
+  masquée quand il n’y a qu’une page, Suivant désactivé sur la dernière.
+- **Guide au clavier** (§7.2, §7.6) : un seul arrêt de tabulation par liste (roving tabindex),
+  flèches, `Home`, `End`, `Entrée` pour regarder, `I` pour la fiche, focus initial dans la liste,
+  indice de raccourcis affiché, tiroir de filtres entre 620 et 899 px (`aria-expanded`).
+- **OSD du lecteur** (§7.2) : nom, numéro, catégorie et qualité uniquement ; l’état de santé reste
+  sur la carte. Toute mire propose désormais au moins deux actions, même quand la table du §8.3
+  n’en cite qu’une (`P-02`, `P-05`).
+- **Saut direct par numéro** : passe par l’index de recherche (numéros non contigus) au lieu de
+  supposer 48 chaînes par page.
+
+### Corrigé
+
+- Carte : `role="group"` remplacé par `role="button"` + `tabindex="0"`, libellé
+  « {nom}, {catégorie}, chaîne {numéro} » conforme au §7.3.
+- Recherche : `role="searchbox"`, `aria-autocomplete="list"`, `aria-controls` et croix de
+  réinitialisation reliées au panneau de suggestions (le formulaire garde `role="search"`).
+- Textes des états vides ramenés mot pour mot au §7.5 (catalogue, catégorie, favoris, historique,
+  file « à vérifier »), badge de qualité à `var(--fs-xs)` pour respecter « jamais moins de 12 px ».
+- Pagination : le libellé de page vient de la réponse du serveur, jamais d’un calcul client.
+
+### Modifié
+
+- Version du logiciel et du cache du service worker : `3.3.0` / `streamtv-v3.3.0`.
+- Pied de page statique sans numéro de version figé (le numéro est posé par la configuration).
+- `npm test` : 187 tests (3 contrôles supplémentaires sur les contrats §7.3 et §8.3).
+
 ## [3.2.0] — 2026-10-25
 
 Deux algorithmes du §5 restaient sans implémentation : `F-22` (apprentissage des corrections) et
