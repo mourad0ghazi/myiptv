@@ -12,6 +12,7 @@ const SHELL = [
   '/',
   '/offline.html',
   '/css/app.css',
+  '/js/base.js',
   '/js/app.js',
   '/js/router.js',
   '/js/api.js',

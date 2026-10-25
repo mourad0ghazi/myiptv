@@ -162,6 +162,9 @@ async function main() {
   const strip = `<p class="demo-strip" role="note">Démonstration publique en lecture seule · catalogue réel de ${cards.length} chaînes · la console d’administration nécessite le serveur Node</p>`;
   html = html.replace('<body>', `<body>\n${strip}`);
   await fsp.writeFile(indexFile, html);
+  // Même traitement pour la page hors ligne : chemins relatifs, sans base (elle vit à côté).
+  const offlineFile = path.join(outDir, 'offline.html');
+  await fsp.writeFile(offlineFile, localize(await fsp.readFile(offlineFile, 'utf8')));
   await fsp.writeFile(path.join(outDir, '404.html'), html);
   await fsp.writeFile(path.join(outDir, '.nojekyll'), '');
 
