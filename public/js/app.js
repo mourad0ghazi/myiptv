@@ -7,6 +7,7 @@ import { h, icon, toast, modal, spinner, debounce } from './ui.js';
 import { createRouter } from './router.js';
 import { getPlayer } from './player.js';
 import { prefs } from './prefs.js';
+import { BASE, withBase } from './base.js';
 
 import { renderHome } from './views/home.js';
 import { renderGuide } from './views/guide.js';
@@ -373,6 +374,133 @@ function syncHeader(config) {
   }
 }
 
+/* ------------------------------------------------------------------ suggestions de recherche */
+
+/**
+ * Liste de suggestions conforme au contrat §7.3 : `role="searchbox"` + `aria-autocomplete="list"`,
+ * `role="listbox"` pour le panneau, `aria-activedescendant` pour la navigation au clavier.
+ * Fermeture par Échap, sélection par Entrée, aucune requête si la saisie fait moins de 2 caractères.
+ */
+const suggest = {
+  items: [],
+  active: -1,
+  controller: null,
+  open: false,
+  input: null,
+  panel: null,
+  query: '',
+
+  init() {
+    this.input = document.getElementById('search-input');
+    this.panel = document.getElementById('search-suggestions');
+    if (!this.input || !this.panel) return;
+    this.input.addEventListener('input', () => this.queue());
+    this.input.addEventListener('keydown', (event) => this.onKey(event));
+    this.input.addEventListener('blur', () => setTimeout(() => this.close(), 120));
+    this.panel.addEventListener('mousedown', (event) => event.preventDefault());
+  },
+
+  queue() {
+    clearTimeout(this.timer);
+    const value = this.input.value.trim();
+    if (value.length < 2) { this.close(); return; }
+    this.timer = setTimeout(() => this.fetch(value), 220);
+  },
+
+  async fetch(query) {
+    this.query = query;
+    this.controller?.abort();
+    this.controller = new AbortController();
+    try {
+      const payload = await api(`/api/channels/search?q=${encodeURIComponent(query)}&pageSize=6`);
+      if (this.input.value.trim() !== query) return;
+      this.items = (payload.channels || []).slice(0, 6);
+      this.active = -1;
+      this.render();
+    } catch {
+      this.close();
+    }
+  },
+
+  render() {
+    if (!this.items.length) { this.close(); return; }
+    this.panel.replaceChildren(
+      h('p', { class: 'search-suggest-head' }, `Suggestions pour « ${this.query} »`),
+      ...this.items.map((channel, index) => h('button', {
+        class: 'search-suggest-item',
+        type: 'button',
+        role: 'option',
+        id: `search-option-${index}`,
+        'aria-selected': 'false',
+        dataset: { channelId: channel.id },
+        onClick: () => this.choose(index),
+      },
+      h('span', { class: 'search-suggest-num tabular' }, String(channel.number).padStart(3, '0')),
+      h('span', { class: 'search-suggest-name', dir: 'auto' }, channel.name),
+      h('span', { class: 'search-suggest-cat' }, channel.categoryLabel || 'Non classée'))));
+    this.panel.hidden = false;
+    this.open = true;
+    this.input.setAttribute('aria-expanded', 'true');
+  },
+
+  onKey(event) {
+    if (!this.open) return;
+    const count = this.items.length;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const delta = event.key === 'ArrowDown' ? 1 : -1;
+      this.active = (this.active + delta + count) % count;
+      this.highlight();
+      return;
+    }
+    if (event.key === 'Enter' && this.active >= 0) {
+      event.preventDefault();
+      this.choose(this.active);
+      return;
+    }
+    if (event.key === 'Escape') {
+      this.close();
+      this.input.blur();
+    }
+  },
+
+  highlight() {
+    const options = [...this.panel.querySelectorAll('[role="option"]')];
+    options.forEach((option, index) => {
+      const selected = index === this.active;
+      option.setAttribute('aria-selected', String(selected));
+      option.classList.toggle('is-active', selected);
+    });
+    const activeOption = options[this.active];
+    if (activeOption) {
+      this.input.setAttribute('aria-activedescendant', activeOption.id);
+      activeOption.scrollIntoView?.({ block: 'nearest' });
+    } else {
+      this.input.removeAttribute('aria-activedescendant');
+    }
+  },
+
+  choose(index) {
+    const channel = this.items[index];
+    this.close();
+    if (!channel) return;
+    this.input.value = '';
+    toggleClear();
+    router.navigate(`/chaine/${channel.id}`);
+  },
+
+  close() {
+    if (!this.panel) return;
+    this.open = false;
+    this.active = -1;
+    this.items = [];
+    this.panel.hidden = true;
+    this.panel.replaceChildren();
+    this.input?.setAttribute('aria-expanded', 'false');
+    this.input?.removeAttribute('aria-activedescendant');
+  },
+};
+
 function wireHeader() {
   const form = document.getElementById('search-form');
   const input = document.getElementById('search-input');
@@ -412,6 +540,8 @@ function wireHeader() {
       if (state.route?.name === 'home' || state.route?.name === 'search') router.navigate('/');
     });
   }
+
+  suggest.init();
 
   const shortcuts = document.getElementById('shortcuts-btn');
   if (shortcuts) shortcuts.addEventListener('click', openShortcuts);
@@ -552,7 +682,7 @@ async function boot() {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    const registration = await navigator.serviceWorker.register(withBase('sw.js'), { scope: BASE });
     registration.addEventListener('updatefound', () => {
       const worker = registration.installing;
       if (!worker) return;

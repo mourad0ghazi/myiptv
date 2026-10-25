@@ -44,7 +44,7 @@ async function paintGuide(host, listHost) {
   if (host) host.dataset.epg = 'ready';
 }
 
-function guideRow(channel, { onPlay, onOpen }) {
+function guideRow(channel, { onPlay, onOpen, tabIndex = -1, onNavigate }) {
   const row = h('div', { class: 'guide-row', dataset: { channelId: channel.id } },
     h('span', { class: 'guide-num tabular', text: String(channel.number).padStart(3, '0') }),
     h('span', { class: 'guide-logo' }, logoNode(channel, 34)),
@@ -59,19 +59,45 @@ function guideRow(channel, { onPlay, onOpen }) {
       h('span', { class: 'health-dot', dataset: { state: channel.health }, 'aria-hidden': 'true' }),
       ` ${healthLabel(channel.health)}`),
     h('button', {
-      class: 'btn btn-primary btn-sm', type: 'button', 'aria-label': `Regarder ${channel.name}`,
+      class: 'btn btn-primary btn-sm', type: 'button', tabIndex: -1,
+      'aria-label': `Regarder ${channel.name}`,
       onClick: (event) => { event.stopPropagation(); onPlay(channel); },
     }, icon('play', 14), COPY.actions.watch),
     h('button', {
-      class: 'btn btn-quiet btn-sm', type: 'button', 'aria-label': `Fiche de ${channel.name}`,
+      class: 'btn btn-quiet btn-sm', type: 'button', tabIndex: -1,
+      'aria-label': `Fiche de ${channel.name}`,
       onClick: (event) => { event.stopPropagation(); onOpen(channel.id); },
     }, icon('chevron', 15)));
+  row.tabIndex = tabIndex;
+  row.setAttribute('aria-label', `${channel.name}, ${channel.categoryLabel || 'catégorie inconnue'}, chaîne ${channel.number}`);
   row.addEventListener('click', () => onPlay(channel));
-  row.tabIndex = 0;
   row.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onPlay(channel); }
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onPlay(channel); return; }
+    if (event.key === 'i' || event.key === 'I') { event.preventDefault(); onOpen(channel.id); return; }
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      onNavigate?.(event.key === 'Home' ? 0 : event.key === 'End' ? -1 : event.key === 'ArrowDown' ? 1 : -1, event.key);
+    }
   });
   return row;
+}
+
+/** Un seul arrêt de tabulation pour la liste : les flèches déplacent le focus (roving tabindex). */
+function roving(rows) {
+  let current = 0;
+  const focus = (index) => {
+    const target = rows[Math.max(0, Math.min(rows.length - 1, index))];
+    if (!target) return;
+    rows[current].tabIndex = -1;
+    current = rows.indexOf(target);
+    target.tabIndex = 0;
+    target.focus({ preventScroll: false });
+  };
+  return (direction, key) => {
+    if (key === 'Home') return focus(0);
+    if (key === 'End') return focus(rows.length - 1);
+    focus(current + direction);
+  };
 }
 
 export async function renderGuide(container, ctx) {
@@ -117,7 +143,16 @@ export async function renderGuide(container, ctx) {
   });
   const jumpBtn = h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: jump }, 'Aller');
 
-  const sidebar = h('aside', { class: 'guide-side', 'aria-label': 'Catégories du guide' });
+  const sidebar = h('aside', { class: 'guide-side', id: 'guide-filters', 'aria-label': 'Catégories du guide' });
+  const filterBtn = h('button', {
+    class: 'btn btn-ghost btn-sm guide-filter-btn', type: 'button',
+    'aria-expanded': 'false', 'aria-controls': 'guide-filters',
+  }, icon('list', 14), 'Filtres');
+  filterBtn.addEventListener('click', () => {
+    const open = sidebar.dataset.open === 'true';
+    sidebar.dataset.open = String(!open);
+    filterBtn.setAttribute('aria-expanded', String(!open));
+  });
   const listHost = h('div', { class: 'guide-list', id: 'guide-list' });
   const count = h('span', { class: 'count-label', 'aria-live': 'polite' });
 
@@ -127,6 +162,7 @@ export async function renderGuide(container, ctx) {
         h('p', { class: 'eyebrow' }, 'Zapping'),
         h('h1', { style: { fontSize: '30px' } }, 'Le guide')),
       h('div', { class: 'toolbar', style: { margin: 0 } },
+        filterBtn,
         h('label', { class: 'visually-hidden', for: 'jump-input' }, 'Aller à un numéro de chaîne'),
         h('div', { class: 'jump', id: 'jump' }, jumpInput, jumpBtn))),
     h('div', { class: 'guide-wrap' }, sidebar, h('div', {}, h('div', { class: 'toolbar' }, count), listHost)));
@@ -168,8 +204,12 @@ export async function renderGuide(container, ctx) {
         }));
         return;
       }
-      const rows = h('div', { class: 'rows' },
-        payload.channels.map((channel) => guideRow(channel, { onPlay: openPlayer, onOpen: openChannel })));
+      const rowElements = payload.channels.map((channel, index) => guideRow(channel, {
+        onPlay: openPlayer, onOpen: openChannel, tabIndex: index === 0 ? 0 : -1,
+        onNavigate: (direction, key) => moveFocus(direction, key),
+      }));
+      const moveFocus = roving(rowElements);
+      const rows = h('div', { class: 'rows', role: 'list', 'aria-label': 'Chaînes du guide' }, rowElements);
       const pager = h('div', { class: 'toolbar', style: { justifyContent: 'center', marginTop: '16px' } },
         h('button', {
           class: 'btn btn-ghost btn-sm', type: 'button', disabled: payload.page <= 1,
@@ -180,8 +220,17 @@ export async function renderGuide(container, ctx) {
           class: 'btn btn-ghost btn-sm', type: 'button', disabled: !payload.hasMore,
           onClick: () => { state.page += 1; load(); },
         }, 'Suivant', icon('chevron', 15)));
-      listHost.replaceChildren(rows, pager);
+      listHost.replaceChildren(
+        h('p', { class: 'count-label guide-hint' },
+          '↑ ↓ pour parcourir · Entrée pour regarder · I pour la fiche · / pour chercher'),
+        rows, pager);
       void paintGuide(view, listHost);
+      // §7.2 écran 2 : focus initial dans la liste (sans le voler à un clic de l'utilisateur).
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        const neutral = !active || active === document.body || active.id === 'main' || active === document.documentElement;
+        if (neutral) rowElements[0]?.focus({ preventScroll: true });
+      });
     } catch (error) {
       listHost.replaceChildren(emptyState({
         iconName: 'wifiOff',

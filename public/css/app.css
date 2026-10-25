@@ -211,6 +211,8 @@ main{max-width:1480px; margin:0 auto; padding:var(--s5) var(--s5) var(--s7); min
   background:transparent; color:var(--muted); font-size:var(--fs-sm); cursor:pointer; text-align:left}
 .guide-side button:hover{background:var(--panel-strong); color:var(--text)}
 .guide-side button[aria-pressed="true"]{background:var(--accent-soft); color:var(--text)}
+.guide-filter-btn{display:none}
+.guide-hint{margin:0 0 var(--s2)}
 .guide-list{display:flex; flex-direction:column; gap:var(--s1)}
 .guide-row{display:grid; grid-template-columns:56px 40px 1fr auto auto; align-items:center; gap:var(--s3); padding:var(--s2) var(--s3);
   border:1px solid transparent; border-radius:var(--r-sm); background:transparent; color:inherit; text-align:left; cursor:pointer; width:100%}
@@ -375,6 +377,29 @@ td.num{font-variant-numeric:tabular-nums; color:var(--muted)}
 .boot-mark{width:44px; height:44px; border-radius:12px; background:linear-gradient(140deg, var(--accent), #ffd166); animation:boot 1.2s var(--ease) infinite alternate}
 @keyframes boot{from{transform:scale(.86) rotate(-6deg)} to{transform:scale(1) rotate(6deg)}}
 .kbd{display:inline-block; padding:2px 7px; border-radius:6px; border:1px solid var(--line); background:rgba(0,0,0,.35); font-size:var(--fs-xs); font-family:ui-monospace, monospace}
+.pager{display:flex; align-items:center; justify-content:center; gap:var(--s3); flex-wrap:wrap;
+  padding:var(--s2); border:1px solid var(--line); border-radius:var(--r-md); background:var(--panel)}
+.pager-label{margin:0; font-size:var(--fs-sm); color:var(--muted); font-variant-numeric:tabular-nums}
+.pager button[disabled]{opacity:.45; cursor:not-allowed}
+.more-zone{display:flex; flex-direction:column; align-items:center; gap:var(--s2); margin-top:var(--s5)}
+.more-zone .count-label{margin:0}
+
+/* ---------------------------------------------------------------- suggestions de recherche */
+.search{position:relative}
+.search-suggest{position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:var(--z-sticky);
+  display:flex; flex-direction:column; gap:2px; padding:var(--s2); border:1px solid var(--line);
+  border-radius:var(--r-md); background:var(--bg-2); box-shadow:var(--shadow); max-height:340px; overflow:auto}
+.search-suggest[hidden]{display:none}
+.search-suggest-head{margin:0 0 var(--s1); padding:2px var(--s2); font-size:var(--fs-xs); color:var(--muted)}
+.search-suggest-item{display:grid; grid-template-columns:44px minmax(0,1fr) auto; align-items:center; gap:var(--s2);
+  padding:var(--s2); border:0; border-radius:var(--r-sm); background:transparent; color:inherit; text-align:left;
+  font-size:var(--fs-sm); cursor:pointer}
+.search-suggest-item:hover,.search-suggest-item.is-active{background:var(--panel-strong)}
+.search-suggest-item[aria-selected="true"]{outline:2px solid var(--focus); outline-offset:-2px}
+.search-suggest-num{color:var(--muted); font-size:var(--fs-xs); font-variant-numeric:tabular-nums}
+.search-suggest-name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600}
+.search-suggest-cat{color:var(--muted); font-size:var(--fs-xs)}
+
 /* ---------------------------------------------------------------- points de rupture (§7.4) */
 @media (max-width:1279px){
   .grid{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -385,7 +410,11 @@ td.num{font-variant-numeric:tabular-nums; color:var(--muted)}
 }
 @media (max-width:899px){
   .guide-wrap{grid-template-columns:1fr}
-  .guide-side{position:static; max-height:none; display:flex; flex-wrap:wrap; gap:var(--s1)}
+  /* §7.4 : le guide passe en tiroir entre 620 et 899 px ; le bouton Filtres ouvre le panneau. */
+  .guide-filter-btn{display:inline-flex}
+  .guide-side{display:none; position:static; max-height:none; flex-wrap:wrap; gap:var(--s1);
+    padding:var(--s3); border:1px solid var(--line); border-radius:var(--r-md); background:var(--panel)}
+  .guide-side[data-open="true"]{display:flex}
   .guide-side h2{width:100%}
   .guide-side button{width:auto}
   .detail{grid-template-columns:1fr}

@@ -10,6 +10,9 @@ data/channels.corrupt-*.json
 # Catalogue de démonstration : seule la source brute est versionnée.
 !data/seed/
 
+# Construction
+dist-static/
+
 # Divers
 node_modules/
 *.log

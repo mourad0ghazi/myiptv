@@ -217,6 +217,47 @@ describe('Routage client et rendu', () => {
     for (const size of sizes) assert.ok(size <= 60, `pageSize ${size} dépasse 60`);
   });
 
+  test('carte, recherche, pager : contrats DOM du §7.3', async () => {
+    const components = await read('public/js/components.js');
+    const home = await read('public/js/views/home.js');
+    // <article role="button" tabindex="0" aria-label="{nom}, {catégorie}, chaîne {numéro}">
+    assert.match(components, /class: 'card', role: 'button'/);
+    assert.match(components, /chaîne \$\{channel\.number\}/);
+    assert.match(components, /tabIndex: 0/);
+    // Recherche : role="searchbox" + aria-autocomplete="list" + croix + liste de suggestions.
+    assert.match(index, /role="searchbox"/);
+    assert.match(index, /aria-autocomplete="list"/);
+    assert.match(index, /id="search-suggestions"[^>]*role="listbox"|role="listbox"[^>]*id="search-suggestions"/);
+    assert.match(index, /id="search-clear"/);
+    // Pager : « Page 3 sur 254 · 12 181 chaînes » + précédent/suivant.
+    assert.match(home, /Page \$\{fmtNumber\(page\)\} sur \$\{fmtNumber\(pages\)\}/);
+    assert.match(home, /'Page précédente'/);
+    assert.match(home, /'Page suivante'/);
+    // « Charger plus » obligatoire sur l'écran 1, sous le plafond de 120 cartes du DOM.
+    assert.match(home, /COPY\.actions\.loadMore/);
+    assert.match(home, /CARD_LIMIT = 120/);
+  });
+
+  test('états vides et actions : textes opposables du §7.5', () => {
+    assert.match(copy, /'Aucune chaîne pour l’instant'/);
+    assert.match(copy, /Ajoutez votre première chaîne dans l’administration\./);
+    assert.match(copy, /Cette catégorie est vide pour le moment/);
+    assert.match(copy, /Revenez au catalogue complet\./);
+    assert.match(copy, /message: 'Cliquez sur l’étoile d’une chaîne\.'/);
+    assert.match(copy, /'Vous n’avez rien regardé récemment\.'/);
+    assert.match(copy, /Toutes les chaînes ont été vérifiées\./);
+    assert.match(copy, /loadMore: 'Charger plus'/);
+  });
+
+  test('OSD du lecteur : nom, numéro, catégorie, qualité — rien d’autre', () => {
+    assert.match(player, /this\.osd = h\('div'/);
+    assert.match(player, /channel\.categoryLabel/);
+    assert.match(player, /channel\.quality/);
+    assert.equal(/class: 'osd'[\s\S]{0,400}healthLabel/.test(player), false, 'l’OSD n’affiche pas l’état de santé');
+    // Toute mire propose au moins deux actions (§7.3), même quand la table n’en cite qu’une.
+    assert.match(player, /if \(actionIds\.length < 2\) actionIds\.push\('copy'\)/);
+  });
+
   test('échappement systématique : pas de innerHTML avec des données', async () => {
     const files = await listFiles('public/js', (file) => file.endsWith('.js'));
     for (const file of files) {

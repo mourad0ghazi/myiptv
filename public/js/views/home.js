@@ -45,31 +45,23 @@ function heroBlock(hero, { config, openChannel, openPlayer }) {
       }, logoNode(channel), channel.name))) : null);
 }
 
+/**
+ * Pagination §7.3 : « Page 3 sur 254 · 12 181 chaînes » + précédent/suivant.
+ * Masquée quand il n'y a qu'une page ; « suivant » désactivé sur la dernière.
+ */
 function pager(page, pages, total, onChange) {
-  if (pages <= 1) {
-    return h('p', { class: 'count-label', style: { textAlign: 'center', marginTop: '24px' } },
-      `${fmtNumber(total)} chaîne${total > 1 ? 's' : ''}`);
-  }
-  const windowed = new Set([1, pages, page, page - 1, page + 1, page - 2, page + 2]);
-  const numbers = [...windowed].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
-  const items = [];
-  let previous = 0;
-  for (const number of numbers) {
-    if (previous && number - previous > 1) items.push(h('span', { class: 'muted' }, '…'));
-    items.push(h('button', {
-      class: 'chip', type: 'button', 'aria-pressed': String(number === page),
-      'aria-label': `Page ${number}`, onClick: () => onChange(number),
-    }, String(number)));
-    previous = number;
-  }
-  return h('nav', { class: 'toolbar', style: { justifyContent: 'center', marginTop: '32px', gap: '8px' }, 'aria-label': 'Pagination du catalogue' },
-    h('button', { class: 'btn btn-ghost btn-sm', type: 'button', disabled: page <= 1, onClick: () => onChange(page - 1) },
-      icon('chevron', 15, 'style="transform:rotate(180deg)"'), 'Précédent'),
-    ...items,
-    h('button', { class: 'btn btn-ghost btn-sm', type: 'button', disabled: page >= pages, onClick: () => onChange(page + 1) },
-      'Suivant', icon('chevron', 15)),
-    h('span', { class: 'count-label', style: { marginLeft: '12px' } },
-      `Page ${page} sur ${pages} · ${fmtNumber(total)} chaînes`));
+  if (pages <= 1) return null;
+  const label = `Page ${fmtNumber(page)} sur ${fmtNumber(pages)} · ${fmtNumber(total)} chaîne${total > 1 ? 's' : ''}`;
+  return h('nav', { class: 'pager', 'aria-label': 'Pagination du catalogue' },
+    h('button', {
+      class: 'btn btn-quiet btn-sm', type: 'button', disabled: page <= 1,
+      'aria-label': 'Page précédente', onClick: () => onChange(page - 1),
+    }, icon('chevron', 15, 'style="transform:rotate(180deg)"'), 'Précédent'),
+    h('p', { class: 'pager-label tabular', 'aria-live': 'polite' }, label),
+    h('button', {
+      class: 'btn btn-quiet btn-sm', type: 'button', disabled: page >= pages,
+      'aria-label': 'Page suivante', onClick: () => onChange(page + 1),
+    }, 'Suivant', icon('chevron', 15)));
 }
 
 export async function renderHome(container, ctx) {
@@ -147,9 +139,83 @@ export async function renderHome(container, ctx) {
   view.append(toolbar);
   view.append(resultsHost);
 
+  // §2.4 : jamais plus de 120 cartes dans le DOM ; « Charger plus » ajoute sans recharger.
+  const CARD_LIMIT = 120;
   let data = null;
+  let shown = 0;
+  let nextPage = state.page;
+  const gridHost = h('div', { class: 'grid', id: 'catalog-grid' });
+  const moreHost = h('div', { class: 'more-zone', id: 'more-zone' });
+
+  const announce = (payload) => {
+    const counter = container.querySelector('#result-count');
+    if (!counter) return;
+    counter.textContent = payload.total
+      ? `${fmtNumber(shown)} chaîne${shown > 1 ? 's' : ''} affichée${shown > 1 ? 's' : ''} sur ${fmtNumber(payload.total)}`
+      : 'Aucun résultat';
+  };
+
+  const paintMore = (payload, { first = false } = {}) => {
+    moreHost.replaceChildren();
+    if (!payload || !payload.channels.length) return;
+    const pagination = pager(payload.page, payload.pages, payload.total, (target) => setParam({ page: target }, { resetPage: false }));
+    if (payload.hasMore) {
+      if (shown >= CARD_LIMIT) {
+        moreHost.append(h('p', { class: 'count-label' },
+          `Limite de ${CARD_LIMIT} cartes atteinte. Affinez la recherche, changez de catégorie ou passez à la page suivante.`));
+      } else {
+        const remaining = Math.max(0, payload.total - shown);
+        const button = h('button', { class: 'btn btn-ghost', type: 'button' },
+          icon('chevron', 15, 'style="transform:rotate(90deg)"'),
+          `${COPY.actions.loadMore} · ${fmtNumber(remaining)} restante${remaining > 1 ? 's' : ''}`);
+        button.addEventListener('click', () => loadMore(button));
+        moreHost.append(button);
+      }
+    } else if (first) {
+      moreHost.append(h('p', { class: 'count-label' }, 'Vous avez atteint la fin du catalogue.'));
+    }
+    if (pagination) moreHost.append(pagination);
+  };
+
+  const appendCards = (payload) => {
+    const room = CARD_LIMIT - shown;
+    const slice = payload.channels.slice(0, room);
+    for (const channel of slice) {
+      const card = channelCard(channel, { onOpen: () => openChannel(channel.id), onPlay: openPlayer, showHealth: config.showHealthBadge });
+      card.dataset.channelId = channel.id;
+      gridHost.append(card);
+    }
+    shown += slice.length;
+    nextPage = payload.page + 1;
+    announce(payload);
+    paintMore(payload, { first: shown === slice.length });
+  };
+
+  const loadMore = async (button) => {
+    button.disabled = true;
+    button.replaceChildren(icon('retry', 14), 'Chargement…');
+    try {
+      const params = new URLSearchParams({
+        page: String(nextPage), pageSize: String(config.pageSize || 48), sort: state.sort,
+      });
+      if (state.cat) params.set('category', state.cat);
+      if (state.q) params.set('q', state.q);
+      const payload = state.q
+        ? await api(`/api/channels/search?${params}`)
+        : await api(`/api/channels?${params}`);
+      appendCards(payload);
+    } catch (error) {
+      moreHost.replaceChildren(h('div', { class: 'banner', dataset: { tone: 'danger' }, role: 'status' },
+        icon('alert', 16),
+        h('p', { text: error.message || 'Le chargement a échoué. Réessayez dans quelques instants.' }),
+        h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => paintMore(data, { first: true }) }, COPY.actions.retry)));
+    }
+  };
+
   const load = async () => {
     resultsHost.replaceChildren(skeletonGrid(12));
+    shown = 0;
+    nextPage = state.page;
     try {
       const params = new URLSearchParams({
         page: String(state.page), pageSize: String(config.pageSize || 48), sort: state.sort,
@@ -178,11 +244,7 @@ export async function renderHome(container, ctx) {
 
   const renderResults = (payload) => {
     const count = container.querySelector('#result-count');
-    if (count) {
-      count.textContent = payload.total
-        ? `${fmtNumber(payload.total)} chaîne${payload.total > 1 ? 's' : ''}`
-        : 'Aucun résultat';
-    }
+    if (count && !payload.total) count.textContent = 'Aucun résultat';
     if (!payload.channels.length) {
       if (state.q) {
         resultsHost.replaceChildren(emptyState({
@@ -220,18 +282,9 @@ export async function renderHome(container, ctx) {
       return;
     }
 
-    const grid = h('div', { class: 'grid', id: 'catalog-grid' },
-      payload.channels.map((channel) => {
-        const card = channelCard(channel, { onOpen: () => openChannel(channel.id), onPlay: openPlayer, showHealth: config.showHealthBadge });
-        card.dataset.channelId = channel.id;
-        return card;
-      }));
-    resultsHost.replaceChildren(grid, pager(payload.page, payload.pages, payload.total, (page) => setParam({ page }, { resetPage: false })));
-
-    if (payload.total > payload.channels.length) {
-      resultsHost.append(h('p', { class: 'count-label', style: { textAlign: 'center', marginTop: '12px' } },
-        `Affichage de ${payload.channels.length} chaînes sur ${fmtNumber(payload.total)}. Utilisez la recherche pour aller plus vite.`));
-    }
+    gridHost.replaceChildren();
+    resultsHost.replaceChildren(gridHost, moreHost);
+    appendCards(payload);
   };
 
   await load();

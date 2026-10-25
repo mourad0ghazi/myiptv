@@ -1,5 +1,7 @@
 // public/js/api.js — client HTTP unique. Toute erreur devient une phrase française.
 
+import { withBase } from './base.js';
+
 const TOKEN_KEY = 'streamtv.token';
 
 export class ApiError extends Error {
@@ -38,7 +40,7 @@ export async function api(path, { method = 'GET', body = null, timeout = 25_000 
   if (body !== null) headers['Content-Type'] = 'application/json';
   let response;
   try {
-    response = await fetch(path, {
+    response = await fetch(withBase(path), {
       method,
       headers,
       body: body === null ? undefined : JSON.stringify(body),
@@ -81,7 +83,7 @@ export async function api(path, { method = 'GET', body = null, timeout = 25_000 
 /** Téléchargement authentifié (export M3U / JSON). */
 export async function download(path, filename) {
   const token = auth.token();
-  const response = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  const response = await fetch(withBase(path), { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   if (!response.ok) {
     let message = 'Le fichier n’a pas pu être préparé.';
     try { message = (await response.json()).error || message; } catch { /* corps non JSON */ }
