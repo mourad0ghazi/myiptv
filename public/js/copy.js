@@ -48,7 +48,7 @@ export const COPY = {
     },
     emptyCatalog: {
       title: 'Aucune chaîne pour l’instant',
-      message: 'Ajoutez votre première chaîne dans l’administration, ou importez une liste M3U.',
+      message: 'Ajoutez votre première chaîne dans l’administration.',
       action: 'Ouvrir l’administration',
     },
     searchEmpty: {
@@ -58,21 +58,21 @@ export const COPY = {
     },
     categoryEmpty: {
       title: 'Cette catégorie est vide pour le moment',
-      message: 'Revenez au catalogue complet : d’autres chaînes vous attendent.',
+      message: 'Revenez au catalogue complet.',
       action: 'Voir tout le catalogue',
     },
     favoritesEmpty: {
       title: 'Aucun favori',
-      message: 'Cliquez sur l’étoile d’une chaîne pour la retrouver ici.',
+      message: 'Cliquez sur l’étoile d’une chaîne.',
       action: 'Parcourir le catalogue',
     },
     historyEmpty: {
-      title: 'Vous n’avez rien regardé récemment',
+      title: 'Vous n’avez rien regardé récemment.',
       message: 'Les chaînes que vous ouvrez apparaîtront ici, sur cet appareil uniquement.',
       action: 'Ouvrir le guide',
     },
     queueEmpty: {
-      title: 'Toutes les chaînes ont été vérifiées',
+      title: 'Toutes les chaînes ont été vérifiées.',
       message: 'Aucune chaîne ne demande votre attention.',
     },
     offline: {

@@ -1,13 +1,13 @@
-# Procès-verbal de recette — StreamTV v3.2.0
+# Procès-verbal de recette — StreamTV v3.3.0
 
 | Élément | Valeur |
 |---|---|
 | Objet | recette du site StreamTV, conforme au cahier des charges *StreamTV v2* |
-| Version livrée | 3.2.0 |
+| Version livrée | 3.3.0 |
 | Date de recette | 25 octobre 2026 |
 | Environnement | Node.js 22.22.3 (compatible 20 LTS), 8 cœurs, 16 Go de mémoire, Linux, réseau local |
 | Dossier de recette | machine vierge, `data/` recréé depuis `data/seed/seed.m3u` |
-| Référentiel de preuve | `npm test` (10 suites, 184 tests), `scripts/verify.js` (40 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
+| Référentiel de preuve | `npm test` (10 suites, 187 tests), `scripts/verify.js` (40 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
 | Décision | **Recette prononcée avec réserves** (voir §7) |
 
 ---
@@ -35,12 +35,12 @@ régime normal.
 Commande : `npm test`
 
 ```text
-# tests 184
-# pass 184
+# tests 187
+# pass 187
 # fail 0
 # cancelled 0
 # skipped 0
-# duration_ms 17537.836284
+# duration_ms 18249.341441
 ```
 
 Aucun échec, aucun test ignoré. Les suites d’API démarrent chacune leur propre serveur sur un
@@ -50,11 +50,11 @@ Détail par suite :
 
 | Suite | Tests | Résultat | Points couverts |
 |---|---:|---|---|
-| `tests/core.test.js` | 35 | conforme | parseur (BOM, CRLF, arabe, virgules, `#EXTGRP`, `//host`, HLS refusé), 2 fixtures de 2 000 lignes, déduplication, fusion des variantes, catégorisation, confiance, recherche (accents, arabe, pays), pagination, tri, réglages, contrat de chaîne, assertions A1–A10 |
+| `tests/core.test.js` | 33 | conforme | parseur (BOM, CRLF, arabe, virgules, `#EXTGRP`, `//host`, HLS refusé), 2 fixtures de 2 000 lignes, déduplication, fusion des variantes, catégorisation, confiance, recherche (accents, arabe, pays), pagination, tri, réglages, contrat de chaîne, assertions A1–A10 |
 | `tests/api.test.js` | 27 | conforme | 41 routes, 20 codes d’erreur, ordre de contrôle, pagination bornée, compression, en-têtes, importation complète (aperçu → commit → annulation), idempotence, verrou concurrent, sauvegarde/restauration, mot de passe, écriture atomique, refus de démarrage en production |
 | `tests/security.test.js` | 15 | conforme | scrypt, jetons, TTL, plafond de sessions, force brute, audit sans secret, CSP, injection, traversée de chemin, sauvegarde corrompue, fichiers publics sans script en ligne |
-| `tests/client.test.js` | 25 | conforme | jetons CSS, quatre points de rupture, classes présentes, 12 mires distinctes, 7 états, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, PWA |
-| `tests/conformite.test.js` | 11 | conforme | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
+| `tests/client.test.js` | 28 | conforme | jetons CSS, quatre points de rupture, classes présentes, 12 mires distinctes, 7 états, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, PWA |
+| `tests/conformite.test.js` | 13 | conforme | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
 | `tests/learning.test.js` | 12 | conforme | F-22 : découpage des noms, support minimal, bornes de poids, priorité du manuel, effet réel sur le classement d’une chaîne, exposition dans l’administration |
 | `tests/migrate.test.js` | 14 | conforme | F-24 : DDL idempotent et typé, échappement SQL, aller-retour exact (accents, guillemets, arabe, tabulations), `ON CONFLICT`, modes `--plan`/`--write`/`--verify`/`--reverse`, journal `migration.export` |
 | `tests/messages.test.js` | 9 | conforme | 82 messages du §9 (identifiants, ordre, familles), textes exacts mot pour mot, zéro jargon, substitution des variables, table `ERR → message` complète, catalogue servi par l’API |
@@ -121,9 +121,9 @@ règles personnalisées.
 | Requête | Brut | gzip | brotli |
 |---|---:|---:|---:|
 | `GET /api/channels?pageSize=48` | 17 588 o | 2 512 o | 2 173 o |
-| `GET /api/config` | 3 786 o | 1 415 o | 1 216 o |
-| `GET /` | 5 434 o | 1 986 o | 1 617 o |
-| `GET /css/app.css` | 41 106 o | 8 653 o | 7 647 o |
+| `GET /api/config` | 3 799 o | 1 426 o | 1 222 o |
+| `GET /` | 5 679 o | 2 031 o | 1 650 o |
+| `GET /css/app.css` | 43 442 o | 9 044 o | 8 000 o |
 | `GET /api/errors/catalog` | 12 063 o | 3 530 o | 3 102 o |
 | `GET /api/epg` (sans guide configuré) | 159 o | 159 o | 163 o |
 
@@ -131,10 +131,10 @@ règles personnalisées.
 
 | Mesure | Valeur | Cible |
 |---|---|---|
-| Premier chargement (hors hls.js, administration et pages légales différées) | 179 745 o brut, 55 939 o gzip | ≤ 180 Ko |
+| Premier chargement (HTML, feuille unique et 24 modules, hors hls.js) | 282 630 o brut, 87 726 o gzip | ≤ 180 Ko |
 | hls.js | 413 952 o, chargé uniquement si nécessaire | hors cible |
 | Démarrage à froid (1 475 chaînes) | 0,69 s | < 5 s |
-| Cartes dans le DOM | 48 (accueil), 120 maximum | ≤ 120 |
+| Cartes dans le DOM | 48 au premier écran, 120 maximum après « Charger plus » | ≤ 120 |
 | Temps de réponse local `GET /` | 1,4 ms | ≤ 2,5 s au premier rendu |
 
 ---
@@ -143,7 +143,11 @@ règles personnalisées.
 
 | Écran | Résultat | Détail observé |
 |---|---|---|
-| `/` | conforme | héros, 2 bandeaux, 48 cartes, 18 filtres |
+| `/` | conforme | héros, 2 bandeaux, 48 cartes, 18 filtres ; carte `role="button"` avec libellé « StoryChannel TV, Divertissement, chaîne 1 » |
+| `/` — « Charger plus » | conforme | 48 → 96 cartes après un clic, sans rechargement ; plafond de 120 cartes tenu, compteur serveur « 96 chaînes affichées sur 1 475 » |
+| `/` — pager | conforme | « Page 1 sur 31 · 1 475 chaînes », « Précédent » désactivé, « Suivant » mène à la page 2 |
+| Recherche — suggestions | conforme | 6 options pour « sport », `aria-expanded="true"`, `aria-activedescendant` posé par `↓`, `Échap` referme |
+| `/guide` — clavier | conforme | roving tabindex `0,-1,-1,-1`, `↓` déplace le focus, indice « ↑ ↓ pour parcourir… » affiché |
 | `/guide` | conforme | en-tête « Zapping », saut au numéro, compteurs par catégorie, colonne programme chargée après la liste (aucun blocage) |
 | `/favoris` | conforme | deux sections, état vide avec action |
 | `/connexion` | conforme | formulaire, mention du mot de passe unique |

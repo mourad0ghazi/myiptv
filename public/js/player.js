@@ -3,7 +3,7 @@
 
 import { api } from './api.js';
 import { COPY } from './copy.js';
-import { h, icon, toast, copyText, healthLabel, logoNode } from './ui.js';
+import { h, icon, toast, copyText, logoNode } from './ui.js';
 import { prefs } from './prefs.js';
 
 const MIRES = COPY.player.mires;
@@ -107,9 +107,11 @@ class Player {
       type: 'range', min: '0', max: '1', step: '0.05', value: String(this.video.volume),
       'aria-label': 'Volume', onInput: (event) => this.setVolume(Number(event.target.value)),
     });
-    this.osd = h('div', { class: 'osd', dataset: { hidden: 'false' } },
+    // OSD §7.2 : nom, numéro, catégorie, qualité — rien d'autre (l'état de santé reste sur la carte).
+    this.osd = h('div', { class: 'osd', dataset: { hidden: 'false' }, 'aria-hidden': 'true' },
       h('strong', { text: `#${channel.number} · ${channel.name}` }),
-      h('small', { text: `${channel.categoryLabel || ''}${channel.quality && channel.quality !== 'AUTO' ? ` · ${channel.quality}` : ''} · ${healthLabel(channel.health?.status)}` }));
+      h('small', { text: [channel.categoryLabel || 'Catégorie inconnue',
+        channel.quality && channel.quality !== 'AUTO' ? channel.quality : null].filter(Boolean).join(' · ') }));
     this.mireHost = h('div', { class: 'mire-host' });
 
     const stage = h('div', { class: 'player-stage' },
@@ -317,7 +319,11 @@ class Player {
     try { this.video.pause(); this.video.muted = true; } catch { /* rien à couper */ }
     const explanation = mire.explanation.replace('{nom}', params.nom || this.channel?.name || 'cette chaîne')
       .replace('{code}', params.code || code);
-    const actions = mire.actions.map((action) => this.mireAction(action));
+    // §7.3 : une mire propose toujours au moins deux actions. Les tables du §8.3 n'en listent
+    // parfois qu'une (P-02, P-05) : « Copier le lien » complète alors sans contredire le texte.
+    const actionIds = [...mire.actions];
+    if (actionIds.length < 2) actionIds.push('copy');
+    const actions = actionIds.map((action) => this.mireAction(action));
     this.mireHost.replaceChildren(h('div', { class: 'mire', role: 'alertdialog', 'aria-label': mire.title },
       h('div', { class: 'mire-inner' },
         h('div', { class: 'mire-icon' }, icon('alert', 26)),
@@ -465,8 +471,10 @@ class Player {
 
   async jumpToNumber(number) {
     try {
-      const list = await api(`/api/channels?page=${Math.max(1, Math.ceil(number / 48))}&pageSize=48`);
-      const found = list.channels.find((item) => item.number === number);
+      // Les numéros ne sont pas contigus : on passe par l'index de recherche, qui remonte
+      // d'abord la chaîne portant exactement ce numéro (score +50, cf. F-18).
+      const list = await api(`/api/channels/search?q=${encodeURIComponent(String(number))}&pageSize=24`);
+      const found = list.channels.find((item) => item.number === number) || list.channels[0];
       if (!found) {
         toast(`Aucune chaîne au numéro ${number}.`, { tone: 'info' });
         return;

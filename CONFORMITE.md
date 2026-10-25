@@ -1,8 +1,8 @@
-# Conformité — StreamTV v3.2.0
+# Conformité — StreamTV v3.3.0
 
-Version évaluée : **3.2.0**, 25 octobre 2026.
+Version évaluée : **3.3.0**, 25 octobre 2026.
 Référentiel : cahier des charges *StreamTV v2* (§1 à §13, 118 critères).
-Preuves : `npm test` (10 suites, 184 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
+Preuves : `npm test` (10 suites, 187 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
 (40 contrôles), `node scripts/measure-tagger.js`, smoke tests DOM (jsdom) des 12 routes.
 
 Légende des statuts :
@@ -328,6 +328,27 @@ seuil et une action ; `GET /api/admin/stats` les expose dans le champ `alerts`, 
 affiche. Preuve : `tests/alerts.test.js` (11 tests, un par seuil plus l’exposition API).
 
 ---
+
+### 4.5 Contrats d’interface (§7.2, §7.3, §8.3)
+
+Alignement vérifié écran par écran, avec la preuve associée. Les libellés cités sont ceux du
+cahier des charges, mot pour mot.
+
+| Élément | Contrat du cahier des charges | Mise en œuvre | Preuve |
+|---|---|---|---|
+| Carte de chaîne | `<article role="button" tabindex="0" aria-label="{nom}, {catégorie}, chaîne {numéro}">` | `components.js` : `role="button"`, `tabindex="0"`, libellé construit avec le nom, la catégorie et le numéro ; commandes internes (regarder, favori) stoppent la propagation | `client.test.js` « carte, recherche, pager » ; smoke jsdom (libellé lu sur la première carte) |
+| Recherche | `role="searchbox"`, `aria-autocomplete="list"`, croix de réinitialisation | `index.html` : champ `role="searchbox"`, `aria-autocomplete="list"`, `aria-controls="search-suggestions"`, `aria-expanded` ; panneau `role="listbox"` alimenté par l’API ; `Échap` referme, `↑ ↓` parcourt, `Entrée` ouvre | smoke jsdom : 6 options, `aria-expanded="true"`, `aria-activedescendant` posé |
+| Écran 1 | grille paginée **et** bouton « Charger plus » | `home.js` : 48 cartes par page, ajout incrémental, plafond `CARD_LIMIT = 120`, compteur serveur, bascule vers la page suivante ou le guide au-delà | smoke jsdom : 48 → 96 cartes après un clic, 120 au plafond, aucune erreur |
+| Pager | « Page 3 sur 254 · 12 181 chaînes » + précédent/suivant | `pager()` dans `home.js` : libellé issu de la réponse serveur, `Précédent` désactivé en page 1, `Suivant` désactivé en dernière page, masqué si une seule page | smoke jsdom : « Page 1 sur 31 · 1 475 chaînes », navigation vers la page 2 |
+| Écran 2 (guide) | liste par catégorie, numéro, badge de santé, filtre, focus initial | `guide.js` : roving tabindex (un seul arrêt), `↑ ↓ Home End`, `Entrée` regarde, `I` ouvre la fiche, focus initial si l’utilisateur n’a rien cliqué, tiroir de filtres sous 900 px | smoke jsdom : `tabindex` = `0,-1,-1,-1`, flèche bas déplace le focus |
+| Écran 3 (lecteur) | OSD nom, numéro, catégorie, qualité | `player.js` : OSD à deux lignes, aucun libellé d’état de santé parasite | `client.test.js` « OSD du lecteur » |
+| Mire | 2 actions minimum, 12 variantes | `player.js` complète par « Copier le lien » quand la table du §8.3 n’en cite qu’une (`P-02`, `P-05`) | `client.test.js` « OSD du lecteur » |
+| États vides | textes du §7.5 | `copy.js` : catalogue, catégorie, favoris, historique, file « à vérifier » au mot près | `client.test.js` « états vides et actions » |
+| Typographie | jamais moins de 12 px | badge de qualité ramené à `var(--fs-xs)` ; le test client refuse toute taille inférieure à 12 px | `client.test.js` « jetons exacts » |
+
+Deux écarts restent assumés et documentés au §6 : l’absence de flux « réels » dans le jeu de
+test (les mires sont vérifiées par leur contrat, pas par une lecture réseau) et les mesures de
+performance faites sur un catalogue de 1 475 chaînes, pas sur 30 000.
 
 ## 5. Matrice des routes
 

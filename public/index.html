@@ -45,7 +45,9 @@
           <circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path>
         </svg>
         <input id="search-input" name="q" type="search" placeholder="Rechercher une chaîne, un pays, une catégorie…"
-               aria-describedby="search-hint" enterkeyhint="search">
+               role="searchbox" aria-autocomplete="list" aria-controls="search-suggestions" aria-expanded="false"
+               aria-describedby="search-hint" enterkeyhint="search" autocomplete="off">
+        <div class="search-suggest" id="search-suggestions" role="listbox" aria-label="Suggestions de chaînes" hidden></div>
         <button type="button" class="search-clear" id="search-clear" aria-label="Effacer la recherche" hidden>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
         </button>
@@ -85,7 +87,7 @@
       <a href="/aide" data-link>Aide &amp; raccourcis</a>
       <a href="/erreurs" data-link>Catalogue des messages</a>
     </nav>
-    <p class="footer-meta muted" id="footer-meta">StreamTV v3.0.0 · Node.js · zéro dépendance</p>
+    <p class="footer-meta muted" id="footer-meta">StreamTV · catalogue de chaînes</p>
   </div>
 </footer>
 

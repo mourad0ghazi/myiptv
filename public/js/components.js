@@ -35,8 +35,10 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
       icon('star4', 12), 'Vedette'));
   }
 
+  // Contrat §7.3 : <article role="button" tabindex="0" aria-label="{nom}, {catégorie}, chaîne {numéro}">.
+  // Les commandes internes gardent leurs propres libellés et stoppent la propagation.
   const card = h('article', {
-    class: 'card', role: 'group', 'aria-label': `${channel.name}, ${channel.categoryLabel || 'catégorie inconnue'}, chaîne ${channel.number}`,
+    class: 'card', role: 'button', 'aria-label': `${channel.name}, ${channel.categoryLabel || 'catégorie inconnue'}, chaîne ${channel.number}`,
     tabIndex: 0,
     dataset: { blocked: channel.blocked || '' },
     style: { '--hue': String(channel.hue ?? 320) },
@@ -50,7 +52,7 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
     h('span', { class: 'card-num' },
       showHealth ? h('span', { class: 'health-dot', dataset: { state: channel.health || 'unknown' }, title: healthLabel(channel.health), 'aria-hidden': 'true' }) : null,
       `#${channel.number}`,
-      channel.quality && channel.quality !== 'AUTO' ? h('span', { class: 'badge', style: { padding: '1px 6px', fontSize: '10px' } }, channel.quality) : null),
+      channel.quality && channel.quality !== 'AUTO' ? h('span', { class: 'badge', style: { padding: '1px 6px', fontSize: 'var(--fs-xs)' } }, channel.quality) : null),
     h('span', { class: 'card-name', dir: 'auto', text: channel.name }),
     h('span', { class: 'card-sub', dir: 'auto', text: `${channel.categoryLabel || 'Non classée'}${channel.country ? ` · ${channel.country}` : ''}` })));
   return card;
