@@ -8,6 +8,7 @@ import { buildPredicate, paginate, sortChannels } from '../core/search.js';
 import { normalizeQuery } from '../core/text.js';
 import { buildEpg } from '../core/epg.js';
 import { catalogForClient } from '../core/messages.js';
+import { reportThreshold } from '../core/reports.js';
 import { queryInt, queryString } from '../http/router.js';
 
 function publicChannels(app) {
@@ -116,6 +117,7 @@ export function registerPublicRoutes(router, app) {
         showAdult: settings.showAdult,
         autoHideAdult: settings.autoHideAdult,
         confidenceFloor: settings.confidenceFloor,
+        reportThreshold: reportThreshold(),
         epgUrl: settings.epgUrl,
         categories: CATEGORIES.map((category) => ({ ...category, count: counts[category.id] || 0 })),
         totals: {
@@ -132,6 +134,7 @@ export function registerPublicRoutes(router, app) {
         notices: app.notices(),
         legal: {
           mention: 'StreamTV diffuse des flux fournis par leurs ayants droit. Ce site n’héberge aucun contenu vidéo.',
+          contact: String(process.env.STREAMTV_CONTACT || '').trim(),
           links: [
             { id: 'mentions-legales', title: 'Mentions légales', href: '/mentions-legales' },
             { id: 'confidentialite', title: 'Confidentialité', href: '/confidentialite' },
@@ -241,7 +244,7 @@ export function registerPublicRoutes(router, app) {
       report: {
         title: 'Signaler un contenu',
         delay: '72 heures ouvrées',
-        procedure: 'Indiquez le nom exact de la chaîne, son numéro et le motif du signalement. La chaîne est masquée immédiatement à réception.',
+        procedure: 'Indiquez le nom exact de la chaîne et le motif. Le signalement est enregistré immédiatement avec une référence de suivi ; le retrait intervient après vérification, sous 72 heures ouvrées. Une chaîne signalée 1000 fois est retirée automatiquement.',
       },
       privacy: {
         storage: 'Aucun compte visiteur. Les favoris, l’historique et le volume sont stockés dans votre navigateur, jamais sur le serveur.',

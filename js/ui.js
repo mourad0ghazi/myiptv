@@ -52,6 +52,9 @@ const SVG = {
   series: '<rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="m8 3 4 3 4-3"></path>',
   star4: '<path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6z"></path>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M15 6.5V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h1.5"></path>',
+  link: '<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.4 1.4"></path><path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.4-1.4"></path>',
+  filter: '<path d="M3.5 6h17M6.5 12h11M10 18h4"></path>',
+  flag: '<path d="M6 3v18"></path><path d="M6 4h11l-2 4 2 4H6z"></path>',
 };
 
 export function icon(name, size = 18, extra = '') {

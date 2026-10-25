@@ -3,6 +3,47 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.7.0] — 2026-10-25
+
+Contrôle total sur les chaînes et les liens, et fin d'une promesse impossible à tenir.
+
+Le formulaire de signalement annonçait « chaîne masquée immédiatement à réception » vers
+l'adresse `contact@streamtv.example`, domaine réservé par la RFC 2606 : aucun message ne
+pouvait arriver. La 3.7.0 remplace cette promesse par un mécanisme réel, et donne au
+propriétaire une console d'inventaire complète.
+
+### Ajouté
+
+- **Console « Chaînes et liens »** (onglet de l'administration) : inventaire de tous les flux,
+  y compris masqués et supprimés, avec protocole, hôte, variantes, santé mesurée et nombre de
+  signalements. Copie de l'URL, copie de la ligne M3U, téléchargement d'une fiche `m3u` par
+  chaîne, tentative d'ouverture dans VLC, test du flux à la demande.
+- **Signalements** : `POST /api/report` enregistre avec une référence `SIG-00001`, sans rien
+  appliquer. Dédoublonnage par visiteur et par jour (empreinte d'adresse tronquée, jamais
+  l'adresse), limite de cinq envois par heure et par adresse.
+- **Seuil de retrait automatique à 1000 signalements** : au signalement qui atteint le seuil,
+  la chaîne est supprimée du catalogue, de façon réversible et journalisée. Réglable par
+  `STREAMTV_SEUIL_SIGNALEMENTS` (minimum 2).
+- Onglet **Signalements** : file des demandes, décisions humaines (masquer, rejeter), remise à
+  zéro du compteur, journal des 40 derniers signalements.
+- Suivi public d'une référence : `GET /api/report/SIG-00042`.
+- `docs/PROMPT-CONSOLE-CHAINES.md` : cahier des charges réutilisable de la console, y compris
+  les cas VLC (http, https sans CORS, rtsp, flux morts) et la recette.
+
+### Corrigé
+
+- L'adresse de contact n'est plus un domaine réservé : elle vient de `STREAMTV_CONTACT`, et
+  quand elle est absente, le site ne propose plus de `mailto:` et le dit.
+- Les quatre textes qui promettaient un masquage immédiat disent désormais la vérité :
+  enregistrement immédiat, retrait après vérification sous 72 heures ouvrées.
+- En démonstration statique, le formulaire de signalement annonce qu'il n'enregistre rien au
+  lieu d'échouer en silence.
+
+### Modifié
+
+- 50 routes HTTP (42 en 3.6.0). `data/reports.json` rejoint les fichiers de données.
+- 232 tests (216 en 3.6.0), dont 16 nouveaux sur les signalements et la console.
+
 ## [3.6.0] — 2026-10-25
 
 Une étiquette n'est pas une mesure. La 3.5.0 bloquait les chaînes sur la foi du suffixe

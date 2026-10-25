@@ -100,6 +100,15 @@ export async function download(path, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+/**
+ * Signalement public. Le site enregistre, il ne supprime pas : la décision appartient
+ * au propriétaire, sauf seuil de signalements franchi.
+ */
+export const Public = {
+  report: (payload) => api('/api/report', { method: 'POST', body: payload }),
+  reportStatus: (ref) => api(`/api/report/${encodeURIComponent(ref)}`),
+};
+
 /** API admin : objet unique, testé par tests/api.test.js. */
 export const Admin = {
   session: () => api('/api/session'),
@@ -131,4 +140,10 @@ export const Admin = {
   restoreBackup: (file) => api('/api/admin/restore', { method: 'POST', body: { file, confirm: 'RESTAURER' }, timeout: 60_000 }),
   password: (current, next, confirm) => api('/api/admin/password', { method: 'POST', body: { current, next, confirm } }),
   revokeSessions: () => api('/api/admin/sessions', { method: 'DELETE', body: {} }),
+  links: (params) => api(`/api/admin/links?${new URLSearchParams(params)}`),
+  consoleMeta: () => api('/api/admin/console/meta'),
+  reports: (params = {}) => api(`/api/admin/reports?${new URLSearchParams(params)}`),
+  confirmReport: (id) => api(`/api/admin/reports/${encodeURIComponent(id)}/confirm`, { method: 'POST', body: {} }),
+  rejectReport: (id, note = '') => api(`/api/admin/reports/${encodeURIComponent(id)}/reject`, { method: 'POST', body: { note } }),
+  resetReports: (channelId) => api(`/api/admin/reports/${encodeURIComponent(channelId)}/reset`, { method: 'POST', body: {} }),
 };
