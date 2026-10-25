@@ -203,7 +203,7 @@ fichiers relatifs : pas de bundler, pas de CDN.
 
 ---
 
-## 4. API HTTP (41 routes)
+## 4. API HTTP (50 routes)
 
 Enveloppe d’erreur unique : `{ "error": "phrase française", "code": "ERR-xx", "requestId": "…", "field": "…" }`.
 L’ordre de contrôle est fixe : méthode (405) → taille (413) → type (415) → authentification
@@ -272,6 +272,32 @@ curl -s -X POST localhost:3000/api/admin/backup -H "Authorization: Bearer $TOKEN
 ```
 
 ---
+
+### Console « Chaînes et liens » (3.7.0)
+
+L'administration gagne deux onglets.
+
+**Chaînes et liens** : l'inventaire complet, y compris les chaînes masquées et supprimées.
+Chaque ligne porte l'adresse du flux, ses variantes, son protocole, sa santé mesurée et son
+nombre de signalements. Quatre boutons : copier l'URL, copier la ligne M3U, télécharger une
+fiche `.m3u` à ouvrir dans VLC, tester le flux. Les filtres se combinent (état, santé,
+protocole, source, catégorie) et les compteurs annoncent ce qu'ils vont renvoyer.
+
+**Signalements** : le formulaire public `/signaler` enregistre chaque demande avec une
+référence `SIG-…`, sans rien retirer. Le propriétaire confirme (la chaîne est masquée) ou
+rejette. Un même visiteur ne compte qu'une fois par jour et par chaîne, et le formulaire
+accepte cinq envois par heure et par adresse. **Au 1000ᵉ signalement, la chaîne est supprimée
+automatiquement**, de façon réversible et journalisée.
+
+Le seuil se règle au démarrage, sans toucher aux 17 réglages du contrat :
+
+```bash
+STREAMTV_SEUIL_SIGNALEMENTS=500 npm start   # retrait automatique dès 500 signalements
+STREAMTV_CONTACT=contact@mon-domaine.fr npm start
+```
+
+Le cahier des charges de cette console, y compris les cas VLC, se trouve dans
+`docs/PROMPT-CONSOLE-CHAINES.md`.
 
 ## 5. Données
 
@@ -408,6 +434,8 @@ hors éléments explicitement repoussés ci-dessous.
 ---
 
 ## 11. Documentation
+
+- `docs/PROMPT-CONSOLE-CHAINES.md` : cahier des charges de la console chaînes et liens (3.7.0).
 
 | Fichier | Contenu |
 |---|---|

@@ -1,7 +1,7 @@
 // server/core/constants.js — référentiels fermés : 18 catégories, qualités, limites, tri.
 // Toute valeur hors de ces tables est refusée à l'écriture (ERR-04).
 
-export const VERSION = '3.6.0';
+export const VERSION = '3.7.0';
 export const SPEC_VERSION = '2.0';
 
 export const CATEGORIES = [
@@ -138,6 +138,9 @@ export const LIMITS = {
   logoMax: 512,
   notesMax: 500,
   tagMax: 24,
+  reportsSuppression: 1000,
+  reportsPerHour: 5,
+  reportMessageMax: 900,
 };
 
 export const SORT_LABELS = {

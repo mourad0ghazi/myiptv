@@ -1,12 +1,17 @@
 // public/js/views/legal.js — pages d'information : mentions, confidentialité, signalement, aide, messages.
 // Aucune de ces pages ne modifie l'état du site : elles sont lisibles hors connexion après un premier passage.
 
+import { Public } from '../api.js';
 import { COPY } from '../copy.js';
 import { h, icon, fmtDate, toast, copyText } from '../ui.js';
 import { ERRORS_CODES, catalogCount, loadMessageCatalog } from './error-codes.js';
 
-const CONTACT = 'contact@streamtv.example';
 const UPDATED = '2026-10-25';
+
+/** Adresse de contact : celle de l'instance si elle en déclare une, aucune sinon. */
+function contactOf(config) {
+  return String(config?.legal?.contact || '').trim();
+}
 
 function page(title, eyebrow, sections, { config } = {}) {
   const brand = config?.brand || 'StreamTV';
@@ -35,7 +40,9 @@ export function renderLegal(container, ctx) {
   container.replaceChildren(page('Mentions légales', 'Cadre juridique', [
     paragraph(config.legal?.mention || COPY.legal.mention),
     section('Éditeur du site',
-      paragraph(`Le catalogue ${config.brand} est édité par un éditeur indépendant. Contact : ${CONTACT}.`),
+      paragraph(contactOf(config)
+        ? `Le catalogue ${config.brand} est édité par un éditeur indépendant. Contact : ${contactOf(config)}.`
+        : `Le catalogue ${config.brand} est édité par un éditeur indépendant. Cette installation ne publie pas d’adresse de contact : le formulaire de signalement reste le canal officiel.`),
       paragraph('Directeur de la publication : l’éditeur. Hébergement : infrastructure mutualisée de l’éditeur, Union européenne.')),
     section('Nature du service',
       paragraph('StreamTV est un catalogue de liens : il référence des adresses de flux publiées par leurs ayants droit ou par des sources tierces.'),
@@ -47,7 +54,7 @@ export function renderLegal(container, ctx) {
       paragraph('Le catalogue peut évoluer, être incomplet ou contenir des liens devenus indisponibles : l’éditeur ne garantit ni la disponibilité ni la conformité des flux tiers.'),
       paragraph('Chaque chaîne porte une justification des droits dans le catalogue. Une chaîne sans justification est masquée.')),
     section('Signalement et retrait',
-      paragraph('Toute demande crédible de retrait est traitée sous 72 heures ouvrées ; la chaîne est masquée immédiatement à réception.'),
+      paragraph('Tout signalement est enregistré immédiatement et examiné sous 72 heures ouvrées. La chaîne est retirée dès que le signalement est confirmé. Une chaîne signalée 1000 fois est retirée automatiquement.'),
       h('a', { class: 'btn btn-ghost btn-sm', href: '/signaler', 'data-link': '' }, icon('alert', 14), 'Ouvrir la procédure de signalement')),
     section('Crédits techniques',
       paragraph('Node.js 20, modules natifs uniquement. Client HTML/CSS/JS en modules ES, sans cadriciel ni bundler. hls.js 1.5.17, bibliothèque libre (Apache-2.0), incluse dans le dépôt.'),
@@ -80,7 +87,9 @@ export function renderPrivacy(container, ctx) {
       ])),
     section('Vos droits',
       paragraph('Vous pouvez lire, exporter ou supprimer les données locales à tout moment : elles sont visibles dans l’onglet Stockage de votre navigateur, et les boutons « Vider » les effacent.'),
-      paragraph(`Pour les journaux d’audit et toute question : ${CONTACT}. Réponse sous 30 jours.`)),
+      paragraph(contactOf(ctx.config)
+        ? `Pour les journaux d’audit et toute question : ${contactOf(ctx.config)}. Réponse sous 30 jours.`
+        : 'Pour les journaux d’audit et toute question, utilisez le formulaire de signalement : il laisse une trace horodatée, consultable par l’éditeur.')),
     section('Sécurité',
       list([
         'Mot de passe administrateur protégé par scrypt (N=16384, r=8, p=1) et sel aléatoire de 128 bits.',
@@ -92,16 +101,29 @@ export function renderPrivacy(container, ctx) {
 }
 
 export function renderReport(container, ctx) {
+  const config = ctx.config || {};
+  const contact = contactOf(config);
   const channelName = ctx.query.chaine || '';
   const input = h('input', { type: 'text', id: 'report-channel', value: channelName, maxlength: '120', required: true });
   const url = h('input', { type: 'url', id: 'report-url', placeholder: 'https://…', maxlength: '300' });
   const email = h('input', { type: 'email', id: 'report-email', placeholder: 'vous@exemple.fr', maxlength: '120' });
   const reason = h('select', { id: 'report-reason' },
-    ['Droits d’auteur', 'Contenu illicite', 'Flux indisponible', 'Mauvaise catégorie', 'Autre'].map((value) => h('option', { value }, value)));
-  const message = h('textarea', { id: 'report-message', maxlength: '1200', placeholder: 'Précisez le motif, la chaîne et la date constatée.' });
+    [['droits', 'Droits d’auteur'], ['illicite', 'Contenu illicite'], ['flux', 'Flux indisponible'], ['categorie', 'Mauvaise catégorie'], ['autre', 'Autre']]
+      .map(([value, label]) => h('option', { value }, label)));
+  const message = h('textarea', { id: 'report-message', maxlength: '900', placeholder: 'Précisez le motif, la chaîne et la date constatée.' });
   const result = h('div', { class: 'banner', dataset: { tone: 'info' }, hidden: true, role: 'status' });
-
-  const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, icon('alert', 16), 'Préparer le signalement');
+  const demo = Boolean(config.demo);
+  const submit = h('button', {
+    class: 'btn btn-primary', type: 'submit', disabled: demo ? 'disabled' : null,
+    title: demo ? 'La démonstration statique ne peut pas enregistrer de signalement.' : '',
+  }, icon('alert', 16), demo ? 'Indisponible en démonstration' : 'Envoyer le signalement');
+  const demoNotice = demo
+    ? h('div', { class: 'banner', dataset: { tone: 'info' } },
+      icon('alert', 16),
+      h('div', {}, h('p', { text: 'Cette page est une démonstration statique : aucun signalement n’est enregistré ici.' }),
+        h('p', { class: 'muted', style: { fontSize: '13px' } },
+          'Sur une installation complète, le formulaire enregistre le signalement avec une référence de suivi et alimente la file de l’administration.')))
+    : null;
 
   const form = h('form', { novalidate: true },
     h('div', { class: 'form-row' },
@@ -111,52 +133,70 @@ export function renderReport(container, ctx) {
       h('div', { class: 'field' }, h('label', { for: 'report-url' }, 'Adresse du flux (facultatif)'), url),
       h('div', { class: 'field' }, h('label', { for: 'report-email' }, 'Votre adresse (facultatif)'), email)),
     h('div', { class: 'field' }, h('label', { for: 'report-message' }, 'Précisions'), message),
-    h('p', { class: 'help' }, 'Le signalement ouvre votre logiciel de courrier avec un message déjà rédigé. Aucune donnée n’est envoyée par ce site.'),
-    h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' } }, submit),
+    h('p', { class: 'help' }, 'Le signalement est enregistré sur ce serveur, avec une référence de suivi. Aucune adresse IP complète n’est conservée, seulement une empreinte pour éviter les doublons.'),
+    h('div', { class: 'toolbar', style: { marginTop: '12px' } }, submit),
     result);
 
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!input.value.trim()) {
       toast('Indiquez le nom de la chaîne concernée.', { tone: 'error' });
       input.focus();
       return;
     }
-    const subject = `Signalement — ${input.value.trim()}`;
-    const body = [
-      `Chaîne : ${input.value.trim()}`,
-      `Motif : ${reason.value}`,
-      url.value ? `Adresse du flux : ${url.value}` : '',
-      email.value ? `Réponse souhaitée à : ${email.value}` : '',
-      `Date du constat : ${new Date().toISOString().slice(0, 10)}`,
-      '',
-      message.value || '(aucune précision complémentaire)',
-    ].filter(Boolean).join('\n');
-    const mailto = `mailto:${CONTACT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    result.hidden = false;
-    result.replaceChildren(icon('check', 16), h('div', {},
-      h('p', { text: 'Votre message est prêt dans votre logiciel de courrier.' }),
-      h('p', { class: 'muted', style: { fontSize: '13px' } },
-        'La chaîne est masquée immédiatement à réception du signalement. La vérification et la réponse interviennent sous 72 heures ouvrées.'),
-      h('button', {
-        class: 'btn btn-quiet btn-sm', type: 'button',
-        onClick: async () => { const done = await copyText(mailto); toast(done ? 'Lien de signalement copié.' : 'Copie impossible.', { tone: done ? 'success' : 'error' }); },
-      }, icon('copy', 14), 'Copier le lien')));
-    window.location.href = mailto;
+    submit.disabled = true;
+    try {
+      const reponse = await Public.report({
+        name: input.value.trim(),
+        reason: reason.value,
+        message: message.value,
+        email: email.value,
+      });
+      result.hidden = false;
+      result.dataset.tone = reponse.deleted ? 'warn' : 'ok';
+      result.replaceChildren(icon(reponse.deleted ? 'alert' : 'check', 16), h('div', {},
+        h('p', { text: reponse.message }),
+        h('p', { class: 'muted', style: { fontSize: '13px' } },
+          `Référence ${reponse.ref} · ${reponse.count} signalement${reponse.count > 1 ? 's' : ''} sur un seuil de ${reponse.threshold}.`),
+        h('p', { class: 'muted', style: { fontSize: '13px' } },
+          'Le retrait intervient après vérification, sous 72 heures ouvrées. Une chaîne qui atteint le seuil est retirée immédiatement.'),
+        h('button', {
+          class: 'btn btn-quiet btn-sm', type: 'button',
+          onClick: async () => {
+            const done = await copyText(reponse.ref);
+            toast(done ? 'Référence copiée.' : 'Copie impossible.', { tone: done ? 'success' : 'error' });
+          },
+        }, icon('copy', 14), 'Copier la référence')));
+      form.reset();
+    } catch (error) {
+      result.hidden = false;
+      result.dataset.tone = 'danger';
+      result.replaceChildren(icon('alert', 16), h('div', {},
+        h('p', { text: error.message || 'Le signalement n’a pas pu être enregistré.' }),
+        contact
+          ? h('p', { class: 'muted', style: { fontSize: '13px' } }, `Vous pouvez aussi écrire à ${contact}.`)
+          : h('p', { class: 'muted', style: { fontSize: '13px' } }, 'Réessayez dans un instant ; si le problème persiste, prévenez l’éditeur du site.')));
+    } finally {
+      submit.disabled = false;
+    }
   });
+
+  const contactBlock = contact
+    ? section('Contact direct', paragraph(`Si le formulaire ne fonctionne pas, écrivez à ${contact} en indiquant le nom exact de la chaîne, son numéro et le motif.`))
+    : section('Contact direct', paragraph('Cette installation ne publie pas d’adresse de contact. Utilisez le formulaire : il enregistre votre signalement sur le serveur et vous rend une référence de suivi.'));
 
   container.replaceChildren(page('Signaler un contenu', 'Retrait sous 72 heures', [
     paragraph('Un doute sur les droits d’un flux, un contenu illicite ou une chaîne mal classée ? Ce canal est prioritaire et documenté.'),
     section('Ce que nous faisons', list([
-      'La chaîne concernée est masquée immédiatement, sur simple demande crédible.',
-      'L’action est journalisée avec la date, la source et l’identifiant de la chaîne.',
-      'La source est corrigée sous 72 heures ouvrées, puis la chaîne est réévaluée avant toute remise en ligne.',
-      'Vous recevez une réponse à l’adresse indiquée, si vous en fournissez une.',
+      'Le signalement est enregistré immédiatement avec une référence de suivi, sans être appliqué.',
+      'Le retrait est décidé après vérification, sous 72 heures ouvrées, et journalisé avec la date et l’identifiant de la chaîne.',
+      `Une chaîne qui atteint ${new Intl.NumberFormat('fr-FR').format(config.reportThreshold || 1000)} signalements est retirée automatiquement du catalogue.`,
+      'Une suppression reste réversible : la fiche est conservée et peut être rétablie.',
     ])),
+    demoNotice,
     section('Formulaire', form),
-    section('Contact direct',
-      paragraph(`Si le formulaire ne s’ouvre pas, écrivez à ${CONTACT} en indiquant le nom exact de la chaîne, son numéro et le motif.`)),
-  ], { config: ctx.config }));
+    contactBlock,
+  ], { config }));
   return () => {};
 }
 
@@ -197,7 +237,9 @@ export function renderHelp(container, ctx) {
         'Lecteur d’écran : chaque changement de page est annoncé, chaque image décorative est ignorée.',
       ])),
     section('Besoin d’aide ?',
-      paragraph(`Écrivez à ${CONTACT} ou consultez le catalogue des messages dans la page « Erreurs ».`),
+      paragraph(contactOf(ctx.config)
+        ? `Écrivez à ${contactOf(ctx.config)} ou consultez le catalogue des messages dans la page « Erreurs ».`
+        : 'Consultez le catalogue des messages dans la page « Erreurs », ou passez par le formulaire de signalement.'),
       h('a', { class: 'btn btn-ghost btn-sm', href: '/erreurs', 'data-link': '' }, icon('alert', 14), 'Catalogue des messages')),
   ], { config }));
   return () => {};

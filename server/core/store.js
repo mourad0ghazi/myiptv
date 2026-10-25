@@ -12,6 +12,7 @@ const FILES = {
   sources: 'sources.json',
   health: 'health.json',
   learning: 'learning.json',
+  reports: 'reports.json',
   audit: 'audit.log',
 };
 
@@ -46,6 +47,7 @@ export class Store {
     this.settings = { ...DEFAULTS };
     this.sources = [];
     this.learning = { rules: {}, learned: {}, learnedStats: null, corrections: [], updatedAt: null };
+    this.reports = { counters: {}, reports: [], lastRef: 0, updatedAt: null };
     this.security = { passwordHash: '', salt: '', iterations: 16384, defaultPassword: true, updatedAt: null };
     this.notices = [];
     this.loadedAt = null;
@@ -89,6 +91,7 @@ export class Store {
     await this.saveSources('init');
     await this.saveHealthSnapshot();
     await this.saveLearning('init');
+    await this.loadReports();
     return this;
   }
 
@@ -167,6 +170,32 @@ export class Store {
         updatedAt: data.updatedAt || null,
       };
     }
+  }
+
+  async loadReports() {
+    const { data, corrupt } = await this.readJson(this.file('reports'), null);
+    if (corrupt || !data || typeof data !== 'object') return;
+    this.reports = {
+      counters: data.counters && typeof data.counters === 'object' ? data.counters : {},
+      reports: Array.isArray(data.reports) ? data.reports.slice(-400) : [],
+      lastRef: Number(data.lastRef) || 0,
+      updatedAt: data.updatedAt || null,
+    };
+  }
+
+  async saveReports(reason = 'reports') {
+    return this.enqueue(async () => {
+      const updatedAt = new Date().toISOString();
+      this.reports.updatedAt = updatedAt;
+      await this.atomicWriteJson(this.file('reports'), {
+        version: DATA_VERSION,
+        updatedAt,
+        reason,
+        counters: this.reports.counters,
+        reports: this.reports.reports.slice(-400),
+        lastRef: this.reports.lastRef,
+      });
+    });
   }
 
   async loadHealthSnapshot() {

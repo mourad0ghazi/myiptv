@@ -23,6 +23,8 @@ import { Router } from './http/router.js';
 import { sendError, sendSecurityHeaders, sendText } from './http/respond.js';
 import { resolvePublic, serveStatic } from './http/static.js';
 import { registerPublicRoutes } from './api/public.js';
+import { registerReportRoutes } from './api/report.js';
+import { registerConsoleRoutes } from './api/console.js';
 import { registerAdminRoutes } from './api/admin.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -135,6 +137,7 @@ export async function createApp() {
     index: new SearchIndex(),
     sessions: new Sessions(),
     loginGuard: new LoginGuard(),
+    reportGuard: new LoginGuard({ max: LIMITS.reportsPerHour, windowMs: 3600_000 }),
     probeLimiter: new ProbeLimiter(),
     epg: new EpgCache({ publicDir: PUBLIC_DIR }),
     ingest: null,
@@ -176,6 +179,8 @@ export async function createApp() {
   const router = new Router({ sessions: app.sessions, logger });
   registerPublicRoutes(router, app);
   registerAdminRoutes(router, app);
+  registerReportRoutes(router, app);
+  registerConsoleRoutes(router, app);
   app.alerts = ({ renderCards = null } = {}) => computeAlerts(store, {
     now: Date.now(),
     logger,

@@ -18,6 +18,41 @@ une chaîne étiquetée « géo-bloquée » qui répond est débloquée ; un ver
 écrasé. Après la sonde, reconstruire la démonstration (`npm run build:static`) pour publier les
 états mesurés.
 
+## Signalements et seuil de retrait (nouveau en 3.7.0)
+
+Le formulaire public `/signaler` n'efface rien. Il enregistre, et le propriétaire décide.
+
+| Événement | Effet | Où le voir |
+|---|---|---|
+| Signalement reçu | compteur +1, référence `SIG-…` rendue au visiteur | Administration, onglet Signalements |
+| Même visiteur, même chaîne, moins de 24 h | doublon reconnu, compteur inchangé | journal des signalements |
+| Plus de 5 envois par heure et par adresse | `429`, message « Trop de tentatives » | rien à faire |
+| Confirmation par le propriétaire | chaîne masquée (`manualOverride = retrait-signalement`) | audit `report.confirm` |
+| Rejet | chaîne intacte, motif conservé | audit `report.reject` |
+| **1000ᵉ signalement** | **chaîne supprimée automatiquement** | audit `report.auto-delete` |
+
+Seuil et contact se règlent au démarrage, sans toucher aux 17 réglages :
+
+```bash
+STREAMTV_SEUIL_SIGNALEMENTS=1000 STREAMTV_CONTACT=contact@mon-domaine.fr npm start
+```
+
+Après une suppression automatique, deux gestes possibles depuis l'onglet Catalogue :
+**Restaurer** la chaîne (elle revient en ligne), ou **remettre le compteur à zéro** dans
+l'onglet Signalements si le signalement était abusif. Les deux sont journalisés.
+
+Vérification rapide en trois commandes :
+
+```bash
+curl -s -X POST localhost:3000/api/report -H 'content-type: application/json' \
+  -d '{"name":"Nom de la chaîne","reason":"droits"}'
+curl -s localhost:3000/api/report/SIG-00001
+curl -s localhost:3000/api/admin/reports -H "Authorization: Bearer $TOKEN"
+```
+
+Les données vivent dans `data/reports.json`. Aucune adresse IP en clair : seule une empreinte
+tronquée est conservée, pour dédoublonner.
+
 ## 0. Fiche d’identité du service
 
 | Élément | Valeur |

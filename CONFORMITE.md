@@ -414,6 +414,25 @@ sans le moindre test — dont `MBC Bollywood`, qui répond parfaitement depuis u
 | La mesure lève un blocage | une chaîne étiquetée « geo » qui répond est rendue à la lecture | `tests/probe.test.js` : étiquette contredite → `blocked: false` |
 | Une décision humaine reste souveraine | `manualOverride` n'est jamais écrasé par la sonde | `tests/probe.test.js` : verrou manuel conservé |
 
+## 4.10 Signalements et console (3.7.0)
+
+Le contrat d'origine ne prévoyait ni signalement public ni console d'inventaire. La 3.7.0
+ajoute les deux, sans modifier les 17 réglages ni les invariants de suppression.
+
+| Point | Règle appliquée | Preuve |
+|---|---|---|
+| Un signalement n'applique rien | `recordReport` incrémente puis rend une référence ; seule la décision humaine masque | `tests/reports.test.js` |
+| Dédoublonnage | une empreinte par visiteur et par chaîne, fenêtre de 24 h | `tests/reports.test.js` |
+| Débit | cinq envois par heure et par adresse, `ERR-17` au-delà | `tests/reports.test.js` |
+| Seuil | suppression de la chaîne au 1000ᵉ signalement, réversible et journalisée | `tests/reports.test.js` |
+| Traçabilité | `report.create`, `report.confirm`, `report.reject`, `report.auto-delete`, `report.reset` | `audit.log` |
+| Vie privée | aucune adresse IP en clair dans `data/reports.json` | `hashIp` |
+| Console | inventaire en lecture seule, aucune écriture hors routes du catalogue | `server/api/console.js` |
+| Session | toutes les routes `/api/admin/*` de la console exigent un jeton | `tests/reports.test.js` |
+
+Les textes qui promettaient un masquage immédiat à réception ont été corrigés : l'ancienne
+formulation décrivait un mécanisme qui n'existait pas, vers une adresse de domaine réservé.
+
 ## 5. Matrice des routes
 
 Les 37 routes du cahier des charges sont toutes servies ; quatre routes utilitaires s’y ajoutent

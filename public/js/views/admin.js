@@ -1,4 +1,4 @@
-// public/js/views/admin.js — écran 7 : console d'administration, cinq onglets.
+// public/js/views/admin.js — écran 7 : console d'administration, sept onglets.
 // La coquille ne rend que les compteurs et les onglets ; chaque onglet vit dans views/admin/.
 
 import { Admin, auth } from '../api.js';
@@ -11,9 +11,13 @@ import { renderImport } from './admin/import.js';
 import { renderSettings } from './admin/settings.js';
 import { renderHealth } from './admin/health.js';
 import { renderBackups } from './admin/backups.js';
+import { renderLiens } from './admin/liens.js';
+import { renderSignalements } from './admin/signalements.js';
 
 const TABS = [
   ['catalogue', 'Catalogue'],
+  ['liens', 'Chaînes et liens'],
+  ['signalements', 'Signalements'],
   ['import', 'Importation'],
   ['reglages', 'Réglages'],
   ['sante', 'Santé'],
@@ -101,6 +105,8 @@ export async function renderAdmin(container, ctx) {
     panel.replaceChildren(spinner('Chargement…'));
     try {
       if (state.tab === 'catalogue') await renderCatalogue(panel, ctx, state, { refreshStats, stats: () => stats });
+      else if (state.tab === 'liens') await renderLiens(panel, ctx, state, { stats: () => stats });
+      else if (state.tab === 'signalements') await renderSignalements(panel, ctx, state, { stats: () => stats });
       else if (state.tab === 'import') await renderImport(panel, ctx, state, { refreshStats });
       else if (state.tab === 'reglages') await renderSettings(panel, ctx, { refreshStats });
       else if (state.tab === 'sante') await renderHealth(panel, ctx, state, { refreshStats, stats: () => stats });
