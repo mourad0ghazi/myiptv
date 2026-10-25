@@ -1,0 +1,17 @@
+# Données d’exploitation : jamais versionnées (elles contiennent le secret d’administration).
+data/*.json
+data/*.json.*
+data/audit.log
+data/logs/
+data/backups/
+data/channels.corrupt-*.json
+
+# Catalogue de démonstration : seule la source brute est versionnée.
+!data/seed/
+
+# Divers
+node_modules/
+*.log
+.DS_Store
+coverage/
+.tmp/

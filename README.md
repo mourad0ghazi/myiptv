@@ -1,1 +1,355 @@
-# myiptv
+# StreamTV v3.0.0
+
+> Toute ta télévision, dans un seul endroit.
+
+Catalogue IPTV, guide de zapping, lecteur vidéo et console d’administration.
+**Node.js 20 LTS, zéro dépendance d’exécution, aucun `npm install`, aucune compilation.**
+Le site s’installe en copiant le dossier et démarre avec `node server/index.js`.
+
+Ce dépôt contient le code exécutable décrit par le cahier des charges *StreamTV v2* :
+serveur HTTP natif, stockage JSON atomique, moteur de classement (parseur → normalisation →
+déduplication → catégorisation → confiance), client HTML/CSS/JS en modules ES, PWA, tests
+`node:test`, scripts d’exploitation et dossier de recette.
+
+---
+
+## 1. Démarrage en trois commandes
+
+```bash
+node --version                  # Node.js 20 ou plus (testé sur 20 LTS et 22)
+node server/index.js            # http://localhost:3000
+```
+
+Au premier lancement, le serveur :
+
+1. crée `data/` (`channels.json`, `settings.json`, `sources.json`, `health.json`, `learning.json`,
+   `ingestions.json`, `audit.log`, `logs/`, `backups/`) ;
+2. importe `data/seed/seed.m3u` (1 650 entrées brutes, 1 475 chaînes après déduplication) ;
+3. crée une sauvegarde initiale avec empreinte SHA-256 ;
+4. construit l’index de recherche et affiche :
+
+```text
+[2026-10-25T11:49:37.138Z] catalogue de démonstration créé : 1475 chaînes
+[2026-10-25T11:49:37.215Z] StreamTV v3.0.0 — 1475 chaînes, 41 routes
+[2026-10-25T11:49:37.215Z] écoute sur http://0.0.0.0:3000
+```
+
+Pour repartir d’un catalogue vierge : arrêter le serveur, supprimer le contenu de `data/`
+**sauf** `data/seed/`, relancer.
+
+### Variables d’environnement
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `PORT` | `3000` | port d’écoute |
+| `HOST` | `0.0.0.0` | interface d’écoute |
+| `DATA_DIR` | `./data` | dossier des données (utile pour les tests et les sauvegardes) |
+| `ADMIN_PASSWORD` | `admin` | mot de passe initial ; à changer avant toute mise en ligne |
+| `HTTPS` | vide | force les en-têtes HSTS et considère la requête comme sécurisée |
+| `STREAMTV_ACTOR` | `cli` | auteur inscrit dans le journal d’audit par `scripts/ingest.js` |
+
+En production, `ADMIN_PASSWORD` est obligatoire : sans lui, le serveur conserve le mot de passe
+de démonstration et un bandeau d’alerte reste affiché dans l’interface.
+
+### Première connexion
+
+- Adresse : `/connexion` (ou `/admin`, qui redirige vers la connexion).
+- Mot de passe par défaut : `admin` — la console affiche un bandeau rouge tant qu’il n’a pas changé.
+- Politique : au moins 12 caractères, une lettre et un chiffre, hors liste noire, différent de
+  l’actuel. Le changement ferme **toutes** les sessions ouvertes.
+
+---
+
+## 2. Ce que fait le site
+
+| Écran | Route | Contenu |
+|---|---|---|
+| Accueil | `/` | bandeau de vedette, 18 filtres de catégorie, recherche, catalogue paginé (≤ 60 par réponse, ≤ 120 cartes dans le DOM) |
+| Recherche | `/recherche?q=` | même contrat que l’accueil, insensible aux accents, apostrophes et casse |
+| Guide | `/guide` | zapping numéroté, saut direct au numéro, filtres, une page = 60 lignes |
+| Fiche chaîne | `/chaine/:id` | métadonnées complètes, raisons du classement, variantes, chaînes liées, lecture |
+| Favoris & historique | `/favoris` | stockage local uniquement, aucune requête serveur |
+| Connexion | `/connexion` | mot de passe unique, verrouillage après 8 échecs |
+| Console | `/admin` | 5 onglets : Catalogue, Importation, Réglages, Santé, Sauvegardes |
+| Pages légales | `/mentions-legales`, `/confidentialite`, `/signaler`, `/aide`, `/erreurs` | cadre juridique, procédure de retrait, raccourcis, catalogue des messages |
+
+Le lecteur est une couche plein écran (dialogue modal) : 7 états
+(`IDLE`, `PREPARING`, `PLAYING`, `PAUSED`, `BUFFERING`, `RETRYING`, `ERROR`), **une seule**
+reprise automatique, et 12 mires distinctes `P-01`…`P-12` dont les textes sont figés dans
+`public/js/copy.js`.
+
+### Raccourcis clavier
+
+| Touche | Action |
+|---|---|
+| `/` | aller à la recherche |
+| `?` | aide des raccourcis |
+| `Échap` | fermer la couche active (modale, lecteur, aide) |
+| `←` `→` `↑` `↓` | zapping dans le lecteur, navigation dans les listes |
+| `Espace` / `K` | lecture ou pause |
+| `M` | couper le son |
+| `F` | plein écran |
+| `0`–`9` | saisie directe d’un numéro de chaîne (900 ms) |
+
+Aucun raccourci ne se déclenche dans un champ de saisie, une zone éditable ou un lecteur de
+contenu (garde-fou BUG-03, testé).
+
+---
+
+## 3. Architecture
+
+```text
+server/
+  index.js               point d’entrée : HTTP, statique, API, repli SPA, tâches 03:00
+  core/
+    constants.js         18 catégories, 17 réglages, limites, lexiques
+    text.js              normalisation URL/nom, pays, langue, qualité, teinte
+    m3u.js               F-01 — automate M3U tolérant (ne lève jamais)
+    dedupe.js            F-09 — trois passes, fusion des variantes (F-21)
+    classify.js          F-10/F-11 — catégorisation et confiance justifiée
+    channels.js          contrat de chaîne, assertions A1–A10, projections publique/admin
+    search.js            F-17/F-18 — index accent-insensible, tri total, pagination
+    settings.js          validation des 17 réglages, schéma pour l’interface
+    store.js             persistance JSON atomique (tmp → fsync → rename), sauvegardes, audit
+    auth.js              scrypt N=16384 r=8 p=1, jetons 48 hex, TTL glissant 12 h
+    health.js            F-16 — sonde bornée (8 en parallèle, 6 s, 300/min)
+    ingest.js            F-20 — aperçu sans écriture, verrou global, commit, annulation
+    exports.js           exports M3U et JSON
+    engine.js            mesure du moteur (débit, précision, accord de genre)
+  http/                  routeur (7 étapes de contrôle), réponses, statiques
+  api/                   routes publiques et protégées
+public/
+  index.html             coquille unique, coquille accessible, PWA
+  css/app.css            feuille unique, jetons du §7.1, 4 points de rupture
+  js/app.js              amorçage, en-tête, bannières, routeur, service worker
+  js/views/              home, guide, channel, favorites, login, legal, error, admin/*
+  js/player.js           machine à états, 12 mires, HLS natif puis hls.js local
+  js/copy.js             copy deck : toutes les phrases visibles
+  js/ui.js               h(), icônes SVG, modale avec piège de focus, toasts
+  sw.js, offline.html    PWA : coquille en cache, API jamais mise en cache
+  vendor/hls.min.js      hls.js 1.5.17 épinglé, Apache-2.0, servi localement
+scripts/                 ingest.js, measure-tagger.js, backup.js, verify.js
+tests/                   92 tests node:test (core, api, sécurité, client, conformité)
+docs/PV-RECETTE.md       procès-verbal de recette
+```
+
+Aucun fichier source ne dépasse **900 lignes** (vérifié par test). Aucun marqueur de travail
+(`TO`+`DO`, `FIX`+`ME`) et aucun `console.log` en production : la règle est contrôlée par
+`tests/conformite.test.js`. Les modules du navigateur n’importent que des
+fichiers relatifs : pas de bundler, pas de CDN.
+
+---
+
+## 4. API HTTP (41 routes)
+
+Enveloppe d’erreur unique : `{ "error": "phrase française", "code": "ERR-xx", "requestId": "…", "field": "…" }`.
+L’ordre de contrôle est fixe : méthode (405) → taille (413) → type (415) → authentification
+(401) → validation (400/422) → conflit ou verrou (409/423) → exécution (2xx/500).
+
+### Public
+
+| Route | Rôle |
+|---|---|
+| `GET /healthz` | état du service (200) ou dégradé (503) |
+| `GET /api/config` | marque, accent, catégories, compteurs, vedette, bandeaux |
+| `GET /api/channels` | liste paginée : `page`, `pageSize` (1–60), `sort`, `category`, `country`, `language`, `quality`, `health`, `featured` |
+| `GET /api/channels/:id` | fiche complète (36 champs utiles + `playable`) |
+| `GET /api/channels/search?q=` | recherche dédiée, même contrat que la liste |
+| `GET /api/categories` | 18 catégories et leurs compteurs |
+| `GET /api/epg` | grille si `epgUrl` est configuré, sinon message explicite |
+| `GET /api/legal` | mentions, hébergement, sources, procédure de retrait |
+| `GET /api/version` | version, version de spécification, empreintes de build |
+| `GET /api/errors/catalog` | les 20 codes et leurs textes |
+| `GET /api/session` | session courante (`signedIn`, échéance, sessions ouvertes) |
+| `POST /api/login` | jeton Bearer (8 tentatives / 15 min / IP) |
+| `POST /api/logout` | révoque le jeton présenté |
+
+### Administration (Bearer obligatoire)
+
+| Route | Rôle |
+|---|---|
+| `GET /api/admin/channels` | catalogue complet (masquées et supprimées incluses) |
+| `POST /api/admin/channels` | création validée |
+| `GET/PATCH/DELETE /api/admin/channels/:id` | lecture, modification, suppression douce |
+| `POST /api/admin/channels/:id/restore` | annulation de suppression |
+| `POST /api/admin/channels/bulk` | 10 actions groupées, 500 identifiants au plus |
+| `POST /api/admin/channels/:id/tag/preview` | proposition de catégorie, sans écriture |
+| `POST /api/admin/channels/:id/tag` | décision manuelle (`manualOverride`) |
+| `POST /api/admin/import/preview` | analyse d’une liste (URL ou texte), aucune écriture |
+| `POST /api/admin/import/commit` | application sérialisée du travail |
+| `GET /api/admin/import/:id/status` | état d’une importation |
+| `POST /api/admin/import/:id/rollback` | annulation exacte |
+| `GET /api/admin/ingestions` | historique des importations |
+| `GET/PATCH /api/admin/settings` | 17 réglages validés ensemble |
+| `POST /api/admin/settings/reset` | retour aux valeurs par défaut |
+| `GET/PATCH /api/admin/rules` | règles de mots-clés éditables |
+| `POST /api/admin/autotag-all` | reclassement global (décisions manuelles préservées) |
+| `GET /api/admin/stats` | compteurs, santé, stockage, moteur |
+| `POST /api/admin/health/probe` | sonde bornée (1–100 chaînes) |
+| `GET /api/admin/export.m3u` | export lisible par VLC |
+| `GET /api/admin/export.json` | export complet réimportable |
+| `POST /api/admin/backup` | sauvegarde immédiate + empreinte |
+| `POST /api/admin/restore` | restauration (confirmation `RESTAURER`) |
+| `POST /api/admin/password` | changement de mot de passe, révocation globale |
+| `DELETE /api/admin/sessions` | fermeture de toutes les sessions |
+
+### Exemples
+
+```bash
+# état du service
+curl -s localhost:3000/healthz
+
+# trois chaînes de la catégorie sport
+curl -s 'localhost:3000/api/channels?category=sport&pageSize=3&sort=number' | head -c 400
+
+# connexion puis sauvegarde
+TOKEN=$(curl -s -X POST localhost:3000/api/login -H 'Content-Type: application/json' \
+  -d '{"password":"admin"}' | sed -E 's/.*"token":"([a-f0-9]+)".*/\1/')
+curl -s -X POST localhost:3000/api/admin/backup -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}'
+```
+
+---
+
+## 5. Données
+
+| Fichier | Contenu |
+|---|---|
+| `data/channels.json` | catalogue complet (chaînes actives, masquées, supprimées) |
+| `data/settings.json` | 17 réglages + secret d’administration (haché, jamais en clair) |
+| `data/sources.json` | sources connues et date de dernière ingestion |
+| `data/health.json` | dernier relevé de santé |
+| `data/learning.json` | règles personnalisées et corrections |
+| `data/ingestions.json` | historique des importations et journaux de retour arrière |
+| `data/audit.log` | journal JSONL, secrets masqués |
+| `data/backups/` | `catalogue-AAAAMMJJ-HHMMSS[-hebdo].json` + `.sha256` |
+
+Chaque écriture suit la séquence **fichier temporaire → `fsync` → `rename`** : une coupure
+brutale laisse l’ancien fichier intact, jamais un fichier tronqué. Un `channels.json` illisible
+est mis en quarantaine (`channels.corrupt-*.json`) et la dernière sauvegarde valide est restaurée.
+
+Contrat d’une chaîne : 36 champs obligatoires (`id` = sha1 de l’URL normalisée tronqué à 12,
+`number`, `name`, `rawName`, `url`, `urlNormalized`, `logo`, `group`, `groupKind`, `tvgId`,
+`tvgName`, `category`, `categoryLabel`, `categorySource`, `confidence`, `reasons[]`, `quality`,
+`language`, `country`, `tags[]`, `hue`, `visible`, `blocked`, `blockedReason`,
+`health{status,checkedAt,latencyMs,cors,httpStatus,consecutiveFailures}`, `variants[]`, `sourceId`,
+`licenseNote`, `manualOverride`, `featured`, `notes`, `createdAt`, `updatedAt`,
+`lastSeenInSourceAt`, `epgId`, `position`).
+
+---
+
+## 6. Scripts d’exploitation
+
+```bash
+node scripts/ingest.js --file liste.m3u            # aperçu, aucune écriture
+node scripts/ingest.js --file liste.m3u --commit   # application
+node scripts/ingest.js --url https://…/liste.m3u   # téléchargement puis analyse
+node scripts/measure-tagger.js                     # mesure du moteur (cibles §2.4)
+node scripts/backup.js                             # sauvegarde immédiate
+node scripts/backup.js --list                      # inventaire + vérification des empreintes
+node scripts/verify.js --base http://127.0.0.1:3000 # 31 contrôles de santé
+```
+
+`verify.js` sort en code 0 si tout passe, 1 en cas d’erreur réelle. Le mot de passe par défaut
+est signalé comme **avertissement** (attendu en démonstration, à corriger avant mise en ligne).
+
+---
+
+## 7. Tests
+
+```bash
+npm test            # 5 suites, 113 tests, aucune dépendance
+```
+
+| Suite | Ce qu’elle prouve |
+|---|---|
+| `tests/core.test.js` | parseur (BOM, CRLF, arabe, virgules, `#EXTGRP`, `//host`, HLS refusé), déduplication, catégorisation, confiance, recherche, pagination, réglages, fixtures réelles de 2 000 lignes |
+| `tests/api.test.js` | 41 routes, codes d’erreur, pagination, compression, en-têtes, importation complète (aperçu → commit → annulation), sauvegarde/restauration, mot de passe |
+| `tests/security.test.js` | scrypt, jetons, TTL, plafond de sessions, force brute, audit sans secret, CSP, injection, traversée de chemin, empreinte de sauvegarde |
+| `tests/client.test.js` | jetons CSS exacts, 12 mires distinctes, 7 états du lecteur, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, absence de script inline |
+| `tests/conformite.test.js` | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
+
+Les tests démarrent chacun leur propre serveur sur un dossier temporaire : le catalogue réel n’est
+jamais modifié.
+
+---
+
+## 8. Mesures (25 octobre 2026, Node 22.22.3)
+
+| Mesure | Résultat | Cible |
+|---|---|---|
+| Démarrage à froid (catalogue de 1 475 chaînes) | 0,69 s | < 5 s |
+| Débit du moteur de classement | 33 210 chaînes/s | ≥ 5 000 |
+| Précision sur 41 étiquettes de référence | 97,6 % | ≥ 90 % |
+| Accord sur les groupes de genre | 100 % | ≥ 95 % |
+| Confiance moyenne | 0,849 | ≥ 0,70 |
+| Part « autre » | 0 % | 0 % |
+| `GET /api/channels?pageSize=48` | 17 588 o → 2 512 o gzip → 2 173 o brotli | ≤ 60 Ko gzip |
+| `GET /` | 5 434 o → 1 986 o gzip | — |
+| Premier chargement complet (hors hls.js) | 179 Ko brut, 54 Ko gzip | ≤ 180 Ko |
+| Cartes dans le DOM | 48 à l’accueil, 120 maximum | ≤ 120 |
+| Temps de réponse local `GET /` | 1,4 ms | ≤ 2,5 s au premier rendu |
+
+Reproduire : `node scripts/measure-tagger.js` et `node scripts/verify.js --base http://127.0.0.1:3000`.
+
+---
+
+## 9. Sécurité et vie privée
+
+- **Mots de passe** : `scrypt` (N = 16 384, r = 8, p = 1), sel de 16 octets, comparaison à temps
+  constant, liste noire des mots courants.
+- **Sessions** : jeton de 48 caractères hexadécimaux, TTL glissant de 12 h, 5 sessions au plus,
+  révocation globale au changement de mot de passe.
+- **Anti-force brute** : 8 échecs par IP sur 15 minutes, puis `429 ERR-17` avec `Retry-After`.
+- **En-têtes** : CSP complète (`script-src 'self'`, `object-src 'none'`, `frame-ancestors 'self'`),
+  HSTS en HTTPS, `nosniff`, `SAMEORIGIN`, `Permissions-Policy` fermée, `Referrer-Policy`.
+- **Journal d’audit** : JSONL, un événement par ligne, jetons et empreintes jamais journalisés.
+- **Vie privée** : favoris, historique, volume et recherches récentes restent dans le
+  `localStorage` du navigateur ; aucune requête ne les envoie au serveur.
+- **Sauvegardes** : SHA-256 vérifié avant restauration, rétention 7 quotidiennes + 4 hebdomadaires.
+
+---
+
+## 10. Périmètre livré et limites connues
+
+**Livré et testé** : les phases 1 et 2 du cahier des charges (socle complet + durcissement),
+hors éléments explicitement repoussés ci-dessous.
+
+**Hors périmètre de cette version** (documenté dans `CONFORMITE.md`, jamais simulé) :
+
+- comptes multi-utilisateurs et contrôle parental par profil (phase 3) ;
+- applications Android, iOS et Android TV (phase 3) ;
+- migration PostgreSQL (`server/core/migrate.js` non livré ; le catalogue de démonstration pèse
+  1,7 Mo, très loin du seuil de 30 000 chaînes) ;
+- guide des programmes XMLTV complet (l’API répond `enabled: false` avec un message explicite ;
+  l’ingestion XMLTV n’est pas branchée) ;
+- abonnements, partenaires, CDN, analytique (phase 4).
+
+**Limites assumées** :
+
+- la lecture dépend de la source : un flux HTTP sur un site HTTPS est bloqué par le navigateur
+  (mire `P-01`), un flux exigeant un `User-Agent` ne peut pas être lu (mire `P-02`) ;
+- le catalogue de démonstration provient d’un extrait de 1 650 entrées, pas des 12 181 chaînes de
+  référence du cahier des charges : les critères AC-006, AC-015, AC-017 sont donc *partiels* ;
+- aucune donnée n’est persistée côté client en dehors du stockage local du navigateur.
+
+---
+
+## 11. Documentation
+
+| Fichier | Contenu |
+|---|---|
+| `README.md` | ce document : démarrage, architecture, API, mesures |
+| `RUNBOOK.md` | exploitation : sauvegardes, restauration, incidents, montée de version |
+| `CONFORMITE.md` | les 118 critères, les 22 bugs à ne pas reproduire, la matrice des routes |
+| `CHANGELOG.md` | historique des versions |
+| `SOURCES.md` | licences des composants et des données |
+| `docs/PV-RECETTE.md` | procès-verbal de recette signé, avec les preuves |
+
+---
+
+## 12. Licence
+
+Code : usage interne, tous droits réservés (`UNLICENSED`).
+`public/vendor/hls.min.js` : Apache-2.0 (voir `public/vendor/hls.js.LICENSE`).
+Catalogue de démonstration : données publiques iptv-org (CC0), voir `SOURCES.md`.
+StreamTV n’héberge aucun contenu vidéo : les flux restent fournis par leurs ayants droit.
