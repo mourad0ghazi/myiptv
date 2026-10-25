@@ -1,4 +1,8 @@
-// public/js/views/error-codes.js — les 20 codes d'erreur opposables (§6.3), copie exacte du serveur.
+// public/js/views/error-codes.js — les 20 codes opposables (§6.3) et les 6 familles du §9.
+// Les textes du §9 ne sont pas recopiés ici : ils viennent de /api/errors/catalog, seule source.
+// Ce module ne fait que décrire les familles (ordre, libellé, promesse faite au lecteur).
+
+import { api } from '../api.js';
 
 export const ERRORS_CODES = [
   { code: 'ERR-01', status: 400, message: 'Le formulaire est incomplet ou mal formé. Réessayez.' },
@@ -22,3 +26,64 @@ export const ERRORS_CODES = [
   { code: 'ERR-19', status: 503, message: 'Le service est momentanément indisponible. Retour prévu : {heure}.' },
   { code: 'ERR-20', status: 504, message: 'La source n’a pas répondu à temps. Réessayez plus tard.' },
 ];
+
+/** Ce que chaque famille promet au lecteur : à qui elle parle, et ce qu'elle évite. */
+export const FAMILY_META = [
+  {
+    id: 'serveur',
+    label: 'Serveur et API',
+    promise: 'Ce que le service répond quand une demande ne peut pas aboutir : le message dit quoi faire, jamais comment le serveur est construit.',
+  },
+  {
+    id: 'lecteur',
+    label: 'Lecture vidéo',
+    promise: 'Les douze mires du lecteur. Chacune explique la cause réelle — HTTP bloqué, source fermée, identifiant exigé — et propose une action.',
+  },
+  {
+    id: 'administration',
+    label: 'Administration et ingestion',
+    promise: 'Importations, source muette, verrou déjà pris, sauvegarde illisible : l’administrateur sait toujours si le catalogue a changé.',
+  },
+  {
+    id: 'silencieuse',
+    label: 'Erreurs silencieuses',
+    promise: 'Ce qui n’arrive jamais jusqu’à l’écran mais doit apparaître dans le journal : valeurs négatives, cache trompeur, trace technique exposée.',
+  },
+  {
+    id: 'rendu',
+    label: 'Rendu et interface',
+    promise: 'Les défauts visuels qui rendent le site inutilisable : texte illisible, icône cassée, douze mille cartes, focus invisible.',
+  },
+  {
+    id: 'données',
+    label: 'Données',
+    promise: 'Les défauts de catalogue : doublons, catégorie « autre » majoritaire, nom pollué par la qualité, fichier corrompu après arrêt brutal.',
+  },
+];
+
+/** Charge le catalogue (§9) — la seule copie des 82 textes vit sur le serveur. */
+export async function loadMessageCatalog() {
+  const catalog = await api('/api/errors/catalog');
+  const families = Array.isArray(catalog.families) ? catalog.families : [];
+  return {
+    total: Number(catalog.total) || 0,
+    families: FAMILY_META.map((meta) => {
+      const family = families.find((item) => item.id === meta.id);
+      return {
+        ...meta,
+        count: family?.messages?.length || 0,
+        messages: (family?.messages || []).map((entry) => ({
+          id: entry.id,
+          text: entry.text,
+          cause: entry.cause || '',
+          kind: entry.kind || '',
+        })),
+      };
+    }),
+  };
+}
+
+/** Compte les messages réellement chargés (utilisé par les tests et le rendu). */
+export function catalogCount(catalog) {
+  return (catalog?.families || []).reduce((total, family) => total + family.messages.length, 0);
+}

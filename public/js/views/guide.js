@@ -11,6 +11,39 @@ import { prefs } from '../prefs.js';
 
 const ROWS_PER_PAGE = 60;
 
+/** Heure locale courte : « 20:30 ». */
+function clock(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * F-23 — complète la liste avec le programme en cours, sans bloquer l'affichage.
+ * Si le guide est absent, rien ne change : aucune ligne n'est perdue, aucun message d'erreur n'apparaît.
+ */
+async function paintGuide(host, listHost) {
+  let payload = null;
+  try {
+    payload = await api('/api/epg?hours=8');
+  } catch {
+    return;
+  }
+  if (!payload?.enabled || !payload.valid || !Array.isArray(payload.grid)) return;
+  for (const row of payload.grid) {
+    const node = listHost.querySelector(`[data-epg-channel="${row.id}"]`);
+    if (!node || !row.programmes.length) continue;
+    const current = row.programmes.find((programme) => programme.live) || row.programmes[0];
+    const label = current.live
+      ? `En direct : ${current.title}`
+      : `À ${clock(current.start)} : ${current.title}`;
+    node.textContent = label;
+    node.hidden = false;
+    node.title = current.description || label;
+  }
+  if (host) host.dataset.epg = 'ready';
+}
+
 function guideRow(channel, { onPlay, onOpen }) {
   const row = h('div', { class: 'guide-row', dataset: { channelId: channel.id } },
     h('span', { class: 'guide-num tabular', text: String(channel.number).padStart(3, '0') }),
@@ -20,7 +53,8 @@ function guideRow(channel, { onPlay, onOpen }) {
       h('span', { class: 'card-sub' },
         channel.categoryLabel,
         channel.country ? ` · ${channel.country}` : '',
-        channel.quality !== 'AUTO' ? ` · ${channel.quality}` : '')),
+        channel.quality !== 'AUTO' ? ` · ${channel.quality}` : ''),
+      h('span', { class: 'guide-now', dataset: { epgChannel: channel.id }, hidden: true })),
     h('span', { class: 'card-sub' },
       h('span', { class: 'health-dot', dataset: { state: channel.health }, 'aria-hidden': 'true' }),
       ` ${healthLabel(channel.health)}`),
@@ -147,6 +181,7 @@ export async function renderGuide(container, ctx) {
           onClick: () => { state.page += 1; load(); },
         }, 'Suivant', icon('chevron', 15)));
       listHost.replaceChildren(rows, pager);
+      void paintGuide(view, listHost);
     } catch (error) {
       listHost.replaceChildren(emptyState({
         iconName: 'wifiOff',

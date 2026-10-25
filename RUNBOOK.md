@@ -1,4 +1,4 @@
-# RUNBOOK — exploitation de StreamTV v3.0.0
+# RUNBOOK — exploitation de StreamTV v3.1.0
 
 Ce document décrit l’exploitation courante, les gestes d’urgence et les procédures de reprise.
 Il est écrit pour être suivi sans connaissance préalable du code : chaque procédure indique ce
@@ -10,7 +10,7 @@ qu’elle fait, quand l’appliquer, les commandes exactes et le résultat atten
 
 | Élément | Valeur |
 |---|---|
-| Application | StreamTV 3.0.0 (conformité *StreamTV v2*) |
+| Application | StreamTV 3.1.0 (conformité *StreamTV v2*) |
 | Runtime | Node.js 20 LTS ou plus, aucun paquet npm |
 | Écoute | `0.0.0.0:3000` (modifiable par `PORT` / `HOST`) |
 | Données | `./data` (modifiable par `DATA_DIR`) |
@@ -34,7 +34,7 @@ PORT=3000 ADMIN_PASSWORD='…' node server/index.js
 Résultat attendu dans les 5 secondes :
 
 ```text
-StreamTV v3.0.0 — 1475 chaînes, 41 routes
+StreamTV v3.1.0 — 1475 chaînes, 41 routes
 écoute sur http://0.0.0.0:3000
 ```
 
@@ -124,6 +124,13 @@ Le secret n’est **jamais** versionné (AC-004).
 | taille du catalogue | `stats.storage.sizeTotal` | > 40 Mo | §6 (bascule PostgreSQL) |
 | durée d’importation | réponse de `import/commit` | > 90 s (alerte) / > 120 s (échec) | §5.2 |
 | cartes rendues | interface | > 120 | §5.9 |
+| catégorie « autre » | `stats.alerts` | > 15 % du catalogue | §5.5 |
+| guide des programmes | `GET /api/epg` (`valid: false`) | 3 échecs consécutifs | §5.10 |
+
+Les douze seuils ci-dessus sont calculés par le serveur : `GET /api/admin/stats` renvoie un bloc
+`alerts` avec, pour chaque alerte déclenchée, `value` (mesure), `threshold` (seuil), `severity`
+(`warn` ou `error`) et `action` (que faire). L’onglet **Santé** de la console les affiche dans
+l’ordre de gravité. Une alerte sans action n’est jamais produite.
 
 Sonde externe minimale (toutes les 60 s) :
 
@@ -308,6 +315,26 @@ Toutes les sessions sont fermées immédiatement.
 2. Vérifier la taille des réponses : `curl -s -H 'Accept-Encoding: gzip' -o /dev/null -w '%{size_download}\n' 'localhost:3000/api/channels?pageSize=48'` → attendu ≈ 2 500 octets.
 3. Vider le cache du service worker en publiant une nouvelle version (`CACHE_NAME` dans `sw.js`).
 4. Mesurer le moteur : `node scripts/measure-tagger.js`.
+
+---
+
+### 5.10 Le guide des programmes est vide ou invalide
+
+1. Vérifier la configuration : `curl -s localhost:3000/api/epg` → `enabled` doit être `true` et
+   `valid` doit passer à `true` après le premier téléchargement réussi.
+2. Tester la source hors de l’application :
+   `curl -sI '<epgUrl>'` puis `curl -s '<epgUrl>' | head -c 200` : la réponse doit commencer par
+   `<?xml` et contenir `<tv`.
+3. Si le fichier dépasse 20 Mo ou 200 000 programmes, le segmenter par pays ; l’application
+   refuse volontairement au-delà pour protéger la mémoire.
+4. En cas de fichier corrompu, l’API répond `valid: false` avec le message ER-A15 : le catalogue
+   et la lecture restent normaux, aucune donnée n’est modifiée. Corriger `epgUrl` dans
+   **Configuration**, ou le vider pour désactiver le guide.
+5. Le cache est mémoire (TTL 30 min) : un redémarrage force un nouveau téléchargement.
+6. Pour une démonstration sans fournisseur : `node scripts/make-epg-demo.js` régénère
+   `public/epg-demo.xml`, puis `epgUrl = /epg-demo.xml` dans **Configuration**. Ce fichier est un
+   jeu d’essai explicitement signalé dans chaque programme ; il ne doit pas rester actif en
+   production.
 
 ---
 

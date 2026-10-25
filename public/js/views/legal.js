@@ -3,7 +3,7 @@
 
 import { COPY } from '../copy.js';
 import { h, icon, fmtDate, toast, copyText } from '../ui.js';
-import { ERRORS_CODES } from './error-codes.js';
+import { ERRORS_CODES, catalogCount, loadMessageCatalog } from './error-codes.js';
 
 const CONTACT = 'contact@streamtv.example';
 const UPDATED = '2026-10-25';
@@ -203,12 +203,55 @@ export function renderHelp(container, ctx) {
   return () => {};
 }
 
-export function renderErrors(container, ctx) {
+
+function messageFamilySection(family) {
+  const heading = `${family.label} — ${family.messages.length} message${family.messages.length > 1 ? 's' : ''}`;
+  const rows = family.messages.map((entry) => h('tr', {},
+    h('td', { class: 'tabular' }, entry.id),
+    h('td', { dir: 'auto' }, entry.text),
+    h('td', { class: 'muted', dir: 'auto' }, entry.cause || '—')));
+  return section(heading,
+    paragraph(family.promise, 'muted'),
+    h('div', { class: 'table-wrap' }, h('table', {},
+      h('thead', {}, h('tr', {}, h('th', {}, 'Code'), h('th', {}, 'Message affiché'), h('th', {}, 'Déclencheur'))),
+      h('tbody', {}, rows))));
+}
+
+export async function renderErrors(container, ctx) {
   const mires = Object.values(COPY.player.mires);
+  let catalog = { total: 0, families: [] };
+  let catalogError = '';
+  try {
+    catalog = await loadMessageCatalog();
+  } catch (error) {
+    catalogError = error?.message || 'Le catalogue des messages n’a pas pu être chargé.';
+  }
+  const loaded = catalogCount(catalog);
+  const families = catalog.families.filter((family) => family.messages.length);
+  // L'affichage précède le chargement : la table des 20 codes reste lisible même hors ligne.
   container.replaceChildren(page('Catalogue des messages', 'Transparence', [
     paragraph('Chaque message du site porte un code stable, une cause unique et au moins une action possible. Les textes ci-dessous sont les textes affichés, mot pour mot.'),
     section('Règle d’or',
       paragraph('Aucune erreur n’est affichée sans action concrète : changer de chaîne, réessayer, copier le lien, signaler, ou revenir au catalogue.')),
+    section('Les six familles du catalogue',
+      paragraph('Les erreurs ne sont pas rangées par gravité mais par endroit où elles se produisent : c’est ce qui permet de retrouver la bonne page, puis le bon code.'),
+      h('div', { class: 'table-wrap' }, h('table', {},
+        h('thead', {}, h('tr', {}, h('th', {}, 'Famille'), h('th', {}, 'Préfixe'), h('th', {}, 'Messages'), h('th', {}, 'Ce qu’elle couvre'))),
+        h('tbody', {}, [
+          ...catalog.families.map((family) => h('tr', {},
+            h('td', { dir: 'auto' }, family.label),
+            h('td', { class: 'tabular' }, family.messages[0]?.id?.replace(/\d+$/, '') || '—'),
+            h('td', { class: 'tabular' }, String(family.messages.length)),
+            h('td', { class: 'muted', dir: 'auto' }, family.promise))),
+        ]))),
+      catalogError
+        ? h('div', { class: 'banner', dataset: { tone: 'danger' }, role: 'status' },
+          icon('alert', 16),
+          h('p', { text: `Le détail des messages n’a pas pu être chargé : ${catalogError}` }),
+          h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => renderErrors(container, ctx) }, icon('retry', 14), 'Réessayer'))
+        : h('p', { class: 'count-label', style: { marginTop: '12px' } },
+          `${loaded} message${loaded > 1 ? 's' : ''} documenté${loaded > 1 ? 's' : ''} sur ${catalog.total || loaded}`)),
+    ...families.map(messageFamilySection),
     section('Lecteur — les 12 mires',
       h('div', { class: 'table-wrap' }, h('table', {},
         h('thead', {}, h('tr', {}, h('th', {}, 'Code'), h('th', {}, 'Titre'), h('th', {}, 'Cause'), h('th', {}, 'Action'))),

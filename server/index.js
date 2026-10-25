@@ -12,6 +12,8 @@ import { Store } from './core/store.js';
 import { SearchIndex } from './core/search.js';
 import { Ingest } from './core/ingest.js';
 import { ProbeLimiter, probeChannels } from './core/health.js';
+import { EpgCache } from './core/epg.js';
+import { computeAlerts } from './core/alerts.js';
 import { LoginGuard, Sessions, bootstrapPassword, verifyPassword } from './core/auth.js';
 import { buildChannel, isPublic, sanitizeChannel } from './core/channels.js';
 import { categorizeEntry, compileRules } from './core/classify.js';
@@ -134,6 +136,7 @@ export async function createApp() {
     sessions: new Sessions(),
     loginGuard: new LoginGuard(),
     probeLimiter: new ProbeLimiter(),
+    epg: new EpgCache({ publicDir: PUBLIC_DIR }),
     ingest: null,
     // Le site est servi en HTTPS (derrière le proxy) : les flux http: sont donc bloqués par le navigateur.
     siteProtocol: 'https:',
@@ -173,6 +176,12 @@ export async function createApp() {
   const router = new Router({ sessions: app.sessions, logger });
   registerPublicRoutes(router, app);
   registerAdminRoutes(router, app);
+  app.alerts = ({ renderCards = null } = {}) => computeAlerts(store, {
+    now: Date.now(),
+    logger,
+    ingestions: app.ingest ? app.ingest.ingestions : [],
+    renderCards,
+  });
   app.routeCount = router.routes.length;
   app.router = router;
 

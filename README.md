@@ -1,4 +1,4 @@
-# StreamTV v3.0.0
+# StreamTV v3.1.0
 
 > Toute ta télévision, dans un seul endroit.
 
@@ -30,7 +30,7 @@ Au premier lancement, le serveur :
 
 ```text
 [2026-10-25T11:49:37.138Z] catalogue de démonstration créé : 1475 chaînes
-[2026-10-25T11:49:37.215Z] StreamTV v3.0.0 — 1475 chaînes, 41 routes
+[2026-10-25T12:12:04.733Z] StreamTV v3.1.0 — 1475 chaînes, 41 routes
 [2026-10-25T11:49:37.215Z] écoute sur http://0.0.0.0:3000
 ```
 
@@ -113,6 +113,9 @@ server/
     store.js             persistance JSON atomique (tmp → fsync → rename), sauvegardes, audit
     auth.js              scrypt N=16384 r=8 p=1, jetons 48 hex, TTL glissant 12 h
     health.js            F-16 — sonde bornée (8 en parallèle, 6 s, 300/min)
+    messages.js          §9 — les 82 messages affichables, familles et textes exacts
+    epg.js               F-23 — XMLTV tolérant, gzip, fuseaux, grille, cache TTL
+    alerts.js            §10.4 — douze seuils d’exploitation (valeur, seuil, action)
     ingest.js            F-20 — aperçu sans écriture, verrou global, commit, annulation
     exports.js           exports M3U et JSON
     engine.js            mesure du moteur (débit, précision, accord de genre)
@@ -129,7 +132,7 @@ public/
   sw.js, offline.html    PWA : coquille en cache, API jamais mise en cache
   vendor/hls.min.js      hls.js 1.5.17 épinglé, Apache-2.0, servi localement
 scripts/                 ingest.js, measure-tagger.js, backup.js, verify.js
-tests/                   92 tests node:test (core, api, sécurité, client, conformité)
+tests/                   158 tests node:test (core, api, sécurité, client, messages, epg, alertes, conformité)
 docs/PV-RECETTE.md       procès-verbal de recette
 ```
 
@@ -156,10 +159,10 @@ L’ordre de contrôle est fixe : méthode (405) → taille (413) → type (415)
 | `GET /api/channels/:id` | fiche complète (36 champs utiles + `playable`) |
 | `GET /api/channels/search?q=` | recherche dédiée, même contrat que la liste |
 | `GET /api/categories` | 18 catégories et leurs compteurs |
-| `GET /api/epg` | grille si `epgUrl` est configuré, sinon message explicite |
+| `GET /api/epg` | grille réelle si `epgUrl` est configuré (XMLTV ou `.xml.gz`, cache 30 min), sinon message explicite ; paramètres `hours` (1–48), `pageSize` |
 | `GET /api/legal` | mentions, hébergement, sources, procédure de retrait |
 | `GET /api/version` | version, version de spécification, empreintes de build |
-| `GET /api/errors/catalog` | les 20 codes et leurs textes |
+| `GET /api/errors/catalog` | les 82 messages du §9 en 6 familles, les 20 codes opposables et leurs textes |
 | `GET /api/session` | session courante (`signedIn`, échéance, sessions ouvertes) |
 | `POST /api/login` | jeton Bearer (8 tentatives / 15 min / IP) |
 | `POST /api/logout` | révoque le jeton présenté |
@@ -246,7 +249,8 @@ node scripts/ingest.js --url https://…/liste.m3u   # téléchargement puis ana
 node scripts/measure-tagger.js                     # mesure du moteur (cibles §2.4)
 node scripts/backup.js                             # sauvegarde immédiate
 node scripts/backup.js --list                      # inventaire + vérification des empreintes
-node scripts/verify.js --base http://127.0.0.1:3000 # 31 contrôles de santé
+node scripts/make-epg-demo.js                      # régénère public/epg-demo.xml (guide de démonstration)
+node scripts/verify.js --base http://127.0.0.1:3000 # 38 contrôles de santé
 ```
 
 `verify.js` sort en code 0 si tout passe, 1 en cas d’erreur réelle. Le mot de passe par défaut
@@ -257,7 +261,7 @@ est signalé comme **avertissement** (attendu en démonstration, à corriger ava
 ## 7. Tests
 
 ```bash
-npm test            # 5 suites, 113 tests, aucune dépendance
+npm test            # 8 suites, 158 tests, aucune dépendance
 ```
 
 | Suite | Ce qu’elle prouve |
@@ -266,6 +270,9 @@ npm test            # 5 suites, 113 tests, aucune dépendance
 | `tests/api.test.js` | 41 routes, codes d’erreur, pagination, compression, en-têtes, importation complète (aperçu → commit → annulation), sauvegarde/restauration, mot de passe |
 | `tests/security.test.js` | scrypt, jetons, TTL, plafond de sessions, force brute, audit sans secret, CSP, injection, traversée de chemin, empreinte de sauvegarde |
 | `tests/client.test.js` | jetons CSS exacts, 12 mires distinctes, 7 états du lecteur, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, absence de script inline |
+| `tests/messages.test.js` | 82 messages du §9 : identifiants, ordre, familles, textes exacts, absence de jargon, variables `{…}` substituées, table `ERR → message`, réponse de `/api/errors/catalog` |
+| `tests/epg.test.js` | 25 tests : XMLTV valide, cassé, gzip, fuseaux, entités, plafonds, appariement `epgId`/`tvgId`, suffixe de qualité, grille, direct, cache et verrou, guide livré lu sur disque, refus de remontée de dossier |
+| `tests/alerts.test.js` | douze seuils du §10.4, priorité des alertes, exposition dans `/api/admin/stats`, guide servi par `/api/epg` |
 | `tests/conformite.test.js` | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
 
 Les tests démarrent chacun leur propre serveur sur un dossier temporaire : le catalogue réel n’est

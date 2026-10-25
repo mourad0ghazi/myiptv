@@ -12,6 +12,9 @@ import { CATEGORY_IDS, LIMITS, VERSION } from '../server/core/constants.js';
 import { ERRORS } from '../server/core/errors.js';
 import { DEFAULTS, validateSettings } from '../server/core/settings.js';
 import { parseM3U } from '../server/core/m3u.js';
+import { ERR_TO_MESSAGE, FAMILIES, MESSAGES, MESSAGE_BY_ID } from '../server/core/messages.js';
+import { decodeEpgBody, parseXmltv } from '../server/core/epg.js';
+import { gzipSync } from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'data');
@@ -38,8 +41,12 @@ async function main() {
   await store.init();
 
   /* ---------------------------------------------------- contrat des données */
-  check('version du logiciel', VERSION === '3.0.0', VERSION);
+  check('version du logiciel', VERSION === '3.1.0', VERSION);
   check('20 codes d’erreur', Object.keys(ERRORS).length === 20, `${Object.keys(ERRORS).length} codes`);
+  check('82 messages du §9', MESSAGES.length === 82, `${MESSAGES.length} messages`);
+  check('6 familles de messages', FAMILIES.length === 6, `${FAMILIES.length} familles`);
+  check('codes opposables tous reliés', Object.keys(ERR_TO_MESSAGE).length === 20
+    && Object.values(ERR_TO_MESSAGE).every((id) => MESSAGE_BY_ID.has(id)), 'table ERR → message');
   check('17 réglages', Object.keys(DEFAULTS).length === 17, `${Object.keys(DEFAULTS).length} réglages`);
   check('18 catégories', CATEGORY_IDS.length === 18, `${CATEGORY_IDS.length} catégories`);
   const settingsCheck = validateSettings(store.settings);
@@ -135,6 +142,14 @@ async function main() {
       const missing = await fetch(`${base}/chaine/inconnu`);
       check('fiche inconnue en 404', missing.status === 404, String(missing.status));
       const headers = config.headers;
+      const catalog = await fetch(`${base}/api/errors/catalog`);
+      const catalogBody = await catalog.json();
+      check('catalogue des 82 messages servi', catalog.status === 200 && catalogBody.total === 82,
+        `${catalogBody.total} messages, ${catalogBody.families?.length || 0} familles`);
+      const epg = await fetch(`${base}/api/epg`);
+      const epgBody = await epg.json();
+      check('guide des programmes sans erreur', epg.status === 200 && typeof epgBody.enabled === 'boolean',
+        epgBody.enabled ? 'guide configuré' : 'aucun guide configuré');
       check('CSP présente', Boolean(headers.get('content-security-policy')));
       check('nosniff présent', headers.get('x-content-type-options') === 'nosniff');
     } catch (error) {
@@ -145,6 +160,14 @@ async function main() {
   /* --------------------------------------------------------------- parseur */
   const sample = '#EXTM3U\n#EXTINF:-1 group-title="News",Chaîne témoin\nhttps://exemple.test/a.m3u8\n';
   check('parseur opérationnel', parseM3U(sample).entries.length === 1);
+
+  /* ------------------------------------------------------------------ EPG */
+  const xmltv = '<tv><channel id="A.fr"><display-name>A</display-name></channel>'
+    + '<programme start="20261025120000 +0000" stop="20261025130000 +0000" channel="A.fr"><title>Midi</title></programme></tv>';
+  const parsedGuide = parseXmltv(xmltv);
+  check('analyse XMLTV opérationnelle', parsedGuide.ok && parsedGuide.programmes.length === 1,
+    `${parsedGuide.programmes.length} programme(s)`);
+  check('gzip reconnu à la signature', decodeEpgBody(gzipSync(Buffer.from(xmltv))).ok === true);
 
   /* ---------------------------------------------------------------- rapport */
   const failed = checks.filter((entry) => !entry.ok);

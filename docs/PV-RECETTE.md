@@ -1,13 +1,13 @@
-# Procès-verbal de recette — StreamTV v3.0.0
+# Procès-verbal de recette — StreamTV v3.1.0
 
 | Élément | Valeur |
 |---|---|
 | Objet | recette du site StreamTV, conforme au cahier des charges *StreamTV v2* |
-| Version livrée | 3.0.0 |
+| Version livrée | 3.1.0 |
 | Date de recette | 25 octobre 2026 |
 | Environnement | Node.js 22.22.3 (compatible 20 LTS), 8 cœurs, 16 Go de mémoire, Linux, réseau local |
 | Dossier de recette | machine vierge, `data/` recréé depuis `data/seed/seed.m3u` |
-| Référentiel de preuve | `npm test` (5 suites), `scripts/verify.js` (31 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
+| Référentiel de preuve | `npm test` (8 suites, 158 tests), `scripts/verify.js` (38 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
 | Décision | **Recette prononcée avec réserves** (voir §7) |
 
 ---
@@ -35,17 +35,16 @@ régime normal.
 Commande : `npm test`
 
 ```text
-1..48
-# tests 113
-# suites 15
-# pass 113
+# tests 158
+# suites 25
+# pass 158
 # fail 0
 # cancelled 0
 # skipped 0
-# duration_ms 13785.258410
+# duration_ms 17537.836284
 ```
 
-Aucun échec, aucun test ignoré. Les cinq suites démarrent chacune leur propre serveur sur un
+Aucun échec, aucun test ignoré. Les suites d’API démarrent chacune leur propre serveur sur un
 dossier temporaire : le catalogue livré n’a pas été modifié par la recette.
 
 Détail par suite :
@@ -57,6 +56,9 @@ Détail par suite :
 | `tests/security.test.js` | 15 | conforme | scrypt, jetons, TTL, plafond de sessions, force brute, audit sans secret, CSP, injection, traversée de chemin, sauvegarde corrompue, fichiers publics sans script en ligne |
 | `tests/client.test.js` | 25 | conforme | jetons CSS, quatre points de rupture, classes présentes, 12 mires distinctes, 7 états, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, PWA |
 | `tests/conformite.test.js` | 11 | conforme | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
+| `tests/messages.test.js` | 9 | conforme | 82 messages du §9 (identifiants, ordre, familles), textes exacts mot pour mot, zéro jargon, substitution des variables, table `ERR → message` complète, catalogue servi par l’API |
+| `tests/epg.test.js` | 25 | conforme | XMLTV valide et cassé, gzip reconnu à la signature, fuseaux ±HHMM, entités et accents, plafonds (20 Mo, 200 000 programmes), appariement `epgId`/`tvgId`, grille et direct, cache TTL et verrou |
+| `tests/alerts.test.js` | 11 | conforme | douze seuils du §10.4 (déclenchement au-delà, silence en deçà), priorité des alertes bloquantes, exposition dans `/api/admin/stats`, guide servi par `/api/epg` avec source locale réelle |
 
 ---
 
@@ -65,18 +67,20 @@ Détail par suite :
 Commande : `node scripts/verify.js --base http://127.0.0.1:3000`
 
 ```text
-30/31 contrôles réussis, 1 avertissement(s).
+37/38 contrôles réussis, 1 avertissement(s).
 
 Avertissements :
   ! mot de passe par défaut changé (mot de passe par défaut encore actif — à changer avant mise en ligne)
 ```
 
-Les 30 contrôles réussis couvrent : version, 20 codes, 17 réglages, 18 catégories, validité des
-réglages, catalogue non vide (1 475), 36 champs obligatoires présents, identifiants sha1 tronqués,
-catégories connues, confiances bornées, aucun doublon d’identifiant, numéros uniques, cinq
-fichiers de données, sauvegarde présente et vérifiée, scrypt N = 16 384, journal d’audit lisible
-et sans secret, service en ligne, contrat `/api/config`, plafond de pagination, console protégée
-(401), fiche inconnue en 404, CSP présente, `nosniff` présent, parseur opérationnel.
+Les 37 contrôles réussis couvrent : version, 20 codes, 82 messages et 6 familles, table
+`ERR → message` complète, 17 réglages, 18 catégories, validité des réglages, catalogue non vide
+(1 475), 36 champs obligatoires présents, identifiants sha1 tronqués, catégories connues,
+confiances bornées, aucun doublon d’identifiant, numéros uniques, cinq fichiers de données,
+sauvegarde présente et vérifiée, scrypt N = 16 384, journal d’audit lisible et sans secret,
+service en ligne, contrat `/api/config`, plafond de pagination, console protégée (401), fiche
+inconnue en 404, catalogue des messages servi, `/api/epg` sans erreur, CSP présente, `nosniff`
+présent, parseur opérationnel, analyse XMLTV et reconnaissance du gzip.
 
 L’avertissement est **attendu** sur une installation de démonstration : le mot de passe `admin`
 est actif et signalé par un bandeau dans l’interface. Il devient une exigence bloquante avant
@@ -117,6 +121,8 @@ règles personnalisées.
 | `GET /api/config` | 3 786 o | 1 415 o | 1 216 o |
 | `GET /` | 5 434 o | 1 986 o | 1 617 o |
 | `GET /css/app.css` | 41 106 o | 8 653 o | 7 647 o |
+| `GET /api/errors/catalog` | 12 063 o | 3 530 o | 3 102 o |
+| `GET /api/epg` (sans guide configuré) | 159 o | 159 o | 163 o |
 
 ### 4.3 Chargement initial et empreinte
 
@@ -135,14 +141,15 @@ règles personnalisées.
 | Écran | Résultat | Détail observé |
 |---|---|---|
 | `/` | conforme | héros, 2 bandeaux, 48 cartes, 18 filtres |
-| `/guide` | conforme | en-tête « Zapping », saut au numéro, compteurs par catégorie |
+| `/guide` | conforme | en-tête « Zapping », saut au numéro, compteurs par catégorie, colonne programme chargée après la liste (aucun blocage) |
 | `/favoris` | conforme | deux sections, état vide avec action |
 | `/connexion` | conforme | formulaire, mention du mot de passe unique |
 | `/admin` (sans jeton) | conforme | écran de verrouillage, aucun contenu protégé |
-| `/admin` (avec jeton) | conforme | 5 onglets fonctionnels : Catalogue (60 lignes), Importation, Configuration (17 réglages), Santé, Sauvegardes |
+| `/admin` (avec jeton) | conforme | 5 onglets fonctionnels : Catalogue (60 lignes), Importation, Configuration (17 réglages), Santé (12 seuils d’alerte affichés avec valeur, seuil et action), Sauvegardes |
 | Modale « Ajouter une chaîne » | conforme | ouverture, champs, focus sur le premier champ |
 | `/chaine/de127beab63f` | conforme | fiche complète, rareté, actions |
 | `/mentions-legales`, `/confidentialite`, `/signaler`, `/aide`, `/erreurs` | conformes | contenus complets, date de mise à jour |
+| `/erreurs` (détail) | conforme | 6 familles, 82 messages, 12 mires et 20 codes : 120 lignes de table, aucun jargon, repli avec bouton « Réessayer » si le catalogue ne charge pas |
 | `/nexiste-pas` | conforme | page 404 dédiée, retour au catalogue |
 | Lecteur | conforme | overlay monté, 7 contrôles, mire affichée, `Échap` ferme et rend la main (`state: IDLE`) |
 
@@ -183,8 +190,12 @@ conditionnent la mise en production.
 2. **Mesures navigateur manquantes** (AC-032, AC-067, AC-068, AC-070, AC-071, AC-079, AC-082).
    Les mesures sont serveur et jsdom. Aucun essai sur appareil réel, réseau lent ou lecteur
    d’écran physique n’est joint.
-3. **Guide des programmes XMLTV non implémenté** (F-23). L’API répond `enabled: false` avec un
-   message explicite : aucune fonctionnalité factice n’est proposée.
+3. **Aucun fournisseur de guide XMLTV réel n’est contracté.** La fonction F-23 est livrée et
+   testée (analyse, gzip, fuseaux, cache, grille, direct, guide livré sur disque) et démontrée
+   avec `public/epg-demo.xml` (60 chaînes appariées, 60 lignes « En direct »). Sans `epgUrl`,
+   l’API répond `enabled: false` et le guide n’affiche aucun programme. Le jeu de démonstration
+   est identifié comme tel dans chaque description ; aucune grille factice n’est présentée
+   comme réelle.
 4. **Migration PostgreSQL non livrée** (F-24). Le seuil de bascule (30 000 chaînes, 40 Mo) et la
    procédure cible sont documentés dans `RUNBOOK.md` §6.
 5. **Phases 3 et 4 hors périmètre** : comptes, contrôle parental, applications mobiles et TV,
@@ -221,7 +232,7 @@ node scripts/measure-tagger.js                      # attendu : toutes cibles �
 
 | Contrôle | Exigence | Résultat |
 |---|---|---|
-| `npm test` | 0 échec | conforme (113/113) |
+| `npm test` | 0 échec | conforme (158/158) |
 | `verify.js` | 0 erreur | conforme (1 avertissement attendu) |
 | `measure-tagger.js` | toutes cibles tenues | conforme |
 | Sauvegarde récente | < 26 h | conforme |

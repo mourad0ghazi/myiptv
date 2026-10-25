@@ -1,9 +1,9 @@
-# Conformité — StreamTV v3.0.0
+# Conformité — StreamTV v3.1.0
 
-Version évaluée : **3.0.0**, 25 octobre 2026.
+Version évaluée : **3.1.0**, 25 octobre 2026.
 Référentiel : cahier des charges *StreamTV v2* (§1 à §13, 118 critères).
-Preuves : `npm test` (5 suites, 113 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
-(31 contrôles), `node scripts/measure-tagger.js`, smoke tests DOM (jsdom) des 12 routes.
+Preuves : `npm test` (8 suites, 158 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
+(38 contrôles), `node scripts/measure-tagger.js`, smoke tests DOM (jsdom) des 12 routes.
 
 Légende des statuts :
 
@@ -275,8 +275,34 @@ Aucun critère n’est marqué « Non testé » : soit une preuve existe, soit l
 | F-20 | Ingestion (aperçu/commit/rollback) | `server/core/ingest.js` | 4 tests d’API |
 | F-21 | Fusion des variantes | `server/core/dedupe.js` | test qualité FHD |
 | F-22 | Règles personnalisées | `server/core/classify.js` | test « mot-clé ajouté gagne » |
-| F-23 | `buildEpg` (XMLTV) | — | **Non livré** : `/api/epg` répond `enabled: false` avec un message explicite |
+| F-23 | `buildEpg` (XMLTV) | `server/core/epg.js` | `epg.test.js` : 25 tests (XMLTV valide, cassé, gzip, fuseaux, plafonds, cache, guide livré sur disque, refus de remontée) ; `/api/epg` sert une grille réelle (60 chaînes appariées sur `/epg-demo.xml`), le guide affiche « En direct » |
 | F-24 | Migration JSON → SQL | — | **Non livré** : hors périmètre (voir §6) |
+
+### 4.1 Catalogue des messages (§9)
+
+Les 82 messages attendus sont écrits une seule fois, dans `server/core/messages.js`, et servis par
+`GET /api/errors/catalog` comme par la page `/erreurs`.
+
+| Famille | Préfixe | Messages | Preuve |
+|---|---|---:|---|
+| Serveur et API | `ER-S` | 20 | `messages.test.js` « les 82 identifiants sont présents » |
+| Lecture vidéo | `P-` | 12 | idem + `client.test.js` « 12 mires » |
+| Administration et ingestion | `ER-A` | 16 | idem |
+| Erreurs silencieuses | `ER-X` | 14 | idem |
+| Rendu et interface | `ER-R` | 10 | idem |
+| Données | `ER-D` | 10 | idem |
+| **Total** | | **82** | `messages.test.js` : textes exacts, aucune variable vide, zéro jargon |
+
+Les 20 codes opposables (`ERR-01`…`ERR-20`) restent la forme HTTP ; la table `ERR_TO_MESSAGE`
+les relie aux messages ci-dessus, et un test refuse tout code orphelin.
+
+### 4.2 Alertes de seuil (§10.4)
+
+`server/core/alerts.js` évalue douze seuils d’exploitation (variation du catalogue, confiance,
+disponibilité, échecs de connexion, espace disque, âge des sauvegardes, taille des données,
+durée d’importation, catégorie « autre », cartes rendues). Chaque alerte porte une valeur, un
+seuil et une action ; `GET /api/admin/stats` les expose dans le champ `alerts`, l’onglet Santé les
+affiche. Preuve : `tests/alerts.test.js` (11 tests, un par seuil plus l’exposition API).
 
 ---
 
@@ -333,8 +359,12 @@ Les 37 routes du cahier des charges sont toutes servies ; quatre routes utilitai
 1. **Jeux de données de production absents.** Les critères AC-006, AC-015, AC-017 portent sur des
    volumes (11 320 / 14 042 / 12 181 chaînes) que la livraison ne contient pas. La chaîne de
    traitement est testée sur 2 000 lignes réelles et sur le catalogue de 1 475 chaînes.
-2. **Guide des programmes (XMLTV).** `F-23` n’est pas implémenté. `/api/epg` répond
-   `enabled: false` avec une phrase explicite ; aucune grille factice n’est affichée.
+2. **Guide des programmes (XMLTV).** `F-23` est livré (`server/core/epg.js`, 25 tests) et
+   démontré avec `public/epg-demo.xml` (60 chaînes, 480 programmes, généré par
+   `node scripts/make-epg-demo.js`). **Aucun fournisseur de guide réel n’est contracté** : sans
+   `epgUrl`, l’API répond `enabled: false` et le guide affiche la liste sans programme. Le
+   fichier de démonstration est annoncé comme tel dans chaque programme ; aucune grille factice
+   n’est présentée comme réelle.
 3. **Migration PostgreSQL.** `F-24` n’est pas livré. Le runbook décrit la cible, pas une
    capacité existante. Seuil de bascule : 30 000 chaînes ou 40 Mo.
 4. **Applications mobiles et TV, comptes, contrôle parental, abonnements, CDN, analytique.**
@@ -353,7 +383,7 @@ Les 37 routes du cahier des charges sont toutes servies ; quatre routes utilitai
 
 ```bash
 node server/index.js &                     # service sur :3000
-npm test                                   # 113 tests, 5 suites
+npm test                                   # 158 tests, 8 suites
 node scripts/verify.js --base http://127.0.0.1:3000
 node scripts/measure-tagger.js
 node scripts/backup.js --list

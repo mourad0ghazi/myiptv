@@ -6,6 +6,8 @@ import { AppError, ERRORS } from '../core/errors.js';
 import { isPublic, projectCard, projectDetail } from '../core/channels.js';
 import { buildPredicate, paginate, sortChannels } from '../core/search.js';
 import { normalizeQuery } from '../core/text.js';
+import { buildEpg } from '../core/epg.js';
+import { catalogForClient } from '../core/messages.js';
 import { queryInt, queryString } from '../http/router.js';
 
 function publicChannels(app) {
@@ -249,8 +251,8 @@ export function registerPublicRoutes(router, app) {
     cache: 'public, max-age=3600',
   }));
 
-  // EP-08 — guide des programmes.
-  router.get('/api/epg', () => {
+  // EP-08 — guide des programmes (F-23) : XMLTV tolérant, mis en cache, jamais bloquant.
+  router.get('/api/epg', async ({ query }) => {
     const url = app.store.settings.epgUrl;
     if (!url) {
       return {
@@ -261,7 +263,40 @@ export function registerPublicRoutes(router, app) {
         cache: 'public, max-age=60',
       };
     }
-    return { body: { enabled: true, url, format: url.endsWith('.gz') ? 'xmltv-gzip' : 'xmltv' }, cache: 'public, max-age=300' };
+    const hours = Math.min(48, Math.max(1, Number(query.hours) || 12));
+    const loaded = await app.epg.load(url);
+    if (!loaded.ok) {
+      return {
+        body: {
+          enabled: true,
+          valid: false,
+          url,
+          message: loaded.message,
+          stats: app.epg.stats(),
+          ...buildEpg([], { programmes: [] }),
+        },
+        cache: 'public, max-age=30',
+      };
+    }
+    const visible = app.store.channels
+      .filter((channel) => isPublic(channel, app.store.settings) && !channel.deleted)
+      .sort((a, b) => a.number - b.number);
+    const grid = buildEpg(visible, loaded.parsed, {
+      from: Date.now(),
+      to: Date.now() + hours * 3600_000,
+      limit: Math.min(LIMITS.pageSizeMax, Math.max(12, Number(query.pageSize) || 60)),
+    });
+    return {
+      body: {
+        enabled: true,
+        valid: true,
+        url,
+        cached: Boolean(loaded.cached),
+        fetchedAt: new Date(loaded.fetchedAt).toISOString(),
+        ...grid,
+      },
+      cache: 'public, max-age=120',
+    };
   });
 
   // EP-09 — version et empreinte du service.
@@ -279,9 +314,10 @@ export function registerPublicRoutes(router, app) {
     cache: 'no-store',
   }));
 
-  // Catalogue des messages — utilisé par la page /erreurs et le support.
+  // Catalogue des messages — page /erreurs, console d'administration et support (§9).
   router.get('/api/errors/catalog', () => ({
     body: {
+      ...catalogForClient(),
       errors: Object.entries(ERRORS).map(([code, entry]) => ({ code, status: entry.status, message: entry.message })),
       count: Object.keys(ERRORS).length,
       goldenRule: 'Aucun message d’erreur n’est affiché sans action concrète.',

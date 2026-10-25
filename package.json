@@ -1,6 +1,6 @@
 {
   "name": "streamtv",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
   "description": "StreamTV — catalogue IPTV, guide de zapping, lecteur vidéo et console d’administration. Node.js natif, zéro dépendance.",
   "type": "module",
@@ -16,7 +16,8 @@
     "ingest": "node scripts/ingest.js",
     "measure": "node scripts/measure-tagger.js",
     "backup": "node scripts/backup.js",
-    "verify": "node scripts/verify.js --base http://127.0.0.1:3000"
+    "verify": "node scripts/verify.js --base http://127.0.0.1:3000",
+    "epg:demo": "node scripts/make-epg-demo.js"
   },
   "dependencies": {},
   "devDependencies": {},

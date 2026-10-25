@@ -98,7 +98,17 @@ Pour éviter toute ambiguïté lors d’un audit :
 
 ---
 
-## 6. Mise à jour d’une dépendance tierce
+## 6. Contenus produits par le projet
+
+| Fichier | Origine | Licence |
+|---|---|---|
+| `public/epg-demo.xml` | généré par `scripts/make-epg-demo.js` à partir des noms de chaînes du catalogue | contenu du projet, libre de réutilisation ; chaque programme porte la mention « Grille de démonstration » |
+| `data/seed/seed.m3u` | extrait des listes publiques iptv-org et de la base iptv-org/database | CC0 pour la base, listes sous licence de leurs auteurs (voir §2) |
+| `public/icons/*.svg`, `public/css/app.css`, textes français | écrits pour ce projet | contenu du projet |
+
+---
+
+## 7. Mise à jour d’une dépendance tierce
 
 Seul hls.js est concerné. Procédure :
 

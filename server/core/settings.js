@@ -54,7 +54,7 @@ export const SCHEMA = [
     { value: 'first', label: 'Premières chaînes' },
   ], help: 'Détermine le bandeau de la page d’accueil.' },
   { key: 'showHealthBadge', type: 'boolean', label: 'Afficher l’état des flux', help: 'Pastille de santé sur les cartes publiques.' },
-  { key: 'epgUrl', type: 'text', label: 'Adresse du guide des programmes (XMLTV)', maxLength: 200, help: 'Facultatif. https://…/guide.xml ou .xml.gz.' },
+  { key: 'epgUrl', type: 'text', label: 'Adresse du guide des programmes (XMLTV)', maxLength: 200, help: 'Facultatif. https://…/guide.xml, .xml.gz, ou un fichier livré sur le site : /epg-demo.xml.' },
   { key: 'footerNote', type: 'text', label: 'Note de pied de page', maxLength: 200, help: 'Mention libre affichée sous le pied de page.' },
   { key: 'maintenanceMode', type: 'boolean', label: 'Mode maintenance', help: 'Le catalogue reste consultable ; un bandeau prévient les visiteurs.' },
   { key: 'targetTable', type: 'number', label: 'Objectif de catalogue', min: 0, max: 100000, help: '0 = automatique. L’objectif de démonstration du cahier des charges est 12 181 chaînes.' },
@@ -95,9 +95,15 @@ export function validateSettings(input, { existingIds = null, base = DEFAULTS } 
           const isData = /^data:image\/(?:png|jpeg|svg\+xml|webp);base64,[A-Za-z0-9+/=]+$/i.test(text) && text.length < 150_000;
           if (!isHttps && !isData) { errors.push(fail(key, 'ERR-04', { champ: spec.label })); break; }
         }
-        if (key === 'epgUrl' && text && !/^https:\/\/[^\s]+\.(?:xml|xml\.gz)(?:\?[^\s]*)?$/i.test(text)) {
-          errors.push(fail(key, 'ERR-04', { champ: spec.label }));
-          break;
+        if (key === 'epgUrl' && text) {
+          // Deux formes acceptées : un guide distant en HTTPS, ou un fichier livré sur ce site
+          // (chemin absolu sans remontée « .. »). Tout le reste est refusé à l'enregistrement.
+          const distant = /^https:\/\/[^\s]+\.(?:xml|xml\.gz)(?:\?[^\s]*)?$/i.test(text);
+          const local = /^\/[a-z0-9][a-z0-9/_-]*\.xml(?:\.gz)?$/i.test(text) && !text.includes('..');
+          if (!distant && !local) {
+            errors.push(fail(key, 'ERR-04', { champ: spec.label }));
+            break;
+          }
         }
         settings[key] = text;
         break;

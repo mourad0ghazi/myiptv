@@ -7,6 +7,40 @@ import { statCard } from '../../components.js';
 import { confirmModal, apiGuard } from './common.js';
 import { channelModal } from './catalogue.js';
 
+/* ------------------------------------------------------------------ alertes */
+
+const SEVERITY_LABEL = { error: 'Bloquante', warn: 'À surveiller', ok: 'Situation normale' };
+
+/** §10.4 — chaque alerte affiche sa valeur, son seuil et l'action attendue. */
+function alertPanel(alerts, onRefresh) {
+  const items = Array.isArray(alerts.items) ? alerts.items : [];
+  const tone = alerts.level === 'error' ? 'danger' : alerts.level === 'warn' ? 'warn' : 'ok';
+  if (!items.length) {
+    return h('section', { class: 'panel', style: { marginTop: '16px' } },
+      h('div', { class: 'section-head' },
+        h('div', {}, h('p', { class: 'eyebrow' }, 'Exploitation'), h('h2', { style: { fontSize: '20px' } }, 'Alertes de seuil')),
+        h('span', { class: 'badge', dataset: { tone: 'ok' } }, icon('check', 12), 'Aucune alerte')),
+      h('p', { class: 'muted', style: { margin: '0' } },
+        'Douze seuils sont surveillés en continu : variation du catalogue, confiance, disponibilité, échecs de connexion, espace disque, âge des sauvegardes.'),
+      h('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: { marginTop: '12px' }, onClick: onRefresh },
+        icon('retry', 14), 'Recalculer'));
+  }
+  return h('section', { class: 'panel', style: { marginTop: '16px' } },
+    h('div', { class: 'section-head' },
+      h('div', {}, h('p', { class: 'eyebrow' }, 'Exploitation'), h('h2', { style: { fontSize: '20px' } }, 'Alertes de seuil')),
+      h('span', { class: 'badge', dataset: { tone } },
+        icon(alerts.level === 'error' ? 'alert' : 'clock', 12),
+        `${items.length} alerte${items.length > 1 ? 's' : ''} · ${SEVERITY_LABEL[alerts.level] || SEVERITY_LABEL.ok}`)),
+    h('div', { class: 'table-wrap' }, h('table', {},
+      h('thead', {}, h('tr', {}, h('th', {}, 'Gravité'), h('th', {}, 'Constat'), h('th', {}, 'Mesure'), h('th', {}, 'Seuil'), h('th', {}, 'Action'))),
+      h('tbody', {}, items.map((item) => h('tr', {},
+        h('td', {}, h('span', { class: 'badge', dataset: { tone: item.severity === 'error' ? 'danger' : 'warn' } }, SEVERITY_LABEL[item.severity] || item.severity)),
+        h('td', { dir: 'auto' }, item.label),
+        h('td', { class: 'tabular' }, `${fmtNumber(Math.round(item.value * 10) / 10)}${item.detail ? ` ${item.detail}` : ''}`),
+        h('td', { class: 'tabular muted' }, String(item.threshold)),
+        h('td', { class: 'muted', dir: 'auto' }, item.action)))))));
+}
+
 /* ------------------------------------------------------------------ santé */
 
 async function renderHealth(host, ctx, state, { refreshStats, stats }) {
@@ -47,6 +81,7 @@ async function renderHealth(host, ctx, state, { refreshStats, stats }) {
     });
   });
 
+  const alerts = current.alerts || { level: 'ok', items: [], metrics: {} };
   const engine = current.confidence.engine;
   const maxCount = Math.max(...current.confidence.histogram.map((bucket) => bucket.count), 1);
   const host2 = h('div', {});
@@ -56,6 +91,7 @@ async function renderHealth(host, ctx, state, { refreshStats, stats }) {
       statCard('Instables', fmtNumber(current.health.flaky), 'lenteur, CORS ou 5xx', 'warn'),
       statCard('Indisponibles', fmtNumber(current.health.down), '3 échecs consécutifs', 'danger'),
       statCard('Non testées', fmtNumber(current.health.unknown), 'état initial obligatoire')),
+    alertPanel(alerts, () => renderHealth(host, ctx, state, { refreshStats, stats })),
     h('section', { class: 'panel', style: { marginTop: '16px' } },
       h('p', { class: 'eyebrow' }, 'Mesure'),
       h('h2', { style: { fontSize: '20px', marginBottom: '4px' } }, 'Sonde de disponibilité'),

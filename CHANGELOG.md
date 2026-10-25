@@ -3,6 +3,55 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.1.0] — 2026-10-25
+
+Compléments du cahier des charges qui restaient déclaratifs en 3.0.0 : catalogue exhaustif des
+messages, guide des programmes XMLTV et seuils d’alerte d’exploitation. Aucune dépendance
+ajoutée, aucun `npm install`.
+
+### Ajouté
+
+- `server/core/messages.js` — les **82 messages** du §9 (ER-S01…S20, P-01…P-12, ER-A01…A16,
+  ER-X01…X14, ER-R01…R10, ER-D01…D10), regroupés en 6 familles, avec cause déclencheuse et
+  substitution des variables `{champ}`, `{n}`, `{requestId}`, `{max}`, `{heure}`.
+  `ERR_TO_MESSAGE` relie les 20 codes opposables du §6.3 à ces messages ; un test refuse tout
+  code orphelin.
+- `server/core/epg.js` — `F-23` : analyse XMLTV tolérante (jamais d’exception), gzip reconnu à la
+  signature `1f 8b`, fuseaux `±HHMM`, entités nommées et numériques, plafonds 20 Mo et
+  200 000 programmes, appariement `epgId`/`tvgId` (casse et suffixe de qualité ignorés),
+  `buildEpg` avec marquage du direct, `EpgCache` (TTL 30 min, délai 15 s, verrou anti-doublon).
+- `/api/epg` sert désormais une **grille réelle** (`hours`, `pageSize`) ou un message explicite,
+  jamais une erreur 500 ; `/api/errors/catalog` expose les 82 messages et les 6 familles.
+- Guide de démonstration `public/epg-demo.xml` (60 chaînes, 480 programmes) régénérable par
+  `npm run epg:demo` ; `epgUrl` accepte désormais un fichier livré sur le site (`/epg-demo.xml`),
+  lu sur le disque avec confinement du chemin, en plus des URL HTTPS.
+- `server/core/alerts.js` — §10.4 : **douze seuils** (variation du catalogue, confiance faible,
+  flux indisponibles, flux instables, échecs d’importation, échecs de connexion, espace disque,
+  durée d’importation, âge des sauvegardes, taille des données, cartes rendues, part « autre »),
+  chacun avec valeur mesurée, seuil, gravité et action d’exploitation. Exposés dans
+  `GET /api/admin/stats` (champ `alerts`) et affichés dans l’onglet Santé.
+- Page `/erreurs` enrichie : 6 familles, 82 messages, 12 mires et 20 codes (120 lignes de table),
+  sans recopier les textes côté client — ils viennent de l’API, avec repli et bouton « Réessayer ».
+- Guide de zapping : colonne « En direct : … » / « À 20:30 : … » chargée après la liste, sans
+  bloquer l’affichage ni casser la pagination.
+
+### Vérifié
+
+- `npm test` : **158 tests, 8 suites, 0 échec** (ajout de `messages.test.js` 9 tests,
+  `epg.test.js` 25 tests, `alerts.test.js` 11 tests).
+- `node scripts/verify.js` : **37/38** contrôles (seul avertissement : mot de passe de
+  démonstration actif), dont catalogue des 82 messages, `/api/epg`, analyse XMLTV et gzip.
+- Smoke jsdom : `/erreurs` affiche 120 lignes sans erreur de console ; `/guide` et les 12 routes
+  restent sans erreur.
+
+### Modifié
+
+- Version du logiciel et du cache du service worker : `3.1.0` / `streamtv-v3.1.0`.
+- `CONFORMITE.md`, `docs/PV-RECETTE.md`, `README.md` : compteurs, preuves et réserves mis à jour
+  (la réserve « guide XMLTV non implémenté » devient « aucun fournisseur de guide contracté »).
+
+---
+
 ## [3.0.0] — 2026-10-25
 
 Première livraison complète du site décrit par le cahier des charges *StreamTV v2*

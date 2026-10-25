@@ -630,6 +630,7 @@ export function registerAdminRoutes(router, app) {
         },
         queue,
         storage: { sizes, backups, sizeTotal: Object.values(sizes).reduce((sum, value) => sum + value, 0) },
+        alerts: await app.alerts({ renderCards: Number(app.store.settings.pageSize) || 0 }),
         sessions: app.sessions.count(),
         ingestion: app.ingest.activeJob(),
         ingestions: await app.ingest.history(),
