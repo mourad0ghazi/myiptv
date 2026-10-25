@@ -1,6 +1,6 @@
 {
   "name": "streamtv",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "private": true,
   "description": "StreamTV — catalogue IPTV, guide de zapping, lecteur vidéo et console d’administration. Node.js natif, zéro dépendance.",
   "type": "module",
@@ -21,7 +21,8 @@
     "migrate": "node scripts/migrate.js --plan",
     "migrate:verify": "node scripts/migrate.js --verify",
     "build:static": "node scripts/build-static.js --source http://127.0.0.1:3000 --base /myiptv/ --out dist-static --copy-to .",
-    "probe": "node scripts/probe-source.js"
+    "probe": "node scripts/probe-source.js",
+    "masquer": "node scripts/masquer-a-risque.mjs"
   },
   "dependencies": {},
   "devDependencies": {},

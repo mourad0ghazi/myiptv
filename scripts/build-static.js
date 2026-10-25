@@ -140,6 +140,23 @@ async function main() {
     hay: haystack(card),
   }));
 
+  // « En ce moment » : programmes en cours pour toutes les chaînes, par lots de 60.
+  // Sans guide configuré, le fichier reste vide et les cartes n'affichent aucun programme.
+  let now = { enabled: false, now: [] };
+  if (epg && epg.enabled) {
+    const ids = cards.map((card) => card.id);
+    const collecte = [];
+    for (let i = 0; i < ids.length; i += 60) {
+      const lot = ids.slice(i, i + 60);
+      try {
+        const payload = await getJson(`/api/epg/now?ids=${encodeURIComponent(lot.join(','))}`);
+        if (payload && payload.enabled) collecte.push(...(payload.now || []));
+      } catch { /* un lot manquant ne bloque pas la construction */ }
+    }
+    now = { enabled: true, now: collecte };
+    process.stdout.write(`Guide     : ${collecte.length} programmes en cours\n`);
+  }
+
   await fsp.rm(outDir, { recursive: true, force: true });
   await copyTree(PUBLIC_DIR, outDir);
 
@@ -153,6 +170,7 @@ async function main() {
   }));
   await fsp.writeFile(path.join(demoDir, 'errors.json'), JSON.stringify(errors));
   await fsp.writeFile(path.join(demoDir, 'epg.json'), JSON.stringify(epg));
+  await fsp.writeFile(path.join(demoDir, 'epg-now.json'), JSON.stringify(now));
 
   // Coquille : base de déploiement, chemins relatifs, bandeau de démonstration, repli 404 (SPA).
   const indexFile = path.join(outDir, 'index.html');

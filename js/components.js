@@ -3,6 +3,30 @@
 import { h, icon, logoNode, healthLabel } from './ui.js';
 import { prefs } from './prefs.js';
 import { COPY } from './copy.js';
+import { attacherPreview } from './preview.js';
+import { nowCached, nowFor, heureCourte, progression } from './epg-now.js';
+
+/** Motif de non-lecture, en français et en trois mots (§9.4). */
+export function reasonLabel(reason) {
+  return {
+    'mixed-content': 'Flux HTTP bloqué',
+    'ua-required': 'Lecteur externe requis',
+    geo: 'Réservée à un pays',
+    dead: 'Signal indisponible',
+    manual: 'Retrait manuel',
+    license: 'Diffusion suspendue',
+    adult: 'Contenu adulte masqué',
+  }[reason] || 'Lecture indisponible';
+}
+
+/** État lisible d'une chaîne : la carte ne montre jamais un simple point gris. */
+export function stateLabel(channel) {
+  if (channel.blocked) return { text: reasonLabel(channel.blockedReason), tone: 'danger' };
+  if (channel.health === 'down') return { text: 'Indisponible à l’instant', tone: 'danger' };
+  if (channel.health === 'flaky') return { text: 'Flux instable', tone: 'warn' };
+  if (channel.health === 'up') return { text: 'Vérifiée récemment', tone: 'ok' };
+  return { text: 'En cours de vérification', tone: '' };
+}
 
 export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {}) {
   const fav = prefs.isFavorite(channel.id);
@@ -37,8 +61,32 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
 
   // Contrat §7.3 : <article role="button" tabindex="0" aria-label="{nom}, {catégorie}, chaîne {numéro}">.
   // Les commandes internes gardent leurs propres libellés et stoppent la propagation.
+  const etat = stateLabel(channel);
+  const survol = h('div', { class: 'card-hover', 'aria-hidden': 'true' },
+    h('p', { class: `card-hover-state${etat.tone ? ` is-${etat.tone}` : ''}` }, h('span', { class: 'health-dot', dataset: { state: channel.blocked ? 'down' : (channel.health || 'unknown') } }), etat.text),
+    h('p', { class: 'card-hover-programme' }, 'En ce moment : chargement du guide…'),
+    h('p', { class: 'card-hover-reason' }, channel.blocked ? 'La fiche explique pourquoi et propose une alternative.' : ''));
+
+  const remplirProgramme = () => {
+    if (channel.blocked) {
+      survol.lastChild.textContent = 'Cette chaîne ne peut pas être lue ici. La fiche donne la raison et une alternative.';
+      return;
+    }
+    const deja = nowCached(channel.id);
+    const poser = (programme) => {
+      if (!programme) {
+        survol.children[1].textContent = 'Programme non communiqué par la chaîne.';
+        return;
+      }
+      const pct = Math.round(progression(programme) * 100);
+      survol.children[1].textContent = `En ce moment · ${heureCourte(programme.start)} · ${programme.title} (${pct} %)`;
+    };
+    if (deja !== null) { poser(deja); return; }
+    nowFor(channel.id).then(poser).catch(() => { /* guide muet : on n'invente rien */ });
+  };
+
   const card = h('article', {
-    class: 'card', role: 'button', 'aria-label': `${channel.name}, ${channel.categoryLabel || 'catégorie inconnue'}, chaîne ${channel.number}`,
+    class: 'card', role: 'button', 'aria-label': `${channel.name}, ${channel.categoryLabel || 'catégorie inconnue'}, chaîne ${channel.number}, ${etat.text}`,
     tabIndex: 0,
     dataset: { blocked: channel.blocked || '' },
     style: { '--hue': String(channel.hue ?? 320) },
@@ -46,15 +94,19 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen?.(channel); }
     },
     onClick: () => onOpen?.(channel),
+    onPointerEnter: remplirProgramme,
+    onFocus: remplirProgramme,
   },
   h('div', { class: 'card-media' }, logoNode(channel), play, favBtn, ...flags),
   h('div', { class: 'card-body' },
     h('span', { class: 'card-num' },
-      showHealth ? h('span', { class: 'health-dot', dataset: { state: channel.health || 'unknown' }, title: healthLabel(channel.health), 'aria-hidden': 'true' }) : null,
+      showHealth ? h('span', { class: 'health-dot', dataset: { state: channel.blocked ? 'down' : (channel.health || 'unknown') }, title: healthLabel(channel.health), 'aria-hidden': 'true' }) : null,
       `#${channel.number}`,
       channel.quality && channel.quality !== 'AUTO' ? h('span', { class: 'badge', style: { padding: '1px 6px', fontSize: 'var(--fs-xs)' } }, channel.quality) : null),
     h('span', { class: 'card-name', dir: 'auto', text: channel.name }),
-    h('span', { class: 'card-sub', dir: 'auto', text: `${channel.categoryLabel || 'Non classée'}${channel.country ? ` · ${channel.country}` : ''}` })));
+    h('span', { class: 'card-sub', dir: 'auto', text: `${channel.categoryLabel || 'Non classée'}${channel.country ? ` · ${channel.country}` : ''}` })),
+  survol);
+  attacherPreview(card, channel);
   return card;
 }
 

@@ -303,6 +303,37 @@ export function registerPublicRoutes(router, app) {
     };
   });
 
+  // EP-08b — « en ce moment » : programme en cours pour une sélection de chaînes.
+  // Volontairement compact (titre, horaires) : appelé au survol d'une carte, jamais au chargement.
+  router.get('/api/epg/now', async ({ query }) => {
+    const url = app.store.settings.epgUrl;
+    if (!url) return { body: { enabled: false, now: [] }, cache: 'public, max-age=60' };
+    const ids = new Set(String(queryString(query, 'ids', { max: 400 }) || '').split(',').map((id) => id.trim()).filter(Boolean).slice(0, LIMITS.pageSizeMax));
+    const loaded = await app.epg.load(url);
+    if (!loaded.ok) {
+      return { body: { enabled: true, valid: false, now: [], message: loaded.message }, cache: 'public, max-age=30' };
+    }
+    const pool = publicChannels(app).filter((channel) => !channel.deleted && (ids.size === 0 || ids.has(channel.id)));
+    const instant = Date.now();
+    const grid = buildEpg(pool, loaded.parsed, {
+      from: instant, to: instant + 3 * 3600_000, limit: LIMITS.pageSizeMax, now: instant,
+    });
+    const now = [];
+    for (const row of grid.grid) {
+      const live = row.programmes.find((programme) => programme.live);
+      if (!live) continue;
+      now.push({
+        id: row.id,
+        title: live.title,
+        start: live.start,
+        stop: live.stop,
+        category: live.category || '',
+        description: String(live.description || '').slice(0, 240),
+      });
+    }
+    return { body: { enabled: true, valid: true, fetchedAt: new Date(loaded.fetchedAt).toISOString(), now }, cache: 'public, max-age=60' };
+  });
+
   // EP-09 — version et empreinte du service.
   router.get('/api/version', () => ({
     body: {

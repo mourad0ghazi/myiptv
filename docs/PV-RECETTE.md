@@ -1,9 +1,9 @@
-# Procès-verbal de recette — StreamTV v3.4.0
+# Procès-verbal de recette — StreamTV v3.5.0
 
 | Élément | Valeur |
 |---|---|
 | Objet | recette du site StreamTV, conforme au cahier des charges *StreamTV v2* |
-| Version livrée | 3.4.0 |
+| Version livrée | 3.5.0 |
 | Date de recette | 25 octobre 2026 |
 | Environnement | Node.js 22.22.3 (compatible 20 LTS), 8 cœurs, 16 Go de mémoire, Linux, réseau local |
 | Dossier de recette | machine vierge, `data/` recréé depuis `data/seed/seed.m3u` |
@@ -51,9 +51,9 @@ Détail par suite :
 | Suite | Tests | Résultat | Points couverts |
 |---|---:|---|---|
 | `tests/core.test.js` | 33 | conforme | parseur (BOM, CRLF, arabe, virgules, `#EXTGRP`, `//host`, HLS refusé), 2 fixtures de 2 000 lignes, déduplication, fusion des variantes, catégorisation, confiance, recherche (accents, arabe, pays), pagination, tri, réglages, contrat de chaîne, assertions A1–A10 |
-| `tests/api.test.js` | 27 | conforme | 41 routes, 20 codes d’erreur, ordre de contrôle, pagination bornée, compression, en-têtes, importation complète (aperçu → commit → annulation), idempotence, verrou concurrent, sauvegarde/restauration, mot de passe, écriture atomique, refus de démarrage en production |
+| `tests/api.test.js` | 28 | conforme | 42 routes, 20 codes d’erreur, ordre de contrôle, pagination bornée, compression, en-têtes, importation complète (aperçu → commit → annulation), idempotence, verrou concurrent, sauvegarde/restauration, mot de passe, écriture atomique, refus de démarrage en production |
 | `tests/security.test.js` | 15 | conforme | scrypt, jetons, TTL, plafond de sessions, force brute, audit sans secret, CSP, injection, traversée de chemin, sauvegarde corrompue, fichiers publics sans script en ligne |
-| `tests/client.test.js` | 28 | conforme | jetons CSS, quatre points de rupture, classes présentes, 12 mires distinctes, 7 états, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, PWA |
+| `tests/client.test.js` | 30 | conforme | jetons CSS, quatre points de rupture, classes présentes, 12 mires distinctes, 7 états, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, PWA |
 | `tests/conformite.test.js` | 13 | conforme | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
 | `tests/learning.test.js` | 12 | conforme | F-22 : découpage des noms, support minimal, bornes de poids, priorité du manuel, effet réel sur le classement d’une chaîne, exposition dans l’administration |
 | `tests/migrate.test.js` | 14 | conforme | F-24 : DDL idempotent et typé, échappement SQL, aller-retour exact (accents, guillemets, arabe, tabulations), `ON CONFLICT`, modes `--plan`/`--write`/`--verify`/`--reverse`, journal `migration.export` |
@@ -262,3 +262,13 @@ node scripts/measure-tagger.js                      # attendu : toutes cibles �
 - `CHANGELOG.md` — historique de la version.
 - `data/audit.log` — journal des actions effectuées pendant la recette.
 - `data/backups/` — sauvegardes créées pendant la recette, avec empreintes SHA-256.
+
+### Recette des écrans de la 3.5.0
+
+| Point | Vérification | Résultat |
+|---|---|---|
+| Carte informative | Survol : état en clair, programme en cours avec horaire et progression ; chaîne bloquée → raison affichée | conforme |
+| Expérience mobile | Sous 620 px : 5 onglets fixes, cibles de 52 px, aucun survol au doigt | conforme |
+| Recommandations | Rails « Continuer à regarder » (historique) et « Pour vous » (affinités, repli éditorial) | conforme |
+| Fiabilité | 343 chaînes déclarées fragiles passées en `blocked` avec leur raison ; 1 132 restent lisibles | conforme |
+

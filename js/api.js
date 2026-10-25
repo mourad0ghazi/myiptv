@@ -149,6 +149,19 @@ async function epg(hours) {
   return { ...payload, grid, to: limit, cached: true };
 }
 
+async function epgNow(ids) {
+  let payload;
+  try {
+    payload = await snapshot('epg-now');
+  } catch {
+    return { enabled: false, now: [] };
+  }
+  if (!payload || !payload.enabled) return { enabled: false, now: [] };
+  const wanted = new Set(String(ids || '').split(',').map((id) => id.trim()).filter(Boolean));
+  const now = (payload.now || []).filter((item) => wanted.size === 0 || wanted.has(item.id));
+  return { ...payload, now };
+}
+
 const READ_ONLY = 'Cette démonstration publique est en lecture seule : la console d’administration n’y est pas disponible.';
 
 /* ------------------------------------------------------------------ entrée */
@@ -172,6 +185,7 @@ export async function api(path, { method = 'GET', body = null } = {}) {
   if (route === 'api/errors/catalog') return snapshot('errors');
   if (route === 'api/session') return { signedIn: false, expiresAt: null, demo: true };
   if (route === 'api/epg') return epg(number(params.get('hours'), 12));
+  if (route === 'api/epg/now') return epgNow(params.get('ids'));
   if (route === 'api/channels') return list(params);
   if (route === 'api/channels/search') return list(params, { search: true });
   if (route.startsWith('api/channels/')) return detail(decodeURIComponent(route.slice('api/channels/'.length)));

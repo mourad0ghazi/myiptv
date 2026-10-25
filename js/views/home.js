@@ -7,6 +7,7 @@ import { h, icon, fmtNumber, skeletonGrid, emptyState, spinner, modal, logoNode,
 import { channelCard, categoryChips, hiddenNotice } from '../components.js';
 import { getPlayer } from '../player.js';
 import { prefs } from '../prefs.js';
+import { mountRails } from './rails.js';
 
 function heroBlock(hero, { config, openChannel, openPlayer }) {
   const featured = hero.channels?.[0];
@@ -96,6 +97,12 @@ export async function renderHome(container, ctx) {
   const showHero = !state.q && !state.cat && state.page === 1;
   if (showHero && config.hero) {
     view.append(heroBlock(config.hero, { config, openChannel, openPlayer }));
+  }
+  // Rails de recommandations : historique local d'abord, puis affinités (ou repli éditorial).
+  if (showHero) {
+    const railsHost = h('div', { class: 'rails-host' });
+    view.append(railsHost);
+    mountRails(railsHost, { config, openChannel, openPlayer, navigate }).catch(() => { /* jamais bloquant */ });
   }
 
   const resultsHost = h('div', {});

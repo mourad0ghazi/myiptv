@@ -1,6 +1,6 @@
-# Conformité — StreamTV v3.4.0
+# Conformité — StreamTV v3.5.0
 
-Version évaluée : **3.4.0**, 25 octobre 2026.
+Version évaluée : **3.5.0**, 25 octobre 2026.
 Référentiel : cahier des charges *StreamTV v2* (§1 à §13, 118 critères).
 Preuves : `npm test` (11 suites, 207 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
 (43 contrôles), `node scripts/measure-tagger.js`, smoke tests DOM (jsdom) des 12 routes.
@@ -381,6 +381,24 @@ test : les règles ne peuvent pas régresser sans que `npm test` échoue.
 La seconde liste (`world_ip_tv`, MIT) est **déclarée mais désactivée** : elle n'apporte ni
 `tvg-id` ni catégories, et un flux sur dix y est en `http:`. Elle se traite donc en amont, par
 `npm run probe`, dont la sortie est la seule liste importable.
+
+### 4.8 Fiabilité visible et expérience mobile (§7.2, §7.3, §8)
+
+La 3.5.0 attaque le défaut d'expérience constaté en production : une chaîne annoncée sans
+information sur son état laisse l'utilisateur devant un écran noir.
+
+| Point | Mise en œuvre | Preuve |
+|---|---|---|
+| Programme en cours | `GET /api/epg/now?ids=…` (EP-08b) : titre, horaires, catégorie ; lot de 60 identifiants maximum, cache 60 s | `tests/api.test.js` (forme stable, identifiant inconnu → tableau vide) |
+| État lisible par carte | `stateLabel()` : vérifiée / en cours de vérification / flux instable / indisponible / réservée à un pays ; repris dans l'`aria-label` | `tests/client.test.js` « carte : état lisible… » |
+| Panneau de survol | `.card-hover` : état, programme en cours avec horaire et progression, raison de blocage | smoke jsdom : « En ce moment · 12:00 PM · Jeu du soir (85 %) » |
+| Aperçu muet | `preview.js` : un flux unique, 650 ms de latence, jamais au doigt ni sur une chaîne `down`, coupure à 20 s | `tests/client.test.js` (muet, borné, `hover: none`) |
+| Mobile distinct | barre d'onglets 5 entrées sous 620 px, cibles ≥ 52 px, encoche, « Rechercher » place le curseur | `tests/client.test.js` « mobile : barre d'onglets… » |
+| Recommandations | historique local puis affinités, repli éditorial ; aucune donnée transmise | `tests/client.test.js` (rails, `prefs.history()`) |
+| Chaînes fragiles | `scripts/masquer-a-risque.mjs` : 343 chaînes passées en `blocked` avec leur raison, 1 132 lisibles | sortie du script, `/api/channels` |
+
+Le budget réseau reste tenu : l'aperçu est unique et interrompu, « en ce moment » n'est demandé
+qu'au survol par lots, et le panneau de survol est en CSS pur (aucun calcul au défilement).
 
 ## 5. Matrice des routes
 
