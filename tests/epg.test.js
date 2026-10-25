@@ -198,8 +198,9 @@ describe('Cache EPG', () => {
     const cache = new EpgCache({ publicDir: `${ROOT}/public` });
     const result = await cache.load('/epg-demo.xml');
     assert.equal(result.ok, true, result.message);
-    assert.equal(result.parsed.stats.channels, 60);
-    assert.equal(result.parsed.stats.programmes >= 400, true);
+    // Guide de démonstration : 400 chaînes non bloquées, 8 créneaux de 3 h chacune.
+    assert.equal(result.parsed.stats.channels, 400);
+    assert.equal(result.parsed.stats.programmes >= 3200, true);
   });
 
   test('un chemin hors du dossier public est refusé', async () => {

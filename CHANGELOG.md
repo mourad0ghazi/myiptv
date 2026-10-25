@@ -3,6 +3,49 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.5.0] — 2026-10-25
+
+Trois chantiers : **la fiabilité devient visible**, **la carte informative au survol**, et une
+**expérience mobile distincte** du PC. Aucune dépendance ajoutée, toujours zéro `npm install`.
+
+### Ajouté
+
+- **« En ce moment » (EP-08b)** : `GET /api/epg/now?ids=…` renvoie le programme en cours des
+  chaînes demandées (titre, début, fin, catégorie). Compact, mis en cache, appelé au survol —
+  jamais au chargement de la page. Absent du guide : la carte n'invente rien.
+- **Panneau de survol de la carte** : état lisible en clair (vérifiée / en cours de vérification /
+  indisponible / réservée à un pays), programme en cours avec son horaire et sa progression, et
+  pour une chaîne bloquée la raison exacte au lieu d'un écran noir.
+- **Aperçu muet au survol** (`public/js/preview.js`) : un seul flux à la fois, après 650 ms,
+  jamais au doigt, jamais sur une chaîne déclarée indisponible, coupure à 20 s et au départ du
+  pointeur. Budget réseau et batterie préservés (AC-089).
+- **Barre d'onglets mobile** (sous 620 px) : Accueil, Guide, Rechercher, Favoris, Plus — cibles de
+  52 px, encoche respectée, « Rechercher » place le curseur dans le champ.
+- **Rails de recommandations** : « Continuer à regarder » depuis l'historique local, puis « Pour
+  vous » à partir des catégories les plus regardées/favorites, avec repli éditorial (les catégories
+  les plus fournies) pour un visiteur neuf. Alternance des catégories, aucun doublon, aucun envoi
+  de données personnelles.
+- `scripts/masquer-a-risque.mjs` : retire de la lecture les chaînes que la source déclare déjà
+  fragiles (géo-bloquées, non permanentes), sans rien supprimer — 343 chaînes basculées en
+  `blocked` avec leur raison, 1 132 restant lisibles.
+- Le guide de démonstration est actif par défaut dans la démonstration publiée (`/epg-demo.xml`),
+  et `build-static.js` fabrique `demo/epg-now.json` par lots de 60 chaînes.
+
+### Corrigé
+
+- `ingest --commit` affichait « Inchangées : undefined » : le compteur n'existait pas côté serveur.
+  Une empreinte du contenu distingue désormais une vraie mise à jour d'une relecture identique.
+- `epg-now.js` : le filtre de lot écartait toutes les demandes (négation inversée) ; corrigé.
+
+### Vérifié
+
+- `npm test` : **209 tests**, 11 suites, 0 échec (dont deux tests neufs : carte informative et
+  expérience mobile distincte).
+- `node scripts/verify.js` : **43 contrôles**, 42 réussis, 1 avertissement (mot de passe par défaut).
+- Smoke jsdom : 48 cartes, 10 cartes de rail, 5 onglets, programme réel au survol
+  (« En ce moment · 12:00 PM · Jeu du soir (85 %) »), raison affichée sur une chaîne bloquée,
+  aucune erreur console.
+
 ## [3.4.0] — 2026-10-25
 
 Deux chantiers : l'**usage mobile** (tactile, encoches, zones de 44 px, gestes du lecteur) et la

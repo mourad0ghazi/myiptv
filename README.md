@@ -1,4 +1,4 @@
-# StreamTV v3.4.0
+# StreamTV v3.5.0
 
 > Toute ta télévision, dans un seul endroit.
 
@@ -49,7 +49,7 @@ Au premier lancement, le serveur :
 
 ```text
 [2026-10-25T11:49:37.138Z] catalogue de démonstration créé : 1475 chaînes
-[2026-10-25T13:40:00.000Z] StreamTV v3.4.0 — 1475 chaînes, 41 routes
+[2026-10-25T13:40:00.000Z] StreamTV v3.5.0 — 1475 chaînes, 42 routes
 [2026-10-25T11:49:37.215Z] écoute sur http://0.0.0.0:3000
 ```
 

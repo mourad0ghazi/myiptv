@@ -51,8 +51,8 @@ async function main() {
   const raw = await fsp.readFile(SOURCE, 'utf8');
   const parsed = JSON.parse(raw);
   const channels = (Array.isArray(parsed) ? parsed : parsed.channels || [])
-    .filter((channel) => !channel.deleted && (channel.epgId || channel.tvgId))
-    .slice(0, 60);
+    .filter((channel) => !channel.deleted && !channel.blocked && (channel.epgId || channel.tvgId))
+    .slice(0, 400);
 
   // Grille de 24 heures à partir de l'heure pleine précédente, 8 créneaux de 3 heures.
   const start = new Date();

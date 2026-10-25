@@ -217,6 +217,43 @@ describe('Routage client et rendu', () => {
     for (const size of sizes) assert.ok(size <= 60, `pageSize ${size} dépasse 60`);
   });
 
+  test('carte : état lisible, programme au survol et aperçu muet', async () => {
+    const components = await read('public/js/components.js');
+    const preview = await read('public/js/preview.js');
+    const now = await read('public/js/epg-now.js');
+    // Aucun état muet : chaque carte porte une phrase d'état (jamais un simple point gris).
+    assert.match(components, /export function stateLabel/);
+    for (const phrase of ['Vérifiée récemment', 'En cours de vérification', 'Indisponible à l’instant', 'Réservée à un pays']) {
+      assert.ok(components.includes(phrase), `état manquant : ${phrase}`);
+    }
+    assert.match(components, /class: 'card-hover'/);
+    assert.match(components, /En ce moment/);
+    // L'aperçu est muet, unique et borné dans le temps (budget réseau AC-089).
+    assert.match(preview, /video\.muted = true/);
+    assert.match(preview, /DUREE_MAX = 20_000/);
+    assert.match(preview, /hover: none/);
+    assert.match(preview, /export function stopPreview/);
+    // « En ce moment » ne part pas au chargement : une requête par lot, mise en cache.
+    assert.match(now, /\/api\/epg\/now\?ids=/);
+    assert.match(now, /DUREE_CACHE/);
+  });
+
+  test('mobile : barre d’onglets et rails de recommandations distincts du PC', async () => {
+    const rails = await read('public/js/views/rails.js');
+    // Cinq onglets, libellés français, cibles tactiles assurées par le CSS.
+    const tabbar = index.slice(index.indexOf('class="tabbar"'), index.indexOf('</nav>', index.indexOf('class="tabbar"')));
+    for (const label of ['Accueil', 'Guide', 'Rechercher', 'Favoris', 'Plus']) {
+      assert.ok(tabbar.includes(`>${label}<`), `onglet manquant : ${label}`);
+    }
+    assert.match(css, /\.tabbar\{display:none\}/);
+    assert.match(css, /max-width:619px\)\{[\s\S]{0,400}\.tabbar\{display:grid/);
+    // Rails : historique local d'abord, affinités ensuite, repli éditorial sinon.
+    assert.match(rails, /Continuer à regarder/);
+    assert.match(rails, /Pour vous/);
+    assert.match(rails, /prefs\.history\(\)/);
+    assert.match(css, /\.rail-track\{/);
+  });
+
   test('carte, recherche, pager : contrats DOM du §7.3', async () => {
     const components = await read('public/js/components.js');
     const home = await read('public/js/views/home.js');

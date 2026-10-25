@@ -208,7 +208,7 @@ function routeTitleFor(route) {
 }
 
 function markNav(route) {
-  const map = { home: 'home', search: 'home', guide: 'guide', favorites: 'favorites', admin: 'admin', login: 'admin' };
+  const map = { home: 'home', search: 'home', guide: 'guide', favorites: 'favorites', help: 'help', errors: 'help', admin: 'admin', login: 'admin' };
   const active = map[route.name] || '';
   document.querySelectorAll('[data-nav]').forEach((link) => {
     if (link.dataset.nav === active) link.setAttribute('aria-current', 'page');
@@ -547,6 +547,18 @@ function wireHeader() {
   if (shortcuts) shortcuts.addEventListener('click', openShortcuts);
   const favoriteShortcut = document.getElementById('fav-shortcut');
   if (favoriteShortcut) favoriteShortcut.addEventListener('click', () => router.navigate('/favoris'));
+
+  // Barre d'onglets mobile : « Rechercher » ramène en haut et place le curseur dans le champ.
+  const tabSearch = document.getElementById('tabbar-search');
+  if (tabSearch) {
+    tabSearch.addEventListener('click', () => {
+      if (state.route?.name !== 'home' && state.route?.name !== 'search') router.navigate('/');
+      const input = document.getElementById('search-input');
+      if (!input) return;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      input.focus({ preventScroll: true });
+    });
+  }
 }
 
 function openShortcuts() {

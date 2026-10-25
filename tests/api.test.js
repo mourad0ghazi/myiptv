@@ -118,6 +118,15 @@ describe('API publique', () => {
       const version = await client('/api/version');
       assert.equal(version.status, 200);
       assert.match(version.json.version, /^\d+\.\d+\.\d+$/);
+      assert.ok(version.json.routes >= 42, `routes exposées : ${version.json.routes}`);
+
+      // EP-08b : « en ce moment » répond même sans guide, avec une forme stable.
+      const now = await client('/api/epg/now');
+      assert.equal(now.status, 200);
+      assert.equal(Array.isArray(now.json.now), true, 'now est toujours un tableau');
+      const inconnu = await client('/api/epg/now?ids=inexistant0000');
+      assert.equal(inconnu.status, 200);
+      assert.equal(inconnu.json.now.length, 0, 'un identifiant inconnu ne renvoie rien');
 
       const catalog = await client('/api/errors/catalog');
       assert.equal(catalog.status, 200);
