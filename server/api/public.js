@@ -245,7 +245,11 @@ export function registerPublicRoutes(router, app) {
         logs: 'Les journaux techniques sont conservés 14 jours, le journal d’audit 90 jours, sans adresse IP pour les visiteurs.',
         cookies: 'Aucun cookie de mesure d’audience, aucun traceur tiers, aucun profil publicitaire.',
       },
-      sources: (app.store.sources || []).map((source) => ({ name: source.name, url: source.url, licence: 'Liste publique fournie par la source' })),
+      sources: (app.store.sources || []).filter((source) => source.enabled !== false).map((source) => ({
+        name: source.name,
+        url: source.url,
+        licence: source.license || 'Liste publique fournie par la source',
+      })),
       updatedAt: new Date().toISOString(),
     },
     cache: 'public, max-age=3600',

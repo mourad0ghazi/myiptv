@@ -1,9 +1,9 @@
-# Conformité — StreamTV v3.3.0
+# Conformité — StreamTV v3.4.0
 
-Version évaluée : **3.3.0**, 25 octobre 2026.
+Version évaluée : **3.4.0**, 25 octobre 2026.
 Référentiel : cahier des charges *StreamTV v2* (§1 à §13, 118 critères).
-Preuves : `npm test` (10 suites, 187 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
-(40 contrôles), `node scripts/measure-tagger.js`, smoke tests DOM (jsdom) des 12 routes.
+Preuves : `npm test` (11 suites, 207 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
+(43 contrôles), `node scripts/measure-tagger.js`, smoke tests DOM (jsdom) des 12 routes.
 
 Légende des statuts :
 
@@ -349,6 +349,38 @@ cahier des charges, mot pour mot.
 Deux écarts restent assumés et documentés au §6 : l’absence de flux « réels » dans le jeu de
 test (les mires sont vérifiées par leur contrat, pas par une lecture réseau) et les mesures de
 performance faites sur un catalogue de 1 475 chaînes, pas sur 30 000.
+
+### 4.6 Usage mobile (§7.4, §7.6, AC-078)
+
+Le site est conçu pour le doigt autant que pour la souris. Chaque point est verrouillé par un
+test : les règles ne peuvent pas régresser sans que `npm test` échoue.
+
+| Point | Problème évité | Mise en œuvre | Preuve |
+|---|---|---|---|
+| Pastille de lecture | `opacity:0` au survol : invisible sur tactile, la carte n'offrait plus que la fiche | visible sous `@media (hover:none), (pointer:coarse)`, 46 px | `client.test.js` « usage tactile » |
+| Survol collant | un tap laisse la carte dans un état survolé | `transform`, `background` et `box-shadow` neutralisés sous `hover:none` | idem |
+| Cibles tactiles | taps manqués sur les filtres et la croix | 44 px minimum : `.chip`, `.btn-sm`, `.search-clear`, `.player-btn`, liens de pied de page | idem |
+| Zoom iOS | champ à 14 px : iOS zoome et décale la page | `font-size:16px` sur les champs sous 900 px | idem |
+| Encoches | en-tête et contrôles sous la barre d'accueil en paysage | `env(safe-area-inset-*)` sur en-tête, contenu, pied de page, notifications, lecteur | idem |
+| Barre d'URL | `100vh` provoque un saut quand elle disparaît | `min-height:100dvh` avec repli `100vh` | idem |
+| Guide à 320 px | libellé « Regarder » poussait la ligne hors écran | libellé masqué (icône seule), état de santé conservé, deux cibles de 44 px | idem |
+| Lecteur tactile | aucune commande sans clavier | tap = OSD, glissement vertical = volume, glissement horizontal = chaîne | `client.test.js` « lecteur tactile » |
+| Fuite d'écouteurs | gestes encore actifs après fermeture (ER-X11) | `detachGestures()` appelé dans `teardown()` | idem |
+| Débordement 320 px | modale, mire, images plus larges que l'écran | `max-width:100%`, `min-width:0`, modale en `margin:auto` | `client.test.js` + CSS |
+
+### 4.7 Qualité des sources (§5 F-09, §10.5)
+
+| Contrôle | Seuil | Mesure sur le catalogue livré | Statut |
+|---|---|---|---|
+| Flux `http:` (bloqués en HTTPS) | ≤ 5 % | 0 sur 1 475 | conforme |
+| Couverture du guide (`tvg-id`) | ≥ 50 % | 98 % | conforme |
+| Sources déclarées avec licence | toutes | iptv-org (CC0) ; world_ip_tv (MIT) déclarée, désactivée | conforme |
+| Vérification avant ingestion | obligatoire pour une nouvelle liste | `scripts/probe-source.js` : sonde chaque flux, n'écrit que ceux qui répondent | conforme |
+| Refus d'écriture | < 2 % de flux disponibles | `--min-up 0.02` par défaut | conforme |
+
+La seconde liste (`world_ip_tv`, MIT) est **déclarée mais désactivée** : elle n'apporte ni
+`tvg-id` ni catégories, et un flux sur dix y est en `http:`. Elle se traite donc en amont, par
+`npm run probe`, dont la sortie est la seule liste importable.
 
 ## 5. Matrice des routes
 

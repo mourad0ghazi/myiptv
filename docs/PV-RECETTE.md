@@ -1,13 +1,13 @@
-# Procès-verbal de recette — StreamTV v3.3.0
+# Procès-verbal de recette — StreamTV v3.4.0
 
 | Élément | Valeur |
 |---|---|
 | Objet | recette du site StreamTV, conforme au cahier des charges *StreamTV v2* |
-| Version livrée | 3.3.0 |
+| Version livrée | 3.4.0 |
 | Date de recette | 25 octobre 2026 |
 | Environnement | Node.js 22.22.3 (compatible 20 LTS), 8 cœurs, 16 Go de mémoire, Linux, réseau local |
 | Dossier de recette | machine vierge, `data/` recréé depuis `data/seed/seed.m3u` |
-| Référentiel de preuve | `npm test` (10 suites, 187 tests), `scripts/verify.js` (40 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
+| Référentiel de preuve | `npm test` (11 suites, 207 tests), `scripts/verify.js` (43 contrôles), `scripts/measure-tagger.js`, smoke tests DOM (jsdom 24) |
 | Décision | **Recette prononcée avec réserves** (voir §7) |
 
 ---
@@ -35,12 +35,12 @@ régime normal.
 Commande : `npm test`
 
 ```text
-# tests 187
-# pass 187
+# tests 207
+# pass 207
 # fail 0
 # cancelled 0
 # skipped 0
-# duration_ms 18249.341441
+# duration_ms 18450.118203
 ```
 
 Aucun échec, aucun test ignoré. Les suites d’API démarrent chacune leur propre serveur sur un
@@ -148,6 +148,9 @@ règles personnalisées.
 | `/` — pager | conforme | « Page 1 sur 31 · 1 475 chaînes », « Précédent » désactivé, « Suivant » mène à la page 2 |
 | Recherche — suggestions | conforme | 6 options pour « sport », `aria-expanded="true"`, `aria-activedescendant` posé par `↓`, `Échap` referme |
 | `/guide` — clavier | conforme | roving tabindex `0,-1,-1,-1`, `↓` déplace le focus, indice « ↑ ↓ pour parcourir… » affiché |
+| Mobile 320 / 375 / 430 px | conforme | aucun défilement horizontal, pastille de lecture visible, cibles de 44 px, champs à 16 px |
+| Lecteur tactile | conforme | gestes branchés au montage, OSD au tap, volume et zapping au glissement, écouteurs détachés à la fermeture |
+| `node scripts/probe-source.js` | conforme | liste locale de 8 flux, serveur de test : 4 retenus, 4 écartés, en-tête avec origine et décompte |
 | `/guide` | conforme | en-tête « Zapping », saut au numéro, compteurs par catégorie, colonne programme chargée après la liste (aucun blocage) |
 | `/favoris` | conforme | deux sections, état vide avec action |
 | `/connexion` | conforme | formulaire, mention du mot de passe unique |

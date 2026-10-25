@@ -141,6 +141,7 @@ class Player {
 
     this.bindMediaEvents();
     this.bindKeys();
+    this.bindGestures(stage);
     this.setState('PREPARING');
     if (this.channel.blocked) {
       this.setState('BLOCKED');
@@ -423,6 +424,72 @@ class Player {
     document.addEventListener('keydown', this.onKeyDown, true);
   }
 
+  /**
+   * Gestes tactiles : un tap affiche ou masque l'OSD, un glissement vertical règle le volume,
+   * un glissement horizontal change de chaîne. Les commandes de la barre gardent la main :
+   * le geste ne s'arme que sur la surface vidéo.
+   */
+  bindGestures(stage) {
+    if (!stage || !this.video) return;
+    this.gesture = { x: 0, y: 0, time: 0, volume: 0, armed: false, moved: false };
+    const surface = this.video;
+
+    const begin = (event) => {
+      if (event.pointerType === 'mouse') return; // souris : les commandes suffisent
+      const point = event.touches ? event.touches[0] : event;
+      this.gesture = {
+        x: point.clientX, y: point.clientY, time: Date.now(),
+        volume: this.video.volume, armed: true, moved: false,
+      };
+    };
+
+    const move = (event) => {
+      const gesture = this.gesture;
+      if (!gesture?.armed) return;
+      const point = event.touches ? event.touches[0] : event;
+      const dx = point.clientX - gesture.x;
+      const dy = point.clientY - gesture.y;
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
+      gesture.moved = true;
+      if (Math.abs(dy) > Math.abs(dx)) {
+        // Volume relatif à la position de départ : 1 % par pixel, borné à [0 ; 1].
+        this.setVolume(gesture.volume - dy / 240);
+        this.showOsd(`Volume ${Math.round(this.video.volume * 100)} %`);
+      }
+      if (event.cancelable) event.preventDefault();
+    };
+
+    const end = (event) => {
+      const gesture = this.gesture;
+      if (!gesture?.armed) return;
+      gesture.armed = false;
+      const point = event.changedTouches ? event.changedTouches[0] : event;
+      const dx = (point?.clientX ?? gesture.x) - gesture.x;
+      const dy = (point?.clientY ?? gesture.y) - gesture.y;
+      const elapsed = Date.now() - gesture.time;
+      if (gesture.moved && Math.abs(dx) > 64 && Math.abs(dx) > Math.abs(dy)) {
+        this.zap(dx < 0 ? 1 : -1);
+        this.showOsd(dx < 0 ? COPY.actions.next : COPY.actions.previous);
+        return;
+      }
+      if (!gesture.moved && elapsed < 400) {
+        // Un tap sur l'image : l'OSD s'affiche, puis s'efface s'il était déjà visible.
+        if (this.osd?.dataset.hidden === 'false') this.hideOsd();
+        else this.showOsd();
+      }
+    };
+
+    surface.addEventListener('touchstart', begin, { passive: true });
+    surface.addEventListener('touchmove', move, { passive: false });
+    surface.addEventListener('touchend', end, { passive: true });
+    this.detachGestures = () => {
+      surface.removeEventListener('touchstart', begin);
+      surface.removeEventListener('touchmove', move);
+      surface.removeEventListener('touchend', end);
+    };
+    void stage;
+  }
+
   setVolume(value) {
     if (!this.video) return;
     this.video.volume = Math.min(1, Math.max(0, value));
@@ -445,14 +512,27 @@ class Player {
     }
   }
 
-  showOsd() {
+  showOsd(message = '') {
     if (!this.osd) return;
     if (this.mireHost?.childElementCount) return;
+    if (message) {
+      clearTimeout(this.osdNoteTimer);
+      const note = this.osd.querySelector('.osd-note') || h('em', { class: 'osd-note' });
+      note.textContent = message;
+      if (!note.isConnected) this.osd.append(note);
+      this.osdNoteTimer = setTimeout(() => note.remove(), 1400);
+    }
     this.osd.dataset.hidden = 'false';
     clearTimeout(this.osdTimer);
     this.osdTimer = setTimeout(() => {
       if (this.osd && this.state === 'PLAYING') this.osd.dataset.hidden = 'true';
     }, 3800);
+  }
+
+  hideOsd() {
+    if (!this.osd) return;
+    clearTimeout(this.osdTimer);
+    this.osd.dataset.hidden = 'true';
   }
 
   async zap(direction) {
@@ -533,6 +613,7 @@ class Player {
     clearTimeout(this.retryTimer);
     clearTimeout(this.manifestTimer);
     clearTimeout(this.osdTimer);
+    clearTimeout(this.osdNoteTimer);
   }
 
   teardown(closeOverlay = true) {
@@ -540,6 +621,8 @@ class Player {
     clearTimeout(this.digitTimer);
     if (this.onKeyDown) document.removeEventListener('keydown', this.onKeyDown, true);
     this.onKeyDown = null;
+    this.detachGestures?.();
+    this.detachGestures = null;
     this.releaseEngine();
     if (this.video) {
       try { this.video.pause(); } catch { /* déjà arrêté */ }

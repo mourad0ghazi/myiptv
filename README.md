@@ -1,4 +1,4 @@
-# StreamTV v3.3.0
+# StreamTV v3.4.0
 
 > Toute ta télévision, dans un seul endroit.
 
@@ -49,7 +49,7 @@ Au premier lancement, le serveur :
 
 ```text
 [2026-10-25T11:49:37.138Z] catalogue de démonstration créé : 1475 chaînes
-[2026-10-25T13:05:00.000Z] StreamTV v3.3.0 — 1475 chaînes, 41 routes
+[2026-10-25T13:40:00.000Z] StreamTV v3.4.0 — 1475 chaînes, 41 routes
 [2026-10-25T11:49:37.215Z] écoute sur http://0.0.0.0:3000
 ```
 
@@ -71,6 +71,22 @@ En production (`NODE_ENV=production`), `ADMIN_PASSWORD` est **obligatoire** : sa
 serveur refuse de démarrer et l'écrit dans le journal (`AC-101`). Hors production, le mot de
 passe de démonstration `admin` est utilisé et un bandeau d'alerte reste affiché dans l'interface
 jusqu'à son changement.
+
+### Vérifier une liste avant de l'importer
+
+Une liste publique contient toujours des flux morts. Le vérificateur rejoue le parseur du site,
+déduplique par adresse, teste chaque flux (8 en parallèle, 6 s, 2 Ko demandés) et n'écrit que
+ceux qui répondent :
+
+```bash
+node scripts/probe-source.js --url https://romaxa55.github.io/world_ip_tv/output/index.m3u \
+     --out data/sources/verifies.m3u
+node scripts/ingest.js --file data/sources/verifies.m3u --commit
+```
+
+Les flux `http:` sont écartés par défaut (un site HTTPS ne peut pas les lire), l'écriture est
+refusée si moins de 2 % des flux répondent, et l'en-tête de la liste écrite rappelle l'origine,
+la licence, la date et le décompte. Voir `SOURCES.md` §2 pour la comparaison des listes.
 
 ### Première connexion
 

@@ -130,7 +130,28 @@ export class Store {
     const { data, corrupt } = await this.readJson(this.file('sources'), null);
     if (!corrupt && data && Array.isArray(data.sources)) { this.sources = data.sources; return; }
     this.sources = [
-      { id: 'iptv-org', name: 'iptv-org', url: 'https://iptv-org.github.io/iptv/index.m3u', weight: 60, enabled: true, lastIngestAt: null },
+      {
+        id: 'iptv-org',
+        name: 'iptv-org',
+        url: 'https://iptv-org.github.io/iptv/index.m3u',
+        license: 'CC0 (base) / listes sous licence de leurs auteurs',
+        note: 'Socle : identifiants de guide (tvg-id), catégories et HTTPS.',
+        weight: 60,
+        enabled: true,
+        verified: false,
+        lastIngestAt: null,
+      },
+      {
+        id: 'romaxa55',
+        name: 'world_ip_tv (romaxa55)',
+        url: 'https://romaxa55.github.io/world_ip_tv/output/index.m3u',
+        license: 'MIT',
+        note: 'Fraîcheur : liste re-testée toutes les 6 h. Ni tvg-id ni catégories ; à passer par scripts/probe-source.js avant ingestion.',
+        weight: 30,
+        enabled: false,
+        verified: false,
+        lastIngestAt: null,
+      },
       { id: 'catalogue-propre', name: 'Catalogue propre', url: '', weight: 40, enabled: true, lastIngestAt: null },
     ];
   }

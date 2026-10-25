@@ -258,6 +258,40 @@ describe('Routage client et rendu', () => {
     assert.match(player, /if \(actionIds\.length < 2\) actionIds\.push\('copy'\)/);
   });
 
+  test('usage tactile : cibles de 44 px, survol neutralisé, encoches respectées', () => {
+    // Sur un écran sans survol, la pastille de lecture est visible : aucun tap manqué.
+    const coarse = css.slice(css.indexOf('@media (hover:none), (pointer:coarse)'));
+    assert.ok(css.includes('@media (hover:none), (pointer:coarse)'), 'bloc tactile absent');
+    assert.match(coarse, /\.card-play\{opacity:1/);
+    assert.match(coarse, /\.chip\{min-height:44px\}/);
+    assert.match(coarse, /\.btn-sm\{min-height:44px/);
+    assert.match(coarse, /\.player-btn\{width:46px; height:46px\}/);
+    // Le survol ne reste pas collé après un tap.
+    assert.match(coarse, /\.card:hover\{transform:none/);
+    // Encoches et barre d'accueil : marges internes calculées, jamais fixes.
+    assert.match(css, /env\(safe-area-inset-bottom\)/);
+    assert.match(css, /env\(safe-area-inset-left\)/);
+    // Hauteur dynamique d'abord, repli 100vh pour les navigateurs anciens.
+    assert.match(css, /min-height:100vh; min-height:100dvh/);
+    // Pas de zoom iOS : les champs font au moins 16 px sur mobile.
+    assert.match(css, /@media \(max-width:899px\)\{[\s\S]{0,200}input,select,textarea\{font-size:16px\}/);
+    // Le guide reste lisible à 320 px : libellé masqué, santé conservée.
+    assert.match(css, /\.guide-row \.btn-label\{display:none\}/);
+    assert.match(css, /\.guide-health\{/);
+  });
+
+  test('lecteur tactile : tap, glissement de volume et de chaîne, écouteurs détachés', () => {
+    assert.match(player, /bindGestures\(stage\)/);
+    assert.match(player, /touchstart/);
+    assert.match(player, /touchmove/);
+    assert.match(player, /touchend/);
+    assert.match(player, /this\.zap\(dx < 0 \? 1 : -1\)/);
+    assert.match(player, /this\.setVolume\(gesture\.volume - dy \/ 240\)/);
+    assert.match(player, /detachGestures\?\.\(\)/, 'les écouteurs tactiles doivent être détachés');
+    // Un tap alterne l'affichage de l'OSD, il ne relance pas la lecture.
+    assert.match(player, /hideOsd\(\)/);
+  });
+
   test('échappement systématique : pas de innerHTML avec des données', async () => {
     const files = await listFiles('public/js', (file) => file.endsWith('.js'));
     for (const file of files) {
