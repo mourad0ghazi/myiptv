@@ -1,4 +1,4 @@
-# StreamTV v3.5.0
+# StreamTV v3.6.0
 
 > Toute ta télévision, dans un seul endroit.
 
@@ -49,7 +49,7 @@ Au premier lancement, le serveur :
 
 ```text
 [2026-10-25T11:49:37.138Z] catalogue de démonstration créé : 1475 chaînes
-[2026-10-25T13:40:00.000Z] StreamTV v3.5.0 — 1475 chaînes, 42 routes
+[2026-10-25T13:40:00.000Z] StreamTV v3.6.0 — 1475 chaînes, 42 routes
 [2026-10-25T11:49:37.215Z] écoute sur http://0.0.0.0:3000
 ```
 
@@ -71,6 +71,27 @@ En production (`NODE_ENV=production`), `ADMIN_PASSWORD` est **obligatoire** : sa
 serveur refuse de démarrer et l'écrit dans le journal (`AC-101`). Hors production, le mot de
 passe de démonstration `admin` est utilisé et un bandeau d'alerte reste affiché dans l'interface
 jusqu'à son changement.
+
+### Savoir quelles chaînes marchent vraiment
+
+Une étiquette « [Geo-blocked] » dans une liste est une déclaration, pas un constat : la chaîne
+peut très bien répondre depuis chez vous. Le site ne bloque donc plus rien sur cette foi. Pour
+obtenir des faits, mesurez :
+
+```bash
+npm run sonde                        # 500 chaînes jamais testées, aperçu
+npm run sonde -- --tout --commit     # tout le catalogue, enregistré
+npm run sonde -- --id db4e9e37edfa   # une seule chaîne
+```
+
+La sonde demande un octet par flux (`Range: bytes=0-0`), huit en parallèle, avec un délai de
+six secondes. Elle écrit `health` (`status`, `checkedAt`, `httpStatus`, `cors`,
+`consecutiveFailures`) et ne bloque qu'après **trois échecs consécutifs** : `403`/`451` donnent
+`geo`, `404`/`410` donnent `dead`. Une chaîne bloquée par une ancienne étiquette qui répond
+redevient lisible.
+
+Relancez la sonde après un import, puis reconstruisez la démonstration pour que le site publié
+affiche les états mesurés.
 
 ### Vérifier une liste avant de l'importer
 

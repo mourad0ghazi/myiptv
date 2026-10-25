@@ -104,10 +104,13 @@ export async function probeChannels(channels, {
         consecutiveFailures,
       };
       channel.updatedAt = now;
+      // La mesure prime sur l'étiquette : une chaîne annoncée « géo-bloquée » par sa source
+      // qui répond ici est rendue à la lecture ; une chaîne qui échoue pour une raison de
+      // zone n'est marquée `geo` qu'après constat, jamais sur la foi d'un nom.
       if (verdict.status === 'down' && consecutiveFailures >= LIMITS.downAfterFailures && !channel.manualOverride) {
         channel.blocked = true;
-        channel.blockedReason = 'dead';
-      } else if (verdict.status === 'up' && channel.blockedReason === 'dead') {
+        channel.blockedReason = verdict.reason === 'geo' ? 'geo' : 'dead';
+      } else if (verdict.status === 'up' && (channel.blockedReason === 'dead' || channel.blockedReason === 'geo')) {
         channel.blocked = false;
         channel.blockedReason = '';
       }
