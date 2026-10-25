@@ -1,4 +1,4 @@
-# RUNBOOK — exploitation de StreamTV v3.5.0
+# RUNBOOK — exploitation de StreamTV v3.6.0
 
 Ce document décrit l’exploitation courante, les gestes d’urgence et les procédures de reprise.
 Il est écrit pour être suivi sans connaissance préalable du code : chaque procédure indique ce
@@ -6,11 +6,23 @@ qu’elle fait, quand l’appliquer, les commandes exactes et le résultat atten
 
 ---
 
+## Sonde de disponibilité (nouveau en 3.6.0)
+
+```bash
+npm run sonde                        # aperçu sur 500 chaînes jamais testées
+npm run sonde -- --tout --commit     # mesure complète, enregistrée et journalisée
+```
+
+Règles : `403`/`451` → `geo`, `404`/`410` → `dead`, seulement après trois échecs consécutifs ;
+une chaîne étiquetée « géo-bloquée » qui répond est débloquée ; un verrou manuel n'est jamais
+écrasé. Après la sonde, reconstruire la démonstration (`npm run build:static`) pour publier les
+états mesurés.
+
 ## 0. Fiche d’identité du service
 
 | Élément | Valeur |
 |---|---|
-| Application | StreamTV 3.5.0 (conformité *StreamTV v2*) |
+| Application | StreamTV 3.6.0 (conformité *StreamTV v2*) |
 | Runtime | Node.js 20 LTS ou plus, aucun paquet npm |
 | Écoute | `0.0.0.0:3000` (modifiable par `PORT` / `HOST`) |
 | Données | `./data` (modifiable par `DATA_DIR`) |
@@ -34,7 +46,7 @@ PORT=3000 ADMIN_PASSWORD='…' node server/index.js
 Résultat attendu dans les 5 secondes :
 
 ```text
-StreamTV v3.5.0 — 1475 chaînes, 42 routes
+StreamTV v3.6.0 — 1475 chaînes, 42 routes
 écoute sur http://0.0.0.0:3000
 ```
 

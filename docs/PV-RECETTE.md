@@ -1,9 +1,9 @@
-# Procès-verbal de recette — StreamTV v3.5.0
+# Procès-verbal de recette — StreamTV v3.6.0
 
 | Élément | Valeur |
 |---|---|
 | Objet | recette du site StreamTV, conforme au cahier des charges *StreamTV v2* |
-| Version livrée | 3.5.0 |
+| Version livrée | 3.6.0 |
 | Date de recette | 25 octobre 2026 |
 | Environnement | Node.js 22.22.3 (compatible 20 LTS), 8 cœurs, 16 Go de mémoire, Linux, réseau local |
 | Dossier de recette | machine vierge, `data/` recréé depuis `data/seed/seed.m3u` |
@@ -263,7 +263,7 @@ node scripts/measure-tagger.js                      # attendu : toutes cibles �
 - `data/audit.log` — journal des actions effectuées pendant la recette.
 - `data/backups/` — sauvegardes créées pendant la recette, avec empreintes SHA-256.
 
-### Recette des écrans de la 3.5.0
+### Recette des écrans de la 3.6.0
 
 | Point | Vérification | Résultat |
 |---|---|---|

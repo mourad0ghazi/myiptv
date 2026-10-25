@@ -1,6 +1,6 @@
-# Conformité — StreamTV v3.5.0
+# Conformité — StreamTV v3.6.0
 
-Version évaluée : **3.5.0**, 25 octobre 2026.
+Version évaluée : **3.6.0**, 25 octobre 2026.
 Référentiel : cahier des charges *StreamTV v2* (§1 à §13, 118 critères).
 Preuves : `npm test` (11 suites, 207 tests), `node scripts/verify.js --base http://127.0.0.1:3000`
 (43 contrôles), `node scripts/measure-tagger.js`, smoke tests DOM (jsdom) des 12 routes.
@@ -399,6 +399,20 @@ information sur son état laisse l'utilisateur devant un écran noir.
 
 Le budget réseau reste tenu : l'aperçu est unique et interrompu, « en ce moment » n'est demandé
 qu'au survol par lots, et le panneau de survol est en CSS pur (aucun calcul au défilement).
+
+### 4.9 Une étiquette n'est pas une mesure (§5 F-16, §9.4)
+
+Défaut corrigé en 3.6.0 : la 3.5.0 bloquait les chaînes sur la foi de l'étiquette `[Geo-blocked]`
+présente dans le nom fourni par la source. Cent sept chaînes ont ainsi été retirées de la lecture
+sans le moindre test — dont `MBC Bollywood`, qui répond parfaitement depuis un autre réseau.
+
+| Règle | Mise en œuvre | Preuve |
+|---|---|---|
+| L'étiquette informe, elle ne décide pas | `scripts/masquer-a-risque.mjs` ne bloque plus : il conserve la mention dans les tags (`annonce-geo`, `annonce-24-7`) et rend à la lecture ce qui avait été bloqué sans mesure | sortie du script : 343 étiquettes repérées, 0 blocage |
+| La mesure tranche | `npm run sonde` (`scripts/probe-chaines.js`) sonde réellement chaque flux (concurrence 8, délai 6 s, `Range: bytes=0-0`) et écrit `health` | `tests/probe.test.js` (6 tests sur serveur local) |
+| Blocage seulement après constat | `403`/`451` → `geo`, `404`/`410` → `dead`, et uniquement après `downAfterFailures` (3) échecs consécutifs | `tests/probe.test.js` : un 403 unique ne bloque pas, trois bloquent |
+| La mesure lève un blocage | une chaîne étiquetée « geo » qui répond est rendue à la lecture | `tests/probe.test.js` : étiquette contredite → `blocked: false` |
+| Une décision humaine reste souveraine | `manualOverride` n'est jamais écrasé par la sonde | `tests/probe.test.js` : verrou manuel conservé |
 
 ## 5. Matrice des routes
 

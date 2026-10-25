@@ -3,6 +3,37 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.6.0] — 2026-10-25
+
+Une étiquette n'est pas une mesure. La 3.5.0 bloquait les chaînes sur la foi du suffixe
+« [Geo-blocked] » fourni par la source : cent sept chaînes ont quitté la lecture sans avoir
+jamais été testées, dont MBC Bollywood, qui répond très bien ailleurs. Cette version remet la
+mesure au centre.
+
+### Corrigé
+
+- `scripts/masquer-a-risque.mjs` ne bloque plus rien sur étiquette : il conserve la mention
+  dans les tags (`annonce-geo`, `annonce-24-7`) et **rend à la lecture** toute chaîne bloquée
+  sur simple déclaration et jamais mesurée. L'option `--bloquer-not247` permet de revenir à
+  l'ancien comportement en connaissance de cause.
+- La sonde bloque désormais avec la **bonne raison** : `403`/`451` → `geo`, `404`/`410` → `dead`,
+  et seulement après trois échecs consécutifs. Une chaîne étiquetée « geo » qui répond est
+  débloquée.
+
+### Ajouté
+
+- `npm run sonde` (`scripts/probe-chaines.js`) : mesure réelle du catalogue, concurrence bornée,
+  délai réglable, sélection par identifiant, aperçu par défaut et `--commit` pour enregistrer,
+  journal d'audit (`health.probe`) et instantané de santé.
+- `tests/probe.test.js` : six tests sur serveur local — étiquette contredite, 403 unique,
+  trois 403, trois 404, verrou manuel, flux sans CORS.
+
+### Vérifié
+
+- `npm test` : **216 tests**, 12 suites, 0 échec.
+- Démonstration republiée : les 1 475 chaînes sont lisibles, aucune n'est plus bloquée sur
+  étiquette ; `MBC Bollywood` (n° 86) est de nouveau proposée.
+
 ## [3.5.0] — 2026-10-25
 
 Trois chantiers : **la fiabilité devient visible**, **la carte informative au survol**, et une
