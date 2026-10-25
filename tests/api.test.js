@@ -134,11 +134,23 @@ describe('API publique', () => {
       assert.ok(csp.includes("object-src 'none'"));
       assert.ok(csp.includes("frame-ancestors 'self'"));
       assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-      assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+      assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
       assert.match(response.headers.get('permissions-policy'), /geolocation=\(\)/);
       assert.equal(response.headers.get('x-frame-options'), 'SAMEORIGIN');
       assert.ok(response.headers.get('x-request-id'));
       assert.equal(response.headers.get('x-powered-by'), null);
+      // §10.3 : les en-têtes sont copiés tels quels, sans relâchement possible.
+      assert.equal(response.headers.get('strict-transport-security'), 'max-age=31536000; includeSubDomains; preload');
+      assert.equal(response.headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=(), payment=()');
+      assert.equal(response.headers.get('cross-origin-opener-policy'), 'same-origin');
+      assert.equal(response.headers.get('cross-origin-resource-policy'), 'same-origin');
+      for (const directive of ["script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data: https:",
+        "media-src 'self' https: blob:", "connect-src 'self' https:", "font-src 'self'", "base-uri 'self'",
+        "form-action 'self'"]) {
+        assert.ok(csp.includes(directive), `directive absente : ${directive}`);
+      }
+      assert.equal(/media-src[^;]*http:/.test(csp), false, 'aucun flux http: autorisé par la CSP (P-01)');
+      assert.equal(/connect-src[^;]*http:/.test(csp), false);
     });
   });
 

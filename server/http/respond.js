@@ -5,42 +5,35 @@ import { brotliCompressSync, gzipSync } from 'node:zlib';
 import { randomBytes } from 'node:crypto';
 import { ERRORS, errorMessage } from '../core/errors.js';
 
+// §10.3 — les huit en-têtes sont copiés tels quels ; deux directives supplémentaires durcissent
+// la politique sans la relâcher : object-src 'none' et upgrade-insecure-requests.
+export const CSP_SPEC = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+  + "img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https:; "
+  + "font-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'";
+export const CSP_HARDENING = "object-src 'none'; upgrade-insecure-requests";
+
 export const SECURITY_HEADERS = {
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'Content-Security-Policy': `${CSP_SPEC}; ${CSP_HARDENING}`,
   'X-Content-Type-Options': 'nosniff',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Resource-Policy': 'same-origin',
-  'Permissions-Policy': 'geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=()',
-  'Content-Security-Policy': [
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
-    "media-src 'self' blob: https: http:",
-    "connect-src 'self' https: http:",
-    "font-src 'self' data:",
-    "worker-src 'self' blob:",
-    "manifest-src 'self'",
-    "frame-src 'self' blob:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'self'",
-    'upgrade-insecure-requests',
-  ].join('; '),
   'X-DNS-Prefetch-Control': 'off',
 };
 
-export const HSTS = 'max-age=31536000; includeSubDomains';
+export const HSTS = 'max-age=31536000; includeSubDomains; preload';
 
 export function newRequestId() {
   return randomBytes(6).toString('hex');
 }
 
-export function sendSecurityHeaders(res, { https = false } = {}) {
+export function sendSecurityHeaders(res) {
+  // §10.3 : les huit en-têtes partent sur chaque réponse. Un navigateur ignore HSTS reçu en
+  // clair (RFC 6797), la présence de l'en-tête ne peut donc pas gêner un essai local.
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(key, value);
-  if (https) res.setHeader('Strict-Transport-Security', HSTS);
 }
 
 function accepts(req, encoding) {

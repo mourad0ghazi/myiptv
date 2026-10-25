@@ -120,7 +120,7 @@ export class Router {
     const url = new URL(req.url, 'http://internal');
     const pathname = decodeURI(url.pathname);
     const query = Object.fromEntries(url.searchParams);
-    sendSecurityHeaders(res, { https: Boolean(extras.https) });
+    sendSecurityHeaders(res);
 
     const method = req.method === 'HEAD' ? 'HEAD' : req.method;
     const { route, params, allowed } = this.match(method, pathname);

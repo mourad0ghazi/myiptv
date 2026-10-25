@@ -46,6 +46,13 @@ ajoutée, aucun `npm install`.
 
 ### Modifié
 
+- En-têtes §10.3 alignés mot pour mot sur le cahier des charges : `Referrer-Policy: no-referrer`,
+  `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`,
+  `Strict-Transport-Security` avec `preload`, CSP sans `http:` dans `media-src` et `connect-src`
+  (cohérence P-01). Deux directives durcissent la politique : `object-src 'none'` et
+  `upgrade-insecure-requests`.
+- `epgUrl` accepte un guide livré sur le site en plus des URL HTTPS ; validation, lecture
+  confinée et test de refus de remontée de dossier.
 - Version du logiciel et du cache du service worker : `3.1.0` / `streamtv-v3.1.0`.
 - `CONFORMITE.md`, `docs/PV-RECETTE.md`, `README.md` : compteurs, preuves et réserves mis à jour
   (la réserve « guide XMLTV non implémenté » devient « aucun fournisseur de guide contracté »).

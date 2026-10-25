@@ -237,7 +237,7 @@ export async function main(options = {}) {
       const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
       const https = forwardedProto === 'https' || Boolean(req.socket.encrypted) || Boolean(process.env.HTTPS);
       app.siteProtocol = 'https:';
-      sendSecurityHeaders(res, { https });
+      sendSecurityHeaders(res);
 
       let pathname = '/';
       try {

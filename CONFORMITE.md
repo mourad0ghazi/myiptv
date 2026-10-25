@@ -182,7 +182,7 @@ Aucun critère n’est marqué « Non testé » : soit une preuve existe, soit l
 | AC-091 | Aucun mot de passe en clair | **Vérifié** | `scrypt` (N = 16 384), sel de 16 octets ; test de hachage |
 | AC-092 | Journaux sans secret | **Vérifié** | Test d’audit : ni jeton ni empreinte ; `verify.js` contrôle |
 | AC-093 | 429 après 8 échecs | **Vérifié** | Test d’anti-force brute : 8 × 401 puis `429 ERR-17` avec `Retry-After` |
-| AC-094 | En-têtes CSP/HSTS présents | **Vérifié** | Test d’en-têtes sur HTML, API et erreurs ; HSTS émis en HTTPS |
+| AC-094 | En-têtes CSP/HSTS présents | **Vérifié** | Les huit en-têtes du §10.3 sont copiés tels quels sur chaque réponse (`server/http/respond.js`, `CSP_SPEC`) ; test d’API qui vérifie chaque directive et refuse `http:` dans `media-src` et `connect-src`. Deux directives de durcissement s’ajoutent sans relâcher la politique : `object-src 'none'`, `upgrade-insecure-requests` |
 | AC-095 | Écriture atomique vérifiée par arrêt brutal | **Partiel** | Séquence `tmp → fsync → rename` et absence de `.tmp` testées ; arrêt brutal non simulé (SIGKILL en cours d’écriture) |
 | AC-096 | Audit de toutes les actions | **Vérifié** | Actions journalisées : connexion, importation, réglages, règles, sauvegarde, restauration, mot de passe ; test JSONL |
 | AC-097 | Annulation fonctionnelle 10 s | **Vérifié** | Toast avec action « Annuler » (10 s) pour les suppressions ; suppression douce + restauration testées |
