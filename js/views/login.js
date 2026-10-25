@@ -1,4 +1,4 @@
-// public/js/views/login.js — écran 6 : connexion administration, un seul mot de passe.
+// public/js/views/login.js · écran 6 : connexion administration, un seul mot de passe.
 // Messages d'erreur inline, jamais de fenêtre native ; 429 affiche le délai exact.
 
 import { auth, api, ApiError } from '../api.js';

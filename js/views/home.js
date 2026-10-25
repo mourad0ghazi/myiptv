@@ -1,4 +1,4 @@
-// public/js/views/home.js — écran 1 : accueil et catalogue paginé.
+// public/js/views/home.js · écran 1 : accueil et catalogue paginé.
 // ≤ 60 chaînes par réponse, ≤ 120 cartes dans le DOM, squelettes pendant le chargement.
 
 import { api } from '../api.js';
@@ -7,7 +7,27 @@ import { h, icon, fmtNumber, skeletonGrid, emptyState, spinner, modal, logoNode,
 import { channelCard, categoryChips, hiddenNotice } from '../components.js';
 import { getPlayer } from '../player.js';
 import { prefs } from '../prefs.js';
+import { nowFor, heureCourte, progression } from '../epg-now.js';
 import { mountRails } from './rails.js';
+
+/** Ligne de programme du héros : remplacée dès que le guide répond, jamais bloquante. */
+function programmeLine(channel) {
+  if (channel.blocked) {
+    return h('p', { class: 'hero-programme', text: 'Lecture limitée sur ce site. La fiche donne la raison et une alternative.' });
+  }
+  const node = h('p', { class: 'hero-programme', text: 'Programme en cours : chargement du guide…' });
+  nowFor(channel.id).then((programme) => {
+    if (!programme) {
+      node.textContent = 'Programme non communiqué par la chaîne.';
+      return;
+    }
+    const pct = Math.round(progression(programme) * 100);
+    node.replaceChildren(
+      h('strong', { text: programme.title }),
+      h('span', { text: ` · ${heureCourte(programme.start)} – ${heureCourte(programme.stop)} · ${pct} % écoulé` }));
+  }).catch(() => { node.textContent = 'Programme non communiqué par la chaîne.'; });
+  return node;
+}
 
 function heroBlock(hero, { config, openChannel, openPlayer }) {
   const featured = hero.channels?.[0];
@@ -32,9 +52,13 @@ function heroBlock(hero, { config, openChannel, openPlayer }) {
       h('div', { class: 'hero-text' },
         h('p', { class: 'eyebrow' }, hero.mode === 'featured' ? 'En vedette' : 'À découvrir'),
         h('h1', { text: featured.name, dir: 'auto' }),
-        h('p', { text: `${featured.categoryLabel} · Chaîne ${featured.number}${featured.country ? ` · ${featured.country}` : ''}${featured.quality !== 'AUTO' ? ` · ${featured.quality}` : ''}` }),
+        h('p', { text: `Chaîne ${featured.number}${featured.country ? ` · ${featured.country}` : ''}${featured.quality !== 'AUTO' ? ` · ${featured.quality}` : ''}` }),
+        h('div', { class: 'hero-cast' },
+          h('span', { class: 'hero-live' }, h('i', { 'aria-hidden': 'true' }), 'En direct'),
+          h('span', { class: 'badge' }, `${featured.categoryLabel}`)),
+        programmeLine(featured),
         h('div', { class: 'hero-meta' },
-          h('span', { class: 'badge', dataset: { tone: 'accent' } }, icon('sparkles', 13), config.maintenanceMode ? 'Catalogue en maintenance' : 'Disponible maintenant'),
+          h('span', { class: 'badge', dataset: { tone: 'accent' } }, icon('check', 13), config.maintenanceMode ? 'Catalogue en maintenance' : 'Disponible maintenant'),
           featured.blocked ? h('span', { class: 'badge', dataset: { tone: 'danger' } }, icon('lock', 13), 'Lecture limitée') : null),
         h('div', { class: 'hero-actions' },
           h('button', { class: 'btn btn-primary', type: 'button', onClick: () => openPlayer(featured) }, icon('play', 16), COPY.actions.watch),
@@ -72,6 +96,7 @@ export async function renderHome(container, ctx) {
     cat: query.cat || '',
     sort: query.sort || config.defaultSort || 'number',
     page: Math.max(1, Number(query.p) || 1),
+    fav: query.fav === '1',
   };
   const openPlayer = (channel) => {
     const queue = [...container.querySelectorAll('[data-channel-id]')].map((el) => el.dataset.channelId);
@@ -86,6 +111,7 @@ export async function renderHome(container, ctx) {
     if (next.q) params.set('q', next.q);
     if (next.cat) params.set('cat', next.cat);
     if (next.sort && next.sort !== config.defaultSort) params.set('sort', next.sort);
+    if (next.fav) params.set('fav', '1');
     if (next.page > 1) params.set('p', String(next.page));
     const search = params.toString();
     navigate(`/${search ? `?${search}` : ''}`, { replace: false, keepScroll: false });
@@ -94,7 +120,7 @@ export async function renderHome(container, ctx) {
   const view = h('div', { class: 'view' });
   container.replaceChildren(view);
 
-  const showHero = !state.q && !state.cat && state.page === 1;
+  const showHero = !state.q && !state.cat && !state.fav && state.page === 1;
   if (showHero && config.hero) {
     view.append(heroBlock(config.hero, { config, openChannel, openPlayer }));
   }
@@ -135,6 +161,13 @@ export async function renderHome(container, ctx) {
         h('p', { class: 'muted', text: 'Vous pouvez les afficher depuis l’administration, onglet Réglages.' })),
       actions: [h('a', { class: 'btn btn-primary', href: '/admin', 'data-link': '' }, 'Ouvrir les réglages')],
     })),
+    h('button', {
+      class: 'btn btn-ghost btn-sm fav-filter', type: 'button', id: 'fav-filter',
+      'aria-pressed': String(state.fav),
+      'aria-label': state.fav ? 'Afficher toutes les chaînes' : 'Afficher seulement mes favoris',
+      onClick: () => setParam({ fav: state.fav ? '' : '1' }),
+    }, icon('heart', 15), 'Mes favoris',
+      h('span', { class: 'fav-count', id: 'fav-count', text: String(prefs.favorites().length) })),
     h('span', { class: 'spacer' }),
     h('label', { class: 'visually-hidden', for: 'sort-select' }, 'Trier les chaînes'),
     h('select', {
@@ -219,7 +252,37 @@ export async function renderHome(container, ctx) {
     }
   };
 
+  /** Filtre « Mes favoris » : rendu local, aucune requête, état de santé inconnu assumé. */
+  const renderFavoris = () => {
+    const favoris = prefs.favorites();
+    const counter = container.querySelector('#result-count');
+    if (counter) {
+      counter.textContent = favoris.length
+        ? `${favoris.length} chaîne${favoris.length > 1 ? 's' : ''} en favori`
+        : 'Aucun favori pour le moment';
+    }
+    if (!favoris.length) {
+      resultsHost.replaceChildren(h('div', { class: 'fav-empty' },
+        icon('heart', 26),
+        h('p', { style: { fontWeight: '600' } }, 'Aucune chaîne en favori'),
+        h('p', { class: 'muted' }, 'Survolez une affiche et touchez le cœur : la chaîne reste ici, sur cet appareil.'),
+        h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => setParam({ fav: '' }) }, 'Parcourir le catalogue')));
+      return;
+    }
+    gridHost.replaceChildren(...favoris.map((item) => {
+      const card = channelCard({ ...item, health: 'unknown', blocked: false, quality: 'AUTO' }, {
+        onOpen: (channel) => openChannel(channel.id),
+        onPlay: (channel) => openPlayer(channel),
+      });
+      card.dataset.channelId = item.id;
+      return card;
+    }));
+    moreHost.replaceChildren();
+    resultsHost.replaceChildren(gridHost, moreHost);
+  };
+
   const load = async () => {
+    if (state.fav) { renderFavoris(); return; }
     resultsHost.replaceChildren(skeletonGrid(12));
     shown = 0;
     nextPage = state.page;
@@ -294,6 +357,12 @@ export async function renderHome(container, ctx) {
     appendCards(payload);
   };
 
+  const desabonner = prefs.onChange(() => {
+    const badge = container.querySelector('#fav-count');
+    if (badge) badge.textContent = String(prefs.favorites().length);
+    if (state.fav) renderFavoris();
+  });
+
   await load();
 
   // Synchronisation avec la barre de recherche de l'en-tête.
@@ -305,5 +374,8 @@ export async function renderHome(container, ctx) {
   };
   window.addEventListener('streamtv:search', onSearch);
   view.addEventListener('streamtv:leave', () => window.removeEventListener('streamtv:search', onSearch));
-  return () => window.removeEventListener('streamtv:search', onSearch);
+  return () => {
+    window.removeEventListener('streamtv:search', onSearch);
+    desabonner();
+  };
 }

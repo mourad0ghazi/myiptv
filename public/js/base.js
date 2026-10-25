@@ -1,4 +1,4 @@
-// public/js/base.js — racine de déploiement.
+// public/js/base.js · racine de déploiement.
 // Le serveur Node sert le site à la racine (« / ») : BASE vaut alors « / » et rien ne change.
 // Une démonstration statique peut être publiée dans un sous-dossier (« /myiptv/ ») : le build
 // injecte alors <base href="/myiptv/"> et tous les appels passent par withBase().

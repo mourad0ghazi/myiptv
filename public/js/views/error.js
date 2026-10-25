@@ -1,4 +1,4 @@
-// public/js/views/error.js — page introuvable, panne de chargement, hors ligne.
+// public/js/views/error.js · page introuvable, panne de chargement, hors ligne.
 // Règle d'or : jamais de message d'erreur sans action concrète.
 
 import { COPY } from '../copy.js';

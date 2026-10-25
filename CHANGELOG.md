@@ -3,6 +3,59 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.8.0] — 2026-10-25
+
+L'accueil devient une galerie qui se pilote au cœur, le lecteur un poste de cinéma, et le
+site s'installe comme une application. Cette version applique aussi, jusqu'au test
+automatique, les règles de design qui interdisent les dégradés, les ombres gratuites et les
+animations de survol.
+
+### Ajouté
+
+- **Accueil galerie** : héros plein cadre avec pastille « En direct », programme en cours
+  (titre, horaires, progression) et rangée de chaînes suggérées ; cartes plus larges, titre
+  sur deux lignes, logo, qualité, santé et programme au survol avec barre de progression.
+- **Filtre cœur** : un cœur sur chaque carte remplace l'étoile, alimente `prefs.favorites()`
+  et affiche un compteur en direct. Le bouton « Mes favoris » filtre tout l'accueil
+  (`/?fav=1`), avec un état vide qui explique le geste.
+- **Rails** : « Continuer à regarder », « Pour vous », « Ce soir » (programmes réellement
+  diffusés, lus dans le guide) et « Par pays » (échantillon divers, jamais un classement par
+  volume).
+- **Lecteur cinéma** : rails « Chaînes similaires » (même catégorie, puis pays, puis langue)
+  et « Dans la même veine » (déclinaisons du même nom), boutons « Chaîne suivante » et
+  « Similaire », trois habillages mémorisés (Cadre TV, Plein écran, Minimal), qualité
+  automatique pilotée par les niveaux HLS avec résolution, débit et codec en direct.
+- **Repli de lecture** : variante, puis autre source ingérée (même `tvg-id` ou même nom
+  normalisé), puis chaîne proche. Une seule reprise automatique, chaque piste essayée une
+  fois : aucune boucle.
+- **Direct vivant** : pastille « En direct » animée, coupée en `prefers-reduced-motion` ;
+  horaires complets et progression sur les cartes, dans le lecteur et dans le guide.
+- **Mode télévision** : détection Android TV, Tizen, webOS, HbbTV, BRAVIA, Roku ; flèches,
+  OK, Retour, Échap et chiffres (numéro de chaîne) ; texte agrandi, cibles de 56 px, focus
+  visible. Activable ou désactivable par `?tv=1` / `?tv=0`.
+- **Installation PWA** : bouton d'installation réelle quand le navigateur l'autorise, marche
+  à suivre écrite pour iPhone et iPad dans l'aide.
+- **Recherche multi-sources** : `GET /api/channels/:id` renvoie `alternatives`, et
+  `GET /api/channels?ids=…` permet de demander une sélection explicite.
+- `GET /api/config` expose `countries`, les pays les plus représentés du catalogue public.
+- `DESIGN_RULES.md` et `tests/design.test.js` : dix règles vérifiées à chaque `npm test`.
+
+### Modifié
+
+- `public/css/app.css` : plus aucun dégradé, aucune ombre sur un élément qui ne flotte pas,
+  aucun déplacement ni mise à l'échelle au survol, couleurs toutes issues des jetons,
+  largeur de contenu ramenée à 1280 px.
+- Copie de l'interface : plus aucun tiret cadratin ni glyphe décoratif ; les valeurs
+  inconnues s'écrivent en toutes lettres.
+- Heures du guide et des cartes au format 24 h de l'interface, quelle que soit la locale.
+- Coquille hors ligne du service worker complétée (`tv.js`, `epg-now.js`, `preview.js`).
+
+### Corrigé
+
+- Le remplissage du cœur ne dépend plus d'un attribut `fill` ignoré par le navigateur : la
+  couleur vient de la feuille de style.
+- Le héros n'affiche plus deux fois la même catégorie.
+
 ## [3.7.0] — 2026-10-25
 
 Contrôle total sur les chaînes et les liens, et fin d'une promesse impossible à tenir.

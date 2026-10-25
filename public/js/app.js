@@ -1,4 +1,4 @@
-// public/js/app.js — amorçage de la coquille, en-tête, bannières, routeur, enregistrement du service worker.
+// public/js/app.js · amorçage de la coquille, en-tête, bannières, routeur, enregistrement du service worker.
 // Une seule instance d'application : #main est le seul point de montage des vues.
 
 import { api, ApiError, auth } from './api.js';
@@ -6,6 +6,7 @@ import { COPY } from './copy.js';
 import { h, icon, toast, modal, spinner, debounce } from './ui.js';
 import { createRouter } from './router.js';
 import { getPlayer } from './player.js';
+import { applyTvMode, wireTvKeys, wireInstall } from './tv.js';
 import { prefs } from './prefs.js';
 import { BASE, withBase } from './base.js';
 
@@ -712,11 +713,14 @@ async function registerServiceWorker() {
   }
 }
 
+let paintInstall = () => {};
+
 const router = createRouter({
   render: renderRoute,
   announce: (route) => {
     const live = document.getElementById('route-announcer');
-    if (live) live.textContent = `${routeTitleFor(route)} — page chargée`;
+    if (live) live.textContent = `${routeTitleFor(route)} · page chargée`;
+    paintInstall();
   },
 });
 
@@ -730,6 +734,9 @@ async function main() {
   document.getElementById('boot-screen')?.remove();
   document.documentElement.classList.remove('is-booting');
   document.documentElement.classList.add('is-ready');
+  applyTvMode();
+  wireTvKeys();
+  paintInstall = wireInstall();
   registerServiceWorker();
 
   window.__streamtv = {

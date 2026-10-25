@@ -1,4 +1,4 @@
-// public/js/components.js — composants partagés : carte, pastilles, en-tête de section.
+// public/js/components.js · composants partagés : carte, pastilles, en-tête de section.
 
 import { h, icon, logoNode, healthLabel } from './ui.js';
 import { prefs } from './prefs.js';
@@ -45,9 +45,9 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
       const added = prefs.toggleFavorite(channel);
       favBtn.setAttribute('aria-pressed', String(added));
       favBtn.setAttribute('aria-label', added ? COPY.actions.removeFavorite : COPY.actions.addFavorite);
-      favBtn.replaceChildren(icon('star', 15, added ? 'fill="currentColor"' : ''));
+      favBtn.replaceChildren(icon('heart', 15));
     },
-  }, icon('star', 15, fav ? 'fill="currentColor"' : ''));
+  }, icon('heart', 15));
 
   const flags = [];
   if (channel.blocked) {
@@ -55,16 +55,17 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
       icon('lock', 12), channel.blocked === 'mixed-content' ? 'HTTP' : 'Bloquée'));
   }
   if (channel.featured) {
-    flags.push(h('span', { class: 'badge card-flag', dataset: { tone: 'accent' }, style: { left: channel.blocked ? '78px' : '8px' } },
-      icon('star4', 12), 'Vedette'));
+    flags.push(h('span', { class: 'badge card-flag', dataset: { tone: 'accent' } }, 'Vedette'));
   }
 
   // Contrat §7.3 : <article role="button" tabindex="0" aria-label="{nom}, {catégorie}, chaîne {numéro}">.
   // Les commandes internes gardent leurs propres libellés et stoppent la propagation.
   const etat = stateLabel(channel);
+  const barre = h('i', { style: { width: '0%' } });
   const survol = h('div', { class: 'card-hover', 'aria-hidden': 'true' },
     h('p', { class: `card-hover-state${etat.tone ? ` is-${etat.tone}` : ''}` }, h('span', { class: 'health-dot', dataset: { state: channel.blocked ? 'down' : (channel.health || 'unknown') } }), etat.text),
     h('p', { class: 'card-hover-programme' }, 'En ce moment : chargement du guide…'),
+    h('span', { class: 'card-bar' }, barre),
     h('p', { class: 'card-hover-reason' }, channel.blocked ? 'La fiche explique pourquoi et propose une alternative.' : ''));
 
   const remplirProgramme = () => {
@@ -79,7 +80,8 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
         return;
       }
       const pct = Math.round(progression(programme) * 100);
-      survol.children[1].textContent = `En ce moment · ${heureCourte(programme.start)} · ${programme.title} (${pct} %)`;
+      survol.children[1].textContent = `${programme.title} · ${heureCourte(programme.start)} – ${heureCourte(programme.stop)}`;
+      barre.style.width = `${Math.max(0, Math.min(100, pct))}%`;
     };
     if (deja !== null) { poser(deja); return; }
     nowFor(channel.id).then(poser).catch(() => { /* guide muet : on n'invente rien */ });

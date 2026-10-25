@@ -192,7 +192,7 @@ public/
   sw.js, offline.html    PWA : coquille en cache, API jamais mise en cache
   vendor/hls.min.js      hls.js 1.5.17 épinglé, Apache-2.0, servi localement
 scripts/                 ingest.js, measure-tagger.js, backup.js, verify.js
-tests/                   184 tests node:test (core, api, sécurité, client, messages, epg, alertes, apprentissage, migration, conformité)
+tests/                   242 tests node:test (core, api, sécurité, client, messages, epg, alertes, apprentissage, migration, conformité, design)
 docs/PV-RECETTE.md       procès-verbal de recette
 ```
 
@@ -218,6 +218,8 @@ L’ordre de contrôle est fixe : méthode (405) → taille (413) → type (415)
 | `GET /api/channels` | liste paginée : `page`, `pageSize` (1–60), `sort`, `category`, `country`, `language`, `quality`, `health`, `featured` |
 | `GET /api/channels/:id` | fiche complète (36 champs utiles + `playable`) |
 | `GET /api/channels/search?q=` | recherche dédiée, même contrat que la liste |
+| `GET /api/channels?ids=a,b,c` | sélection explicite d'identifiants (rails, proches) |
+| `GET /api/channels/:id` → `alternatives` | autres sources de la même chaîne (`tvg-id` puis nom normalisé) |
 | `GET /api/categories` | 18 catégories et leurs compteurs |
 | `GET /api/epg` | grille réelle si `epgUrl` est configuré (XMLTV ou `.xml.gz`, cache 30 min), sinon message explicite ; paramètres `hours` (1–48), `pageSize` |
 | `GET /api/legal` | mentions, hébergement, sources, procédure de retrait |
@@ -272,6 +274,30 @@ curl -s -X POST localhost:3000/api/admin/backup -H "Authorization: Bearer $TOKEN
 ```
 
 ---
+
+### Accueil galerie et lecteur cinéma (3.8.0)
+
+L'accueil s'ouvre sur un héros plein cadre : pastille « En direct », programme en cours avec
+ses horaires et sa progression, puis une rangée de chaînes suggérées. Les cartes sont plus
+larges, le titre tient sur deux lignes, et le survol montre le programme, la santé du flux et
+une barre de progression.
+
+**Le cœur remplace l'étoile.** Un clic range la chaîne dans `prefs.favorites()`, le compteur
+suit, et le bouton « Mes favoris » filtre l'accueil (`/?fav=1`) sans requête supplémentaire.
+Les rails « Continuer à regarder », « Pour vous », « Ce soir » et « Par pays » complètent la
+page ; un rail sans matière disparaît.
+
+Le lecteur propose trois habillages mémorisés (Cadre TV, Plein écran, Minimal), la qualité
+automatique lue sur les niveaux HLS avec résolution, débit et codec, deux rails de proximité
+(même catégorie, puis pays, puis langue ; déclinaisons du même nom) et un repli ordonné :
+variante, autre source ingérée, chaîne proche. Une seule reprise automatique.
+
+Sur Android TV, Tizen et webOS, le mode télévision s'active seul : flèches, OK, Retour et
+numéros de chaîne, texte agrandi, cibles de 56 px. Ailleurs, `?tv=1` l'impose et `?tv=0` le
+désactive. L'installation en PWA se fait depuis la page d'aide, avec la marche à suivre iOS.
+
+Les règles de composition (un accent, une échelle, pas de dégradé, pas d'ombre gratuite, pas
+d'animation au survol) sont dans `DESIGN_RULES.md` et vérifiées par `tests/design.test.js`.
 
 ### Console « Chaînes et liens » (3.7.0)
 
@@ -351,7 +377,7 @@ est signalé comme **avertissement** (attendu en démonstration, à corriger ava
 ## 7. Tests
 
 ```bash
-npm test            # 10 suites, 184 tests, aucune dépendance
+npm test            # 43 suites, 242 tests, aucune dépendance
 ```
 
 | Suite | Ce qu’elle prouve |

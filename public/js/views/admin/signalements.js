@@ -1,4 +1,4 @@
-// public/js/views/admin/signalements.js — file des signalements et seuil de retrait.
+// public/js/views/admin/signalements.js · file des signalements et seuil de retrait.
 // Une chaîne signalée 1000 fois est supprimée automatiquement au moment du signalement.
 // En dessous du seuil, rien n'est retiré : c'est le propriétaire qui décide, ligne par ligne.
 

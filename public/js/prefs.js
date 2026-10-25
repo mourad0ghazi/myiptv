@@ -1,4 +1,4 @@
-// public/js/prefs.js — favoris, historique, volume et recherches : 100 % local (AC-033).
+// public/js/prefs.js · favoris, historique, volume et recherches : 100 % local (AC-033).
 // Aucune requête serveur, aucune donnée personnelle transmise.
 
 const KEYS = {
@@ -8,6 +8,8 @@ const KEYS = {
   muted: 'streamtv.muted',
   searches: 'streamtv.searches',
   lastChannel: 'streamtv.lastChannel',
+  skin: 'streamtv.skin',
+  tvMode: 'streamtv.tvMode',
 };
 
 function read(key, fallback) {
@@ -78,6 +80,20 @@ export const prefs = {
     emit('history');
   },
   clearHistory() { write(KEYS.history, []); emit('history'); },
+
+  /** Habillage du lecteur : cadre (poste ancien), plein écran, minimal. */
+  skin() {
+    const value = read(KEYS.skin, 'cadre');
+    return ['cadre', 'plein', 'minimal'].includes(value) ? value : 'cadre';
+  },
+  setSkin(value) { write(KEYS.skin, ['cadre', 'plein', 'minimal'].includes(value) ? value : 'cadre'); emit('skin'); },
+
+  /** Mode télévision : 'auto' (détection de l'appareil), 'on' ou 'off'. */
+  tvMode() {
+    const value = read(KEYS.tvMode, 'auto');
+    return ['auto', 'on', 'off'].includes(value) ? value : 'auto';
+  },
+  setTvMode(value) { write(KEYS.tvMode, ['auto', 'on', 'off'].includes(value) ? value : 'auto'); emit('tv'); },
 
   volume() {
     const value = Number(read(KEYS.volume, 0.85));

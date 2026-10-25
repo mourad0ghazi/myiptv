@@ -1,4 +1,4 @@
-// public/js/views/error-codes.js — les 20 codes opposables (§6.3) et les 6 familles du §9.
+// public/js/views/error-codes.js · les 20 codes opposables (§6.3) et les 6 familles du §9.
 // Les textes du §9 ne sont pas recopiés ici : ils viennent de /api/errors/catalog, seule source.
 // Ce module ne fait que décrire les familles (ordre, libellé, promesse faite au lecteur).
 
@@ -37,7 +37,7 @@ export const FAMILY_META = [
   {
     id: 'lecteur',
     label: 'Lecture vidéo',
-    promise: 'Les douze mires du lecteur. Chacune explique la cause réelle — HTTP bloqué, source fermée, identifiant exigé — et propose une action.',
+    promise: 'Les douze mires du lecteur. Chacune explique la cause réelle · HTTP bloqué, source fermée, identifiant exigé · et propose une action.',
   },
   {
     id: 'administration',
@@ -61,7 +61,7 @@ export const FAMILY_META = [
   },
 ];
 
-/** Charge le catalogue (§9) — la seule copie des 82 textes vit sur le serveur. */
+/** Charge le catalogue (§9) · la seule copie des 82 textes vit sur le serveur. */
 export async function loadMessageCatalog() {
   const catalog = await api('/api/errors/catalog');
   const families = Array.isArray(catalog.families) ? catalog.families : [];

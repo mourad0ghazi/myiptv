@@ -1,4 +1,4 @@
-// public/js/views/guide.js — écran 2 : guide de zapping, liste dense + filtres par catégorie.
+// public/js/views/guide.js · écran 2 : guide de zapping, liste dense + filtres par catégorie.
 // ≤ 60 lignes par page, jamais plus de 120 nœuds de chaîne dans le DOM.
 
 import { api } from '../api.js';
@@ -19,7 +19,7 @@ function clock(iso) {
 }
 
 /**
- * F-23 — complète la liste avec le programme en cours, sans bloquer l'affichage.
+ * F-23 · complète la liste avec le programme en cours, sans bloquer l'affichage.
  * Si le guide est absent, rien ne change : aucune ligne n'est perdue, aucun message d'erreur n'apparaît.
  */
 async function paintGuide(host, listHost) {
@@ -34,12 +34,18 @@ async function paintGuide(host, listHost) {
     const node = listHost.querySelector(`[data-epg-channel="${row.id}"]`);
     if (!node || !row.programmes.length) continue;
     const current = row.programmes.find((programme) => programme.live) || row.programmes[0];
-    const label = current.live
-      ? `En direct : ${current.title}`
-      : `À ${clock(current.start)} : ${current.title}`;
-    node.textContent = label;
+    // Ligne « maintenant » : pastille, horaires complets et progression, comme sur les cartes.
+    const debut = new Date(current.start).getTime();
+    const fin = new Date(current.stop).getTime();
+    const pct = Number.isFinite(debut) && Number.isFinite(fin) && fin > debut
+      ? Math.max(0, Math.min(100, Math.round(((Date.now() - debut) / (fin - debut)) * 100))) : 0;
+    const barre = h('i', { style: { width: `${pct}%` } });
+    node.replaceChildren(
+      current.live ? h('span', { class: 'live-pill' }, h('i', { 'aria-hidden': 'true' }), 'En direct') : null,
+      h('span', { text: `${clock(current.start)} – ${clock(current.stop)} · ${current.title}` }),
+      h('span', { class: 'card-bar guide-bar' }, barre));
     node.hidden = false;
-    node.title = current.description || label;
+    node.title = current.description || `${current.title} (${clock(current.start)} – ${clock(current.stop)})`;
   }
   if (host) host.dataset.epg = 'ready';
 }

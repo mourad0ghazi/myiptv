@@ -1,4 +1,4 @@
-// public/js/copy.js — copy deck. Aucun texte destiné à l'utilisateur n'est inventé ailleurs.
+// public/js/copy.js · copy deck. Aucun texte destiné à l'utilisateur n'est inventé ailleurs.
 // Ton : direct, chaleureux, jamais enfantin, jamais technique (§7.5).
 
 export const COPY = {
@@ -179,7 +179,7 @@ export const COPY = {
       },
       'P-07': {
         code: 'P-07', cause: 'autoplay', title: 'Lecture en attente',
-        explanation: 'Le navigateur a besoin d’une action : appuyez sur ▶.',
+        explanation: 'Le navigateur a besoin d’une action : appuyez sur Lecture.',
         actions: ['play', 'next'],
       },
       'P-08': {

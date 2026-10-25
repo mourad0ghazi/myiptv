@@ -1,4 +1,4 @@
-// public/js/views/admin/settings.js — onglet Réglages : 17 valeurs validées avant écriture.
+// public/js/views/admin/settings.js · onglet Réglages : 17 valeurs validées avant écriture.
 // Un refus n'applique jamais partiellement les autres champs.
 
 import { Admin } from '../../api.js';
@@ -34,7 +34,7 @@ async function renderSettings(host, ctx, { refreshStats }) {
       control = h('select', {}, item.options.map((option) => h('option', { value: option.value, selected: option.value === value }, option.label)));
       values.set(item.key, () => control.value);
     } else if (item.type === 'color') {
-      const color = h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(value) ? value : '#ff3d71', 'aria-label': 'Sélecteur de couleur' });
+      const color = h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(value) ? value : accentParDefaut(), 'aria-label': 'Sélecteur de couleur' });
       control = h('input', { type: 'text', value, maxlength: '7', style: { maxWidth: '140px' } });
       color.addEventListener('input', () => { control.value = color.value; applyAccentPreview(color.value); });
       control.addEventListener('input', () => {

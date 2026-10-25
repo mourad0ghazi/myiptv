@@ -1,4 +1,4 @@
-// public/js/views/rails.js — rails de recommandations de l'accueil.
+// public/js/views/rails.js · rails de recommandations de l'accueil.
 // Trois sources, aucune donnée envoyée : historique local, favoris, et à défaut
 // les catégories les plus fournies du catalogue (repli éditorial identique pour tous).
 
@@ -6,6 +6,7 @@ import { api } from '../api.js';
 import { h, icon } from '../ui.js';
 import { channelCard } from '../components.js';
 import { prefs } from '../prefs.js';
+import { nowCached, primeNow } from '../epg-now.js';
 
 const MAX_RAIL = 10;
 
@@ -100,6 +101,54 @@ export async function mountRails(host, { config, openChannel, openPlayer, naviga
         rails.push(section);
       }
     } catch { /* rail facultatif : jamais bloquant */ }
+  }
+
+  // « Ce soir » : ce qui passe vraiment au moment de la visite, guide à l'appui.
+  try {
+    const vivant = await api('/api/channels?pageSize=40&sort=confidence').then((payload) => payload.channels || []).catch(() => []);
+    if (vivant.length) {
+      await primeNow(vivant.map((channel) => channel.id));
+      const auProgramme = vivant.filter((channel) => nowCached(channel.id));
+      const choisis = [
+        ...auProgramme.filter((channel) => ['sport', 'cinema', 'series'].includes(channel.category)),
+        ...auProgramme,
+      ].filter((channel, index, liste) => liste.findIndex((item) => item.id === channel.id) === index).slice(0, MAX_RAIL);
+      if (choisis.length >= 4) {
+        const { section, track } = railShell({
+          eyebrow: 'Au programme', title: 'Ce soir', moreHref: '/guide', moreLabel: 'Ouvrir le guide',
+        });
+        poserCartes(track, choisis, { openChannel, openPlayer });
+        rails.push(section);
+      }
+    }
+  } catch { /* guide indisponible : le rail s'efface, rien d'autre */ }
+
+  // « Par pays » : un échantillon volontairement divers, pas un classement par volume.
+  const pays = [...(config.countries || [])].slice(0, 6);
+  if (pays.length >= 2) {
+    try {
+      const lots = await Promise.all(pays.map((paysItem) => api(`/api/channels?country=${encodeURIComponent(paysItem.code)}&pageSize=6&sort=confidence`)
+        .then((payload) => payload.channels || [])
+        .catch(() => [])));
+      const melange = [];
+      const pris = new Set();
+      for (let rang = 0; rang < 6 && melange.length < MAX_RAIL; rang += 1) {
+        for (const lot of lots) {
+          const candidat = lot[rang];
+          if (!candidat || pris.has(candidat.id)) continue;
+          pris.add(candidat.id);
+          melange.push(candidat);
+          if (melange.length >= MAX_RAIL) break;
+        }
+      }
+      if (melange.length >= 4) {
+        const { section, track } = railShell({
+          eyebrow: 'Autour du monde', title: 'Par pays', moreHref: '/guide', moreLabel: 'Tout le guide',
+        });
+        poserCartes(track, melange, { openChannel, openPlayer });
+        rails.push(section);
+      }
+    } catch { /* rail facultatif */ }
   }
 
   if (!rails.length) return;

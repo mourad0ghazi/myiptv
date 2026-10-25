@@ -1,4 +1,4 @@
-// public/js/views/admin/liens.js — console « Chaînes et liens ».
+// public/js/views/admin/liens.js · console « Chaînes et liens ».
 // Inventaire complet : chaque chaîne, son flux, ses variantes, sa santé, ses signalements.
 // Actions immédiates : copier le lien, copier la ligne M3U, télécharger la fiche, tester le flux.
 // Lecture seule sur le catalogue : toute modification passe par l'onglet Catalogue.

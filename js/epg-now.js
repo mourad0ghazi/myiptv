@@ -1,4 +1,4 @@
-// public/js/epg-now.js — « en ce moment » : programme en cours d'une chaîne (F-23 étendu).
+// public/js/epg-now.js · « en ce moment » : programme en cours d'une chaîne (F-23 étendu).
 // Chargé au survol ou au focus d'une carte, jamais au chargement de la page.
 // Trois règles : une seule requête par lot, cache mémoire de 5 minutes, silence total en cas d'échec.
 
@@ -27,11 +27,11 @@ export function nowCached(id) {
   return entree.programme;
 }
 
-/** Horodatage lisible : « 20:45 » dans la locale du visiteur. */
+/** Horodatage lisible et stable : « 20:45 », au format 24 h de l'interface. */
 export function heureCourte(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
 /** Progression du programme, entre 0 et 1. */
