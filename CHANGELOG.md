@@ -1,0 +1,214 @@
+# Journal des versions — StreamTV
+
+Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
+Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
+
+## [3.2.0] — 2026-10-25
+
+Deux algorithmes du §5 restaient sans implémentation : `F-22` (apprentissage des corrections) et
+`F-24` (migration JSON → SQL). Ils sont livrés, testés et branchés dans la console. Aucune
+dépendance ajoutée, aucun `npm install`.
+
+### Ajouté
+
+- `server/core/learning.js` — `F-22` : TF-IDF simple sur les corrections manuelles, support
+  minimal de 2 corrections, poids bornés à [0,30 ; 0,90] (jamais au-dessus d’une règle manuelle),
+  fusion sans doublon (`mergeRules`, `effectiveRules`). Branché dans le classement d’ingestion,
+  dans `/api/admin/rules` (`learned`, `learnedStats`, `effective`) et affiché dans l’onglet Santé.
+- `server/core/migrate.js` + `scripts/migrate.js` — `F-24` : schéma PostgreSQL 15 (36 colonnes
+  typées), `INSERT … ON CONFLICT` idempotents, manifeste avec empreintes SHA-256, journal
+  `migration.export`, aller-retour vérifiable (`channelsFromSql`) et retour arrière
+  (`--reverse`). Modes `--plan`, `--verify`, `--write`, `--reverse`.
+- Console : panneau « Règles apprises des corrections » (Santé) et « Sortie vers PostgreSQL 15 »
+  (Sauvegardes) avec pourcentage du seuil de bascule.
+- `stats.migration` dans `/api/admin/stats` : seuil, chaînes, ratio, table cible, commande.
+
+### Vérifié
+
+- `npm test` : **184 tests, 10 suites, 0 échec** (`learning.test.js` 12, `migrate.test.js` 14).
+- `node scripts/verify.js` : **39/40** contrôles, dont « apprentissage des corrections » et
+  « migration SQL réversible » sur les 1 475 chaînes réelles.
+- `node scripts/migrate.js --verify` : aller-retour identique, idempotence confirmée,
+  réversibilité confirmée ; `--write` produit 2,4 Ko de schéma et 1,17 Mo de données.
+
+### Modifié
+
+- Version du logiciel et du cache du service worker : `3.2.0` / `streamtv-v3.2.0`.
+- `RUNBOOK.md` §6 réécrit : procédure exécutable (préparer, appliquer, revenir en arrière) et
+  limites explicites.
+- `README.md`, `CONFORMITE.md`, `docs/PV-RECETTE.md` : compteurs, preuves F-22/F-24 et réserves
+  mises à jour.
+
+---
+
+## [3.1.0] — 2026-10-25
+
+Compléments du cahier des charges qui restaient déclaratifs en 3.0.0 : catalogue exhaustif des
+messages, guide des programmes XMLTV et seuils d’alerte d’exploitation. Aucune dépendance
+ajoutée, aucun `npm install`.
+
+### Ajouté
+
+- `server/core/messages.js` — les **82 messages** du §9 (ER-S01…S20, P-01…P-12, ER-A01…A16,
+  ER-X01…X14, ER-R01…R10, ER-D01…D10), regroupés en 6 familles, avec cause déclencheuse et
+  substitution des variables `{champ}`, `{n}`, `{requestId}`, `{max}`, `{heure}`.
+  `ERR_TO_MESSAGE` relie les 20 codes opposables du §6.3 à ces messages ; un test refuse tout
+  code orphelin.
+- `server/core/epg.js` — `F-23` : analyse XMLTV tolérante (jamais d’exception), gzip reconnu à la
+  signature `1f 8b`, fuseaux `±HHMM`, entités nommées et numériques, plafonds 20 Mo et
+  200 000 programmes, appariement `epgId`/`tvgId` (casse et suffixe de qualité ignorés),
+  `buildEpg` avec marquage du direct, `EpgCache` (TTL 30 min, délai 15 s, verrou anti-doublon).
+- `/api/epg` sert désormais une **grille réelle** (`hours`, `pageSize`) ou un message explicite,
+  jamais une erreur 500 ; `/api/errors/catalog` expose les 82 messages et les 6 familles.
+- Guide de démonstration `public/epg-demo.xml` (60 chaînes, 480 programmes) régénérable par
+  `npm run epg:demo` ; `epgUrl` accepte désormais un fichier livré sur le site (`/epg-demo.xml`),
+  lu sur le disque avec confinement du chemin, en plus des URL HTTPS.
+- `server/core/alerts.js` — §10.4 : **douze seuils** (variation du catalogue, confiance faible,
+  flux indisponibles, flux instables, échecs d’importation, échecs de connexion, espace disque,
+  durée d’importation, âge des sauvegardes, taille des données, cartes rendues, part « autre »),
+  chacun avec valeur mesurée, seuil, gravité et action d’exploitation. Exposés dans
+  `GET /api/admin/stats` (champ `alerts`) et affichés dans l’onglet Santé.
+- Page `/erreurs` enrichie : 6 familles, 82 messages, 12 mires et 20 codes (120 lignes de table),
+  sans recopier les textes côté client — ils viennent de l’API, avec repli et bouton « Réessayer ».
+- Guide de zapping : colonne « En direct : … » / « À 20:30 : … » chargée après la liste, sans
+  bloquer l’affichage ni casser la pagination.
+
+### Vérifié
+
+- `npm test` : **158 tests, 8 suites, 0 échec** (ajout de `messages.test.js` 9 tests,
+  `epg.test.js` 25 tests, `alerts.test.js` 11 tests).
+- `node scripts/verify.js` : **37/38** contrôles (seul avertissement : mot de passe de
+  démonstration actif), dont catalogue des 82 messages, `/api/epg`, analyse XMLTV et gzip.
+- Smoke jsdom : `/erreurs` affiche 120 lignes sans erreur de console ; `/guide` et les 12 routes
+  restent sans erreur.
+
+### Modifié
+
+- En-têtes §10.3 alignés mot pour mot sur le cahier des charges : `Referrer-Policy: no-referrer`,
+  `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`,
+  `Strict-Transport-Security` avec `preload`, CSP sans `http:` dans `media-src` et `connect-src`
+  (cohérence P-01). Deux directives durcissent la politique : `object-src 'none'` et
+  `upgrade-insecure-requests`.
+- `epgUrl` accepte un guide livré sur le site en plus des URL HTTPS ; validation, lecture
+  confinée et test de refus de remontée de dossier.
+- Version du logiciel et du cache du service worker : `3.1.0` / `streamtv-v3.1.0`.
+- `CONFORMITE.md`, `docs/PV-RECETTE.md`, `README.md` : compteurs, preuves et réserves mis à jour
+  (la réserve « guide XMLTV non implémenté » devient « aucun fournisseur de guide contracté »).
+
+---
+
+## [3.0.0] — 2026-10-25
+
+Première livraison complète du site décrit par le cahier des charges *StreamTV v2*
+(phases 1 « socle » et 2 « durcissement »). Aucune dépendance d’exécution, aucun `npm install`.
+
+### Ajouté — socle
+
+- Serveur HTTP natif (`server/index.js`) : 41 routes, fichiers statiques, repli SPA explicite,
+  compression brotli/gzip au-delà de 1 Ko, `Vary: Accept-Encoding`, `HEAD`.
+- Stockage JSON atomique (`server/core/store.js`) : cinq fichiers de données, écriture
+  temporaire → `fsync` → `rename`, quarantaine d’un fichier illisible, restauration automatique
+  de la dernière sauvegarde valide, arrêt propre.
+- Parseur M3U `F-01` : BOM, CRLF, attributs, `#EXTGRP`, `#EXTVLCOPT` (User-Agent, referer),
+  noms contenant des virgules, URL `//host`, URL orphelines, refus d’une playlist HLS,
+  aucun lancer d’exception.
+- Déduplication `F-09` (URL, signature nom+pays, similarité de jetons) et fusion des variantes
+  `F-21` avec conservation de la meilleure qualité et de l’URL la plus fiable.
+- Catégorisation `F-10` en cinq étapes ordonnées (manuel, groupe de genre, indice `tvg-id`,
+  mots-clés, repli), confiance fermée `F-11` dans `[0,15 ; 0,95]` avec justifications lisibles.
+- Contrat de chaîne complet (36 champs), assertions `A1`–`A10`, projections distinctes pour la
+  carte publique, la fiche et la console.
+- Recherche `F-17`/`F-18` insensible aux accents, apostrophes, casse et écriture arabe ;
+  pagination `F-19` bornée à 60 ; tri total et stable.
+- Ingestion `F-20` : aperçu sans écriture (TTL 20 min), commit sérialisé par verrou global,
+  annulation exacte, plafonds 20 Mo / 20 s / 120 s, refus d’un catalogue entièrement masqué.
+- Sonde de santé `F-16` : `Range: bytes=0-0`, 8 flux en parallèle, 6 s par flux,
+  300 flux/minute, blocage automatique après 3 échecs, reprise au premier succès.
+- Authentification : `scrypt` (N = 16 384, r = 8, p = 1), jeton Bearer de 48 caractères
+  hexadécimaux, TTL glissant de 12 h, 5 sessions au plus, anti-force brute 8/15 min.
+- Console d’administration : 5 onglets (Catalogue, Importation, Réglages, Santé, Sauvegardes),
+  actions groupées, modale de création, éditeur de règles, exports M3U/JSON, sauvegardes.
+
+### Ajouté — interface
+
+- Coquille unique accessible (lien d’évitement, `main` focalisable, annonces `aria-live`).
+- Sept écrans : accueil, recherche, guide, fiche chaîne, favoris/historique, connexion, console.
+- Feuille de style unique (`public/css/app.css`) : jetons exacts du §7.1, échelle de 4 px,
+  aucune police sous 12 px, quatre points de rupture, thème sombre, `prefers-reduced-motion`.
+- Lecteur : HLS natif puis hls.js local, 7 états, **une seule** reprise automatique, 12 mires
+  distinctes `P-01`…`P-12`, zapping, saisie directe, OSD masqué à 3,8 s, PiP, plein écran,
+  volume et favoris mémorisés.
+- PWA : manifeste complet, service worker `streamtv-v3.0.0`, coquille hors ligne, API et
+  console jamais mises en cache.
+- Copy deck unique (`public/js/copy.js`) : toutes les phrases visibles, y compris les 12 mires
+  et les états vides, sans terme technique.
+
+### Ajouté — exploitation
+
+- `scripts/ingest.js` (aperçu, commit, URL ou fichier), `scripts/measure-tagger.js` (mesure du
+  moteur), `scripts/backup.js` (sauvegarde, inventaire, vérification des empreintes),
+  `scripts/verify.js` (31 contrôles de santé, code de sortie exploitable).
+- Sauvegardes quotidiennes à 03:00, rotation 7 quotidiennes + 4 hebdomadaires, empreinte
+  SHA-256 vérifiée avant toute restauration, restauration exigeant le mot `RESTAURER`.
+- Journal d’audit JSONL, secrets masqués, purge à 30 jours ; journaux purgés à 14 jours.
+- `README.md`, `RUNBOOK.md`, `CONFORMITE.md`, `SOURCES.md`, `docs/PV-RECETTE.md`.
+
+### Corrigé — bugs qui ne doivent jamais revenir
+
+- `BUG-01` : la recherche et le classement ignorent désormais les accents (`CINEMA` trouve
+  `Cinéma`), avec un test de non-régression.
+- `BUG-04` : un JSON syntaxiquement invalide répond `400 ERR-06`, jamais `500`.
+- `BUG-06` : une adresse inconnue répond `404` ; une fiche inexistante ne renvoie plus le
+  catalogue en `200`.
+- `BUG-07` : une importation qui ne trouve aucune chaîne échoue explicitement (`ERR-05`) au
+  lieu d’écrire un catalogue vide.
+- `BUG-08` : douze messages de mire distincts remplacent le message unique.
+- `BUG-09` : toute écriture passe par un fichier temporaire, `fsync`, puis `rename`.
+- `BUG-10` : `pageSize` est borné à 60 côté serveur et côté client.
+- `BUG-12` : plafond de 120 cartes dans le DOM, pagination systématique.
+- `BUG-13` : compression brotli/gzip activée au-delà de 1 Ko.
+- `BUG-14` : les images cassées sont remplacées par une vignette typographique, jamais par
+  l’icône d’image brisée du navigateur.
+- `BUG-20` : les chaînes masquées sont comptées et affichées (`totals.hidden`, bandeau dédié).
+- Reprise d’un `jobId` inconnu ou déjà consommé : `422 ERR-16` explicite au lieu de `500`.
+- État d’une importation demandé avec l’identifiant de l’aperçu : `status` et `rollback`
+  répondent désormais sur le même identifiant.
+- Groupes `#EXTGRP` et `User-Agent` qui fuyaient d’une entrée à l’autre après une entrée
+  orpheline.
+
+### Sécurité
+
+- CSP complète, HSTS en HTTPS, `nosniff`, `SAMEORIGIN`, `Permissions-Policy` fermée,
+  `Referrer-Policy`, `X-DNS-Prefetch-Control`.
+- Aucun script en ligne, aucune ressource tierce, aucun `eval` ; vérifié par test.
+- Refus de démarrage en production sans `ADMIN_PASSWORD`.
+- Restauration de sauvegarde protégée contre la traversée de chemin et contre une empreinte
+  modifiée.
+- Liste noire de mots de passe élargie (mot courant suivi de chiffres).
+
+### Mesures de la version
+
+| Indicateur | Valeur |
+|---|---|
+| Chaînes du catalogue de démonstration | 1 475 (1 650 entrées brutes) |
+| Débit du moteur | 46 898 chaînes/s |
+| Précision sur 41 étiquettes | 97,6 % |
+| Accord sur les groupes de genre | 100 % |
+| Part « autre » | 0 % |
+| `GET /api/channels?pageSize=48` | 17 588 o → 2 512 o gzip |
+| Premier chargement (hors hls.js) | 179 Ko brut, 54 Ko gzip |
+| Démarrage à froid | 0,69 s |
+| Tests | 113 tests, 5 suites |
+
+### Limites connues de cette version
+
+- Comptes multi-utilisateurs, contrôle parental par profil, applications mobiles et TV,
+  abonnements, CDN et analytique : hors périmètre (phases 3 et 4 du cahier des charges).
+- Migration PostgreSQL non livrée : le catalogue de démonstration (1,7 Mo) reste très en deçà
+  du seuil de 30 000 chaînes.
+- Guide des programmes XMLTV non branché : `/api/epg` répond `enabled: false` avec un message
+  explicite.
+- Le catalogue de démonstration est un extrait de 1 650 entrées ; les critères portant sur les
+  jeux de 11 320 / 14 042 / 12 181 chaînes sont partiels.
+
+[3.0.0]: #
