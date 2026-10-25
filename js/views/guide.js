@@ -55,14 +55,14 @@ function guideRow(channel, { onPlay, onOpen, tabIndex = -1, onNavigate }) {
         channel.country ? ` · ${channel.country}` : '',
         channel.quality !== 'AUTO' ? ` · ${channel.quality}` : ''),
       h('span', { class: 'guide-now', dataset: { epgChannel: channel.id }, hidden: true })),
-    h('span', { class: 'card-sub' },
+    h('span', { class: 'card-sub guide-health', title: healthLabel(channel.health) },
       h('span', { class: 'health-dot', dataset: { state: channel.health }, 'aria-hidden': 'true' }),
       ` ${healthLabel(channel.health)}`),
     h('button', {
       class: 'btn btn-primary btn-sm', type: 'button', tabIndex: -1,
       'aria-label': `Regarder ${channel.name}`,
       onClick: (event) => { event.stopPropagation(); onPlay(channel); },
-    }, icon('play', 14), COPY.actions.watch),
+    }, icon('play', 14), h('span', { class: 'btn-label' }, COPY.actions.watch)),
     h('button', {
       class: 'btn btn-quiet btn-sm', type: 'button', tabIndex: -1,
       'aria-label': `Fiche de ${channel.name}`,

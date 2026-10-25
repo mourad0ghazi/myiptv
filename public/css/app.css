@@ -23,7 +23,7 @@
 [hidden]{display:none!important} /* en tête de feuille : jamais écrasé par un display de classe (ER-R04) */
 html{color-scheme:dark; -webkit-text-size-adjust:100%}
 body{
-  margin:0; min-height:100vh; overflow-x:hidden; /* jamais de défilement horizontal (AC-078) */
+  margin:0; min-height:100vh; min-height:100dvh; overflow-x:hidden; /* jamais de défilement horizontal (AC-078) */
   font-family:var(--font); font-size:var(--fs-md); line-height:1.55; color:var(--text);
   background-color:var(--bg); /* filet de sécurité : le fond survit à toute déclaration invalide */
 }
@@ -205,7 +205,7 @@ main{max-width:1480px; margin:0 auto; padding:var(--s5) var(--s5) var(--s7); min
 .load-more{display:flex; justify-content:center; margin-top:var(--s6)}
 /* ---------------------------------------------------------------- guide */
 .guide-wrap{display:grid; grid-template-columns:240px 1fr; gap:var(--s5); align-items:start}
-.guide-side{position:sticky; top:92px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--panel); padding:var(--s3); max-height:calc(100vh - 120px); overflow:auto}
+.guide-side{position:sticky; top:92px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--panel); padding:var(--s3); max-height:calc(100vh - 120px); max-height:calc(100dvh - 120px); overflow:auto}
 .guide-side h2{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin-bottom:var(--s2)}
 .guide-side button{display:flex; width:100%; justify-content:space-between; gap:var(--s2); padding:8px 10px; border:0; border-radius:var(--r-sm);
   background:transparent; color:var(--muted); font-size:var(--fs-sm); cursor:pointer; text-align:left}
@@ -353,7 +353,8 @@ td.num{font-variant-numeric:tabular-nums; color:var(--muted)}
 .player-live i{width:6px; height:6px; border-radius:50%; background:var(--danger); animation:pulse 1.6s infinite}
 @keyframes pulse{50%{opacity:.35}}
 /* ---------------------------------------------------------------- pied de page */
-.site-footer{border-top:1px solid var(--line-soft); margin-top:var(--s7); padding:var(--s6) var(--s5); background:rgba(4,5,10,.5)}
+.site-footer{border-top:1px solid var(--line-soft); margin-top:var(--s7); background:rgba(4,5,10,.5);
+  padding:var(--s6) calc(var(--s5) + env(safe-area-inset-right)) calc(var(--s6) + env(safe-area-inset-bottom)) calc(var(--s5) + env(safe-area-inset-left))}
 .footer-inner{max-width:1480px; margin:0 auto; display:grid; gap:var(--s4); grid-template-columns:1.4fr 1fr}
 .footer-brand .brand-text{font-weight:800; font-size:var(--fs-lg)}
 .footer-legal{color:var(--muted); font-size:var(--fs-sm); max-width:60ch; margin-top:var(--s2)}
@@ -368,7 +369,7 @@ td.num{font-variant-numeric:tabular-nums; color:var(--muted)}
 .prose h2{font-size:var(--fs-lg); margin-top:var(--s4)}
 .prose p,.prose li{color:color-mix(in srgb, var(--text) 84%, transparent); font-size:var(--fs-sm); line-height:1.7}
 .prose ul{padding-left:var(--s5); margin:0; display:grid; gap:6px}
-.page-error{display:grid; place-items:center; min-height:100vh; padding:var(--s5)}
+.page-error{display:grid; place-items:center; min-height:100vh; min-height:100dvh; padding:var(--s5)}
 .error-shell{text-align:center; display:grid; gap:var(--s3); justify-items:center; max-width:520px}
 .error-code{font-size:64px; font-weight:800; color:var(--accent); margin:0; letter-spacing:-.04em}
 .error-actions{display:flex; gap:var(--s2); flex-wrap:wrap; justify-content:center; margin-top:var(--s3)}
@@ -399,6 +400,53 @@ td.num{font-variant-numeric:tabular-nums; color:var(--muted)}
 .search-suggest-num{color:var(--muted); font-size:var(--fs-xs); font-variant-numeric:tabular-nums}
 .search-suggest-name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600}
 .search-suggest-cat{color:var(--muted); font-size:var(--fs-xs)}
+
+.osd-note{display:block; margin-top:4px; font-style:normal; font-size:var(--fs-sm); color:var(--accent); font-weight:700}
+
+/* ---------------------------------------------------------------- usage tactile (§7.4, AC-078) */
+/* Sur un écran sans survol, la pastille de lecture doit être visible : un simple :hover ne
+   se déclenche jamais au doigt, et la carte n'offrirait plus que l'ouverture de la fiche. */
+@media (hover:none), (pointer:coarse){
+  .card-play{opacity:1; background:linear-gradient(180deg, rgba(4,6,10,.05), rgba(4,6,10,.42))}
+  .card-play span{width:46px; height:46px}
+  .card:hover{transform:none; background:var(--panel); box-shadow:none; border-color:var(--line)}
+  .card:hover .card-play{opacity:1}
+  .chip:hover,.btn:hover{transform:none}
+  /* Cibles d'au moins 44 px : la norme tactile, sans changer l'échelle typographique. */
+  .chip{min-height:44px}
+  .btn-sm{min-height:44px; padding-top:10px; padding-bottom:10px}
+  .search-clear{width:42px; height:42px; right:4px}
+  .search input{padding-right:52px; padding-top:12px; padding-bottom:12px}
+  .search-suggest-item{padding:var(--s3)}
+  .player-btn{width:46px; height:46px}
+  .footer-links a{min-height:44px; display:inline-flex; align-items:center}
+  /* Le survol ne doit pas rester « collé » après un tap. */
+  .rows a:hover,.footer-links a:hover{text-decoration:none}
+  .toast-stack{left:var(--s3); right:var(--s3); bottom:calc(var(--s3) + env(safe-area-inset-bottom)); max-width:none}
+}
+/* Champs de saisie : 16 px minimum sous 900 px, sinon iOS zoome à la prise de focus. */
+@media (max-width:899px){
+  input,select,textarea{font-size:16px}
+  .search input{font-size:16px}
+}
+@media (max-width:619px){
+  /* Encoches : l'en-tête collant et les contrôles du lecteur ne passent pas sous la barre. */
+  .header-inner{padding-left:calc(var(--s3) + env(safe-area-inset-left));
+    padding-right:calc(var(--s3) + env(safe-area-inset-right))}
+  main{padding-left:calc(var(--s4) + env(safe-area-inset-left));
+    padding-right:calc(var(--s4) + env(safe-area-inset-right))}
+  .player-top{padding-top:calc(var(--s4) + env(safe-area-inset-top))}
+  .player-controls{padding-bottom:calc(var(--s3) + env(safe-area-inset-bottom))}
+  .player-btn{width:44px; height:44px}
+  .table-wrap{-webkit-overflow-scrolling:touch}
+  .rows .card-sub{white-space:normal}
+  /* Aucun bloc ne peut dépasser la largeur de l'écran (AC-078, ER-R03). */
+  .login-shell{margin:var(--s4) auto; padding:var(--s4)}
+  .mire-inner{max-width:100%; padding:var(--s4); text-align:center}
+  .toolbar-card .field,.toolbar-card-row .field{min-width:0}
+  .volume input[type="range"]{width:80px}
+  img,video,svg{max-width:100%}
+}
 
 /* ---------------------------------------------------------------- points de rupture (§7.4) */
 @media (max-width:1279px){
@@ -443,8 +491,12 @@ td.num{font-variant-numeric:tabular-nums; color:var(--muted)}
   .hero-text h1{font-size:24px}
   .detail-hero{padding:var(--s4)}
   .detail-head{flex-direction:column; align-items:flex-start; gap:var(--s3)}
-  .guide-row{grid-template-columns:42px 34px 1fr auto}
-  .guide-row .badge{display:none}
+  /* 320 px : numéro, logo, nom, santé et deux commandes tiennent sur une ligne ;
+     le libellé « Regarder » disparaît au profit de l'icône, l'état de santé reste écrit. */
+  .guide-row{grid-template-columns:38px 30px minmax(0,1fr) auto auto; gap:var(--s2); padding:var(--s2)}
+  .guide-row .btn-label{display:none}
+  .guide-row .btn-sm{min-width:44px; justify-content:center; padding-left:0; padding-right:0}
+  .guide-health{max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .player-controls{padding:var(--s2) var(--s3) var(--s3); gap:6px}
   .volume input[type="range"]{display:none}
   .osd{left:var(--s4); bottom:var(--s6); max-width:80%}

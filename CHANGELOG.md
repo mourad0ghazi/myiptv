@@ -3,6 +3,49 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.4.0] — 2026-10-25
+
+Deux chantiers : l'**usage mobile** (tactile, encoches, zones de 44 px, gestes du lecteur) et la
+**qualité des sources** (deuxième liste déclarée, vérification avant ingestion, contrôles de
+couverture). Aucune dépendance ajoutée, aucun `npm install`.
+
+### Ajouté
+
+- `server/core/sourceprobe.js` + `scripts/probe-source.js` (`npm run probe`) : vérifie une liste
+  M3U avant de l'importer — parseur du site, déduplication par URL, sonde de chaque flux
+  (8 en parallèle, 6 s, 2 Ko demandés), écriture d'une liste ne contenant **que** les flux qui
+  répondent, avec origine, licence, date et décompte dans l'en-tête. Les flux `http:` sont
+  écartés par défaut (`--allow-http` pour les garder), et l'écriture est refusée si moins de 2 %
+  des flux répondent.
+- Source `world_ip_tv (romaxa55)` déclarée dans `sources.json` avec sa licence MIT et une note
+  d'usage ; **désactivée** par défaut, puisqu'elle n'apporte ni `tvg-id` ni catégories.
+- `scripts/verify.js` : trois contrôles de qualité des sources — part des flux `http:`,
+  couverture du guide par `tvg-id`, sources déclarées avec licence (43 contrôles au total).
+- `GET /api/config` publie la licence réelle de chaque source active.
+
+### Mobile
+
+- Pastille de lecture **visible en permanence** sous `@media (hover:none), (pointer:coarse)` :
+  aucun tap manqué, et fin des états de survol qui restaient collés après un tap.
+- Cibles tactiles de 44 px minimum (pastilles de catégorie, boutons, croix de recherche,
+  commandes du lecteur, liens de pied de page).
+- Champs de saisie à 16 px sous 900 px : iOS ne zoome plus à la prise de focus.
+- Encoches et barre d'accueil prises en compte (`env(safe-area-inset-*)`) sur l'en-tête, le
+  contenu, le pied de page, les notifications et les contrôles du lecteur.
+- Hauteur dynamique `100dvh` avec repli `100vh` : plus de saut quand la barre d'URL disparaît.
+- Guide lisible à 320 px : libellé « Regarder » remplacé par l'icône, état de santé conservé et
+  tronqué proprement, deux cibles de 44 px.
+- Lecteur tactile : un tap affiche ou masque l'OSD, un glissement vertical règle le volume avec
+  rappel à l'écran, un glissement horizontal change de chaîne ; les écouteurs sont détachés à la
+  fermeture.
+- Garde-fous 320 px : modale, mire, barre d'outils et images ne peuvent plus dépasser l'écran.
+
+### Corrigé
+
+- `guide.js` : état de santé de la ligne conservé sur mobile (la règle qui le masquait visait une
+  classe inexistante).
+- `player.js` : `showOsd(message)` accepte un rappel temporaire ; `hideOsd()` ajouté.
+
 ## [3.3.0] — 2026-10-25
 
 L’interface du site est alignée sur les contrats DOM du §7 et sur les états du §8 : carte,

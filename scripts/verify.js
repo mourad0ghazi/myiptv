@@ -15,6 +15,7 @@ import { parseM3U } from '../server/core/m3u.js';
 import { ERR_TO_MESSAGE, FAMILIES, MESSAGES, MESSAGE_BY_ID } from '../server/core/messages.js';
 import { decodeEpgBody, parseXmltv } from '../server/core/epg.js';
 import { learnFromCorrections } from '../server/core/learning.js';
+import { epgCoverage, schemeBreakdown } from '../server/core/sourceprobe.js';
 import { verifyRoundTrip } from '../server/core/migrate.js';
 import { gzipSync } from 'node:zlib';
 
@@ -43,7 +44,7 @@ async function main() {
   await store.init();
 
   /* ---------------------------------------------------- contrat des données */
-  check('version du logiciel', VERSION === '3.3.0', VERSION);
+  check('version du logiciel', VERSION === '3.4.0', VERSION);
   check('20 codes d’erreur', Object.keys(ERRORS).length === 20, `${Object.keys(ERRORS).length} codes`);
   check('82 messages du §9', MESSAGES.length === 82, `${MESSAGES.length} messages`);
   check('6 familles de messages', FAMILIES.length === 6, `${FAMILIES.length} familles`);
@@ -177,6 +178,21 @@ async function main() {
     `${store.learning.corrections?.length || 0} correction(s), ${learned.stats.terms} terme(s)`);
   const roundTrip = verifyRoundTrip(active);
   check('migration SQL réversible', roundTrip.ok, `${roundTrip.checked} chaîne(s) relues à l’identique`);
+
+  /* -------------------------------------------- qualité des sources (§5 F-09) */
+  const schemes = schemeBreakdown(active);
+  // Sur un site HTTPS, un flux http: est bloqué par le navigateur : il ne doit pas dominer.
+  check('flux lisibles en HTTPS', schemes.http === 0 || schemes.http / Math.max(1, schemes.total) <= 0.05,
+    `${schemes.https} https, ${schemes.http} http sur ${schemes.total}`, { warnOnly: true });
+  const coverage = epgCoverage(active);
+  // Sans tvg-id, pas de programme : la couverture est suivie, pas imposée.
+  check('couverture du guide (tvg-id)', coverage.ratio >= 0.5,
+    `${Math.round(coverage.ratio * 100)} % des chaînes portent un identifiant de programme`, { warnOnly: true });
+  const declaredSources = (store.sources || []).filter((source) => source.enabled !== false && source.url);
+  check('sources déclarées avec licence', declaredSources.length >= 1
+    && declaredSources.every((source) => Boolean(source.license)),
+    declaredSources.map((source) => `${source.name} (${source.license || 'licence absente'})`).join(', '),
+    { warnOnly: true });
 
   /* ---------------------------------------------------------------- rapport */
   const failed = checks.filter((entry) => !entry.ok);

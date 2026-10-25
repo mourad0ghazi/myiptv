@@ -49,6 +49,50 @@ Le catalogue livré sert de **démonstration** : il ne remplace pas la liste de 
 propriétaire. Les compteurs de référence du cahier des charges (11 320, 14 042, 12 181 chaînes)
 correspondent à des jeux de données de production non inclus ici.
 
+### world_ip_tv (Romaxa55) — MIT
+
+| Élément | Valeur |
+|---|---|
+| Source | `https://romaxa55.github.io/world_ip_tv/output/index.m3u` |
+| Dépôt | `https://github.com/Romaxa55/world_ip_tv` — fichier `output/index.m3u`, 2,89 Mo |
+| Licence | MIT (voir le dépôt) |
+| Nature | agrégation de 50+ listes publiques, **re-testées toutes les 6 h** par un vérificateur Python (HTTP 200 + réponse de flux) |
+| Métadonnées | `tvg-logo`, `group-title` = pays ou région ; **aucun `tvg-id`**, aucune catégorie éditoriale |
+| Schémas | majoritairement `https:`, environ un flux sur dix en `http:` |
+| Statut dans StreamTV | source **déclarée mais désactivée** par défaut (`sources.json`, `enabled: false`) |
+
+Pourquoi désactivée : importer cette liste brute apporterait des flux `http:` (bloqués par le
+navigateur sur un site HTTPS, donc mires P-01 à répétition), des noms suffixés `(720p)`,
+`[Not 24/7]`, `[Geo-blocked]`, et aucune catégorie. Elle sert donc de **source de fraîcheur**,
+passée d'abord par le vérificateur :
+
+```bash
+node scripts/probe-source.js --url https://romaxa55.github.io/world_ip_tv/output/index.m3u \
+     --out data/sources/verifies.m3u
+```
+
+Le script écrit une liste ne contenant que les flux qui ont répondu depuis la machine qui
+l'exécute, avec l'origine, la licence, la date et le décompte dans l'en-tête. Cette liste
+s'importe ensuite comme n'importe quelle autre (console → Importation, ou
+`node scripts/ingest.js --file data/sources/verifies.m3u --commit`).
+
+### Comparaison des deux listes (25 octobre 2026)
+
+| Critère | iptv-org | world_ip_tv (romaxa55) |
+|---|---|---|
+| Fraîcheur | listes amont mises à jour quotidiennement | commit automatique toutes les 6 h |
+| Liens morts | non filtrés | purgés à chaque passe |
+| `tvg-id` (guide) | présent sur 98 % du catalogue actuel | absent |
+| Catégories | oui (`group-title` éditorial) | non (`group-title` = pays) |
+| HTTPS | 100 % dans notre extrait | ~90 % |
+| Licence | CC0 (base) | MIT |
+| Rôle retenu | socle du catalogue | appoint de fraîcheur, après vérification |
+
+Aucune des deux listes ne prouve qu'un flux est lisible **depuis le navigateur du visiteur** :
+ni le CORS ni le géoblocage ne sont testés par ces projets. Seule la sonde du site (`F-16`) et
+l'expérience réelle tranchent ; c'est pourquoi les chaînes tombées sont masquées après trois
+échecs consécutifs (`downAfterFailures`).
+
 ### Logos
 
 Les logos référencés par `tvg-logo` appartiennent à leurs chaînes. Ils sont affichés depuis leur

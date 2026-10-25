@@ -1,4 +1,4 @@
-# RUNBOOK — exploitation de StreamTV v3.3.0
+# RUNBOOK — exploitation de StreamTV v3.4.0
 
 Ce document décrit l’exploitation courante, les gestes d’urgence et les procédures de reprise.
 Il est écrit pour être suivi sans connaissance préalable du code : chaque procédure indique ce
@@ -10,7 +10,7 @@ qu’elle fait, quand l’appliquer, les commandes exactes et le résultat atten
 
 | Élément | Valeur |
 |---|---|
-| Application | StreamTV 3.3.0 (conformité *StreamTV v2*) |
+| Application | StreamTV 3.4.0 (conformité *StreamTV v2*) |
 | Runtime | Node.js 20 LTS ou plus, aucun paquet npm |
 | Écoute | `0.0.0.0:3000` (modifiable par `PORT` / `HOST`) |
 | Données | `./data` (modifiable par `DATA_DIR`) |
@@ -34,7 +34,7 @@ PORT=3000 ADMIN_PASSWORD='…' node server/index.js
 Résultat attendu dans les 5 secondes :
 
 ```text
-StreamTV v3.3.0 — 1475 chaînes, 41 routes
+StreamTV v3.4.0 — 1475 chaînes, 41 routes
 écoute sur http://0.0.0.0:3000
 ```
 
