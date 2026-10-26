@@ -10,7 +10,7 @@ export function openPlayerOptions(player) {
     title: 'Options de lecture',
     body: h('div', { class: 'player-options' },
       h('div', { class: 'field' },
-        h('label', { for: 'opt-quality' }, 'Qualité du flux'),
+        h('label', { for: 'player-level' }, 'Qualité du flux'),
         player.levelSelect),
       h('div', { class: 'rows' },
         h('button', {
