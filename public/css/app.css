@@ -155,11 +155,12 @@ main{max-width:1280px; margin:0 auto; padding:var(--s5) var(--s5) var(--s7); min
 .card-media::after{content:""; position:absolute; inset:0; background:none}
 .card-media img{max-width:100%; max-height:100%; object-fit:contain; position:relative; z-index:1}
 .card-initial{font-size:var(--fs-xl); font-weight:800; color:rgba(255,255,255,.92); position:relative; z-index:1; letter-spacing:-.03em}
-.card-play{position:absolute; inset:0; display:grid; place-items:center; opacity:0; z-index:2; background:rgba(4,6,10,.42);
-  transition:opacity var(--d-base) var(--ease)}
+/* Lecture : une commande ronde posée dans l'angle de l'affiche, jamais un voile sur le logo. */
+.card-play{position:absolute; right:var(--s2); bottom:var(--s2); width:36px; height:36px; border-radius:50%;
+  border:0; background:var(--text); color:var(--ink); display:grid; place-items:center; opacity:0; z-index:2;
+  transition:opacity var(--d-fast) var(--ease)}
 .card:hover .card-play,.card:focus-visible .card-play{opacity:1}
-.card-play span{width:46px; height:46px; border-radius:50%; display:grid; place-items:center; background:var(--accent); color:var(--ink);
-  }
+.card-play span{width:auto; height:auto; background:none; color:inherit; display:grid; place-items:center}
 .card-body{padding:var(--s3); display:flex; flex-direction:column; gap:2px; min-width:0}
 .card-num{font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:6px}
 .card-name{font-size:var(--fs-sm); font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -401,8 +402,8 @@ td.num{font-variant-numeric:tabular-nums; color:var(--muted)}
 /* Sur un écran sans survol, la pastille de lecture doit être visible : un simple :hover ne
    se déclenche jamais au doigt, et la carte n'offrirait plus que l'ouverture de la fiche. */
 @media (hover:none), (pointer:coarse){
-  .card-play{opacity:1; background:rgba(4,6,10,.42)}
-  .card-play span{width:46px; height:46px}
+  .card-play{opacity:1; width:44px; height:44px; background:var(--text); color:var(--ink)}
+  .card-play span{width:auto; height:auto; background:none}
   .card:hover{transform:none; background:var(--panel); box-shadow:none; border-color:var(--line)}
   .card:hover .card-play{opacity:1}
   .chip:hover,.btn:hover{transform:none}
@@ -904,3 +905,149 @@ body.tv-mode .header-inner{padding:var(--s4) var(--s5)}
 }
 .card-now[data-state="off"]{display:none}
 .card-now[data-state="empty"] .card-now-live,.card-now[data-state="loading"] .card-now-live{display:none}
+
+/* ================================================= 3.10.0 · expérience visiteur
+   Mêmes choix, même soin, du téléphone à l'ordinateur. Une seule règle préside :
+   rien d'essentiel ne dépend d'un survol, et rien ne s'affiche par-dessus un logo. */
+
+/* Aucun défilement horizontal, même si une adresse longue déborde d'une fiche. */
+html,body{overflow-x:clip}
+main{min-width:0}
+.grid > *{min-width:0}
+
+/* ------------------------------------------------------------------ la carte
+   Affiche propre, nom sur deux lignes, programme permanent, lecture discrète. */
+.grid{grid-template-columns:repeat(auto-fill,minmax(158px,1fr)); align-items:start}
+.card{border-color:var(--line); background:var(--bg-2)}
+.card-media{aspect-ratio:16/9; padding:var(--s4); background:var(--panel); border-bottom:1px solid var(--line-soft)}
+.card-name{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden; line-height:1.32; min-height:0; font-size:var(--fs-md)}
+.card-sub{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+/* Sur écran tactile : la commande reste visible, sans voile sombre sur l'affiche. */
+@media (hover:none), (pointer:coarse){
+  .card{background:var(--bg-2)}
+  .card:hover{background:var(--bg-2); border-color:var(--line)}
+}
+
+/* ------------------------------------------------------------------ téléphone
+   Une seule colonne, carte couchée : l'affiche à gauche, tout le reste à droite.
+   Rien n'est coupé, rien ne dépend du survol, le programme se lit d'un regard. */
+@media (max-width:519px){
+  .grid{grid-template-columns:minmax(0,1fr); gap:var(--s2)}
+  .card{display:grid; grid-template-columns:104px minmax(0,1fr);
+    grid-template-areas:"media body" "media now"; column-gap:var(--s3); row-gap:2px;
+    align-items:start; padding:var(--s2)}
+  .card-media{grid-area:media; aspect-ratio:1/1; align-self:stretch; display:grid; place-items:center;
+    border:1px solid var(--line-soft); border-radius:var(--r-sm); padding:var(--s2); background:var(--panel)}
+  .card-media img{max-width:100%; max-height:100%}
+  /* Le cœur occupe l'angle haut droit : le texte lui laisse la place, il ne passe pas dessous. */
+  .card-body{grid-area:body; padding:0 52px 0 0; gap:2px}
+  .card-now{grid-area:now; padding:0; margin-top:2px}
+  .card-name{font-size:var(--fs-md); -webkit-line-clamp:2}
+  .card-sub{font-size:var(--fs-xs)}
+  .card-fav{top:4px; right:4px; width:44px; height:44px; opacity:1}
+  .card-play{display:none}
+  /* Dans les rangées, la carte reste une affiche verticale : c'est le format du défilement. */
+  .rail-track .card{display:flex; flex-direction:column; padding:0}
+  .rail-track .card-media{aspect-ratio:16/10; border:0; border-bottom:1px solid var(--line-soft);
+    border-radius:0; padding:var(--s3); align-self:auto}
+  .rail-track .card-body{padding:var(--s2) var(--s2) 0}
+  .rail-track .card-name{font-size:var(--fs-sm)}
+  .rail-track .card-now{padding:0 var(--s2) var(--s2)}
+  .rail-track .card-fav{top:2px; right:2px}
+}
+
+/* ------------------------------------------------------------------ tablette */
+@media (min-width:520px) and (max-width:899px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* ------------------------------------------------------------------ héros */
+@media (max-width:619px){
+  .hero{border-radius:var(--r-md)}
+  .hero-body{grid-template-columns:1fr; gap:var(--s3); padding:var(--s4)}
+  .hero-logo{width:88px; height:88px; border-radius:var(--r-sm); padding:var(--s2)}
+  .hero-text h1{font-size:26px}
+  .hero-text p{font-size:var(--fs-sm)}
+  .hero-meta{margin:var(--s2) 0 var(--s4)}
+  .hero-actions{gap:var(--s2)}
+  .hero-actions .btn{flex:1 1 46%; justify-content:center; min-height:44px}
+  .hero-rail{padding:0 var(--s4) var(--s4); gap:var(--s2)}
+  .hero-mini{min-height:44px}
+  .section-head{align-items:flex-start; gap:var(--s2)}
+  .section-head h2{font-size:var(--fs-lg)}
+}
+
+/* ------------------------------------------------------- fiche : programme */
+.feature-now{display:grid; gap:var(--s1); margin-top:var(--s4); padding:var(--s3) var(--s4);
+  border:1px solid var(--line); border-radius:var(--r-sm); background:rgba(0,0,0,.22)}
+.feature-now[data-state="off"]{display:none}
+.feature-now-head{display:flex; align-items:center; justify-content:space-between; gap:var(--s2); margin:0; min-width:0}
+.feature-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--accent)}
+.feature-live i{width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.8s ease-in-out infinite}
+.feature-now-hours{font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums}
+.feature-now-title{margin:0; font-size:var(--fs-md); font-weight:650; overflow-wrap:anywhere}
+.feature-next{margin-top:var(--s2); display:grid; gap:2px}
+.feature-next-label{margin:0 0 2px; font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+.feature-next-row{display:grid; grid-template-columns:52px minmax(0,1fr); gap:var(--s2); align-items:baseline; font-size:var(--fs-sm)}
+.feature-next-hours{color:var(--muted); font-variant-numeric:tabular-nums}
+.feature-next-title{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.feature-next-empty{margin:0; font-size:var(--fs-xs)}
+
+/* Les informations techniques restent là, mais ne font plus la une de la fiche. */
+.tech{margin-top:var(--s4); border:1px solid var(--line); border-radius:var(--r-md); background:var(--panel); padding:0 var(--s4)}
+.tech summary{display:flex; align-items:center; min-height:44px; padding:var(--s2) 0; cursor:pointer;
+  font-size:var(--fs-sm); font-weight:650; list-style:none}
+.tech summary::-webkit-details-marker{display:none}
+.tech summary::after{content:"+"; margin-left:auto; font-size:var(--fs-lg); color:var(--muted); line-height:1}
+.tech[open] summary::after{content:"−"}
+.tech[open] summary{border-bottom:1px solid var(--line-soft)}
+.tech .meta-grid{padding:var(--s3) 0 var(--s4); margin-top:0}
+
+@media (max-width:619px){
+  .detail-hero{padding:var(--s4)}
+  .detail-logo{width:76px; height:76px; border-radius:var(--r-sm)}
+  .feature-next-row{font-size:var(--fs-xs)}
+  .tech{padding:0 var(--s3)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .feature-live i{animation:none}
+  .card-play{transition:none}
+}
+
+/* --------------------------------------------------- en-tête de téléphone
+   Une seule rangée, comme une application : logo, recherche, favoris. Les outils
+   faits pour un clavier ne prennent pas la place d'un geste. */
+@media (max-width:619px){
+  .site-header{backdrop-filter:blur(12px)}
+  .header-inner{flex-wrap:nowrap; align-items:center; gap:var(--s2); padding:var(--s2) var(--s3)}
+  .brand{flex:none}
+  .brand-mark svg{width:24px; height:24px}
+  .search{order:0; flex:1 1 auto; width:auto; min-width:0}
+  .search input,.search input:focus{width:100%; height:40px; padding-left:34px}
+  .header-actions{order:0; flex:0 0 auto; width:auto; gap:var(--s1)}
+  #shortcuts-btn{display:none}
+  #fav-shortcut{display:none}
+  .icon-btn{width:40px; height:40px}
+  .search-suggest{max-height:60vh; overflow:auto}
+}
+
+/* ------------------------------------------------------ lecteur : le pouce
+   Une rangée qui tient sur 360 px, des cibles de 44 px, les options rares dans un menu. */
+.player-more{display:none}
+.player-options{display:grid; gap:var(--s4)}
+@media (max-width:619px){
+  .player-controls{padding:var(--s2) var(--s3) calc(var(--s3) + env(safe-area-inset-bottom)); gap:var(--s2)}
+  .player-controls .volume{flex:none}
+  .player-inline,.player-quality,#player-level{display:none}
+  .player-more{display:grid}
+  .player-controls .spacer{flex:1}
+  .player-top{padding:var(--s3) var(--s4)}
+  .player-title{font-size:var(--fs-md)}
+  .player-sub{font-size:var(--fs-xs)}
+  .skin-switch{display:none}
+  .osd{left:var(--s4); right:var(--s4); bottom:var(--s6); max-width:none}
+}

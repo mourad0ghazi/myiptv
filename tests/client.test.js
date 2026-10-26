@@ -418,6 +418,28 @@ describe('Console de pilotage et équipe (3.9.0)', () => {
     assert.match(css, /@media \(prefers-reduced-motion:reduce\)\{[\s\S]{0,120}\.card\{animation:none\}/);
   });
 
+  test('expérience visiteur : carte propre, fiche façon plateforme', async () => {
+    const components = await read('public/js/components.js');
+    const fiche = await read('public/js/views/channel.js');
+    // Le bouton de lecture ne recouvre plus l'affiche : il est posé dans l'angle.
+    const play = /\.card-play\{([^}]*)\}/.exec(css);
+    assert.ok(play, 'règle .card-play absente');
+    assert.equal(/inset:\s*0/.test(css.split('.card-play{')[1].split('}')[0]), false,
+      'le bouton de lecture ne doit plus couvrir toute l’affiche');
+    // Sur téléphone, la carte est couchée : affiche à gauche, texte à droite.
+    assert.match(css, /@media \(max-width:519px\)\{[\s\S]{0,400}\.card\{display:grid; grid-template-columns:104px/);
+    // La fiche porte un bandeau de programme et un « à suivre ».
+    assert.match(fiche, /feature-now/);
+    assert.match(fiche, /À suivre/);
+    assert.match(fiche, /\/api\/epg\?ids=/);
+    // Les informations techniques restent accessibles, sans faire la une.
+    assert.match(fiche, /class: 'tech'/);
+    assert.match(css, /\.tech\{/);
+    // Le héros mène au guide.
+    assert.match(await read('public/js/views/home.js'), /Le guide des programmes/);
+    assert.match(components, /card-now/);
+  });
+
   test('connexion : e-mail facultatif, libellé de rôle', async () => {
     const login = await read('public/js/views/login.js');
     assert.match(login, /admin-email/);

@@ -18,6 +18,7 @@ const SVG = {
   tv: '<rect x="2.5" y="7" width="19" height="13" rx="3"></rect><path d="m8 3 4 4 4-4"></path>',
   grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"></path>',
+  dots: '<circle cx="12" cy="5.5" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="12" cy="18.5" r="1.6"></circle>',
   check: '<path d="m4 12.5 5 5L20 6.5"></path>',
   trash: '<path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13"></path>',
   edit: '<path d="M4 20h4l10-10-4-4L4 16z"></path><path d="m14 6 4 4"></path>',

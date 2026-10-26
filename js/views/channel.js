@@ -6,7 +6,8 @@ import {
   h, icon, fmtNumber, fmtRelative, spinner, emptyState, logoNode, healthBadge, toast, copyText,
   countryName, languageName,
 } from '../ui.js';
-import { channelCard } from '../components.js';
+import { channelCard, paintNow } from '../components.js';
+import { heureCourte, primeNow } from '../epg-now.js';
 import { getPlayer } from '../player.js';
 import { prefs } from '../prefs.js';
 
@@ -116,6 +117,47 @@ export async function renderChannel(container, ctx, id) {
     },
   }, icon('copy', 16), COPY.actions.copy);
 
+  // Bandeau de programme : ce qui passe, ce qui suit. Rempli après coup, jamais bloquant.
+  const programmeStrip = h('div', { class: 'feature-now', 'aria-live': 'polite' },
+    h('p', { class: 'feature-now-head' },
+      h('span', { class: 'feature-live' }, h('i', { 'aria-hidden': 'true' }), 'En direct'),
+      h('span', { class: 'feature-now-hours' }, '…')),
+    h('p', { class: 'feature-now-title' }, 'Programme en cours'),
+    h('div', { class: 'feature-next' }));
+
+  const peindreProgramme = (grille) => {
+    const programmes = grille?.programmes || [];
+    const direct = programmes.find((item) => item.live);
+    if (!direct) {
+      programmeStrip.dataset.state = 'empty';
+      programmeStrip.querySelector('.feature-now-title').textContent = 'Programme non communiqué par la chaîne.';
+      programmeStrip.querySelector('.feature-now-hours').textContent = '';
+      programmeStrip.querySelector('.feature-live')?.remove();
+      return;
+    }
+    programmeStrip.dataset.state = 'live';
+    programmeStrip.querySelector('.feature-now-title').textContent = direct.title;
+    programmeStrip.querySelector('.feature-now-hours').textContent = `${heureCourte(direct.start)} – ${heureCourte(direct.stop)}`;
+    const suite = programmeStrip.querySelector('.feature-next');
+    const suivants = programmes.filter((item) => !item.live && Date.parse(item.start) > Date.now()).slice(0, 3);
+    if (!suivants.length) {
+      suite.append(h('p', { class: 'muted feature-next-empty' }, 'Le guide ne donne pas la suite.'));
+      return;
+    }
+    suite.replaceChildren(
+      h('p', { class: 'feature-next-label' }, 'À suivre'),
+      ...suivants.map((item) => h('div', { class: 'feature-next-row' },
+        h('span', { class: 'feature-next-hours tabular' }, heureCourte(item.start)),
+        h('span', { class: 'feature-next-title', dir: 'auto' }, item.title))));
+  };
+
+  api(`/api/epg?ids=${encodeURIComponent(channel.id)}&hours=8`)
+    .then((grille) => {
+      const ligne = (grille?.grid || []).find((item) => item.id === channel.id);
+      peindreProgramme(ligne);
+    })
+    .catch(() => { programmeStrip.dataset.state = 'off'; });
+
   const hero = h('section', { class: 'detail' },
     h('div', { class: 'detail-hero' },
       h('div', { class: 'detail-logo' }, logoNode(channel, 96)),
@@ -129,7 +171,8 @@ export async function renderChannel(container, ctx, id) {
           channel.language ? h('span', { class: 'badge' }, languageName(channel.language)) : null,
           healthBadge(channel.health),
           channel.featured ? h('span', { class: 'badge', dataset: { tone: 'warn' } }, 'En vedette') : null),
-        h('div', { class: 'hero-actions', style: { marginTop: '18px' } }, playButton, favoriteBtn, copyBtn)),
+        h('div', { class: 'hero-actions', style: { marginTop: '18px' } }, playButton, favoriteBtn, copyBtn),
+        programmeStrip),
     ),
     channel.blocked ? (() => {
       const info = BLOCK_COPY[channel.blockedReason] || BLOCK_COPY.dead;
@@ -140,7 +183,9 @@ export async function renderChannel(container, ctx, id) {
           h('p', { class: 'muted', style: { fontSize: '13px' } }, info.text),
           h('p', { class: 'muted', style: { fontSize: '13px' } }, info.hint)));
     })() : null,
-    h('div', { class: 'meta-grid' },
+    h('details', { class: 'tech' },
+      h('summary', {}, 'Informations techniques de la chaîne'),
+      h('div', { class: 'meta-grid' },
       metaItem('Numéro', channel.number),
       metaItem('Qualité', channel.quality === 'AUTO' ? 'Automatique' : channel.quality),
       metaItem('Pays', channel.country ? countryName(channel.country) : 'Non précisé'),
@@ -150,7 +195,7 @@ export async function renderChannel(container, ctx, id) {
       metaItem('Source', channel.sourceId || 'Non renseigné'),
       metaItem('Ajoutée', fmtRelative(channel.lastSeenInSourceAt)),
       metaItem('Classement', `${Math.round((channel.confidence || 0) * 100)} % de confiance · ${channel.categorySource}`),
-      metaItem('Droits', channel.licenseNote || 'Non renseigné')),
+      metaItem('Droits', channel.licenseNote || 'Non renseigné'))),
     h('div', { class: 'panel', style: { marginTop: '18px' } },
       h('h2', { style: { fontSize: '16px', marginBottom: '10px' } }, 'Adresse du flux'),
       h('div', { class: 'url-box' },
@@ -217,5 +262,9 @@ export async function renderChannel(container, ctx, id) {
 
   view.append(hero);
   container.replaceChildren(view);
+  // Les chaînes proches affichent leur programme, comme partout ailleurs.
+  primeNow((related || []).map((item) => item.id))
+    .then(() => paintNow(view))
+    .catch(() => { paintNow(view); });
   return () => {};
 }

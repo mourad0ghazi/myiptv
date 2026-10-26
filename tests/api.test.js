@@ -107,6 +107,28 @@ describe('API publique', () => {
     });
   });
 
+  test('EP-08c : une fiche de chaîne ne demande que son propre programme', async () => {
+    await withServer({}, async ({ client, login }) => {
+      const { token } = await login();
+      const settings = await client('/api/admin/settings', {
+        method: 'PATCH', token, body: { epgUrl: '/epg-demo.xml' },
+      });
+      assert.equal(settings.status, 200, settings.text);
+      const liste = await client('/api/channels?pageSize=1');
+      const chaine = liste.json.channels[0];
+      const cible = await client(`/api/epg?ids=${chaine.id}&hours=8`);
+      assert.equal(cible.status, 200);
+      assert.equal(cible.json.grid.length, 1, 'une seule ligne demandée, une seule rendue');
+      assert.equal(cible.json.grid[0].id, chaine.id);
+      // La grille reste de forme stable : programmes listés pour la chaîne demandée.
+      // L'appariement lui-même est vérifié par tests/epg.test.js (buildEpg).
+      assert.equal(Array.isArray(cible.json.grid[0].programmes), true);
+      assert.equal(typeof cible.json.grid[0].name, 'string');
+      const vide = await client('/api/epg?ids=inexistant0000');
+      assert.equal(vide.json.grid.length, 0, 'un identifiant inconnu ne renvoie aucune ligne');
+    });
+  });
+
   test('EP-06…EP-10 : catégories, mentions légales, grille, version, catalogue d’erreurs', async () => {
     await withServer({}, async ({ client }) => {
       const categories = await client('/api/categories');

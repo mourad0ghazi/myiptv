@@ -3,6 +3,41 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.10.0] — 2026-10-26
+
+L'expérience du visiteur, du téléphone à l'ordinateur : même soin, mêmes options, aucune
+information cachée derrière un survol.
+
+### Corrigé
+
+- **Le bouton de lecture ne recouvre plus l'affiche.** Il était un voile sombre à disque rose
+  permanent sur tout écran tactile, posé par-dessus le logo. Il devient une commande ronde
+  discrète dans l'angle, visible sans dominer l'affiche.
+- **Plus de débordement horizontal** sur les pages riches (fiche, cartes étroites) : la page
+  ne peut plus glisser latéralement sur téléphone.
+- **L'en-tête de téléphone tient sur une rangée** : logo, recherche, favoris. Les boutons
+  conçus pour un clavier ne prennent plus la place d'un geste.
+- **Le lecteur tient au pouce** : une rangée de commandes lisibles sur 360 px, les options
+  rares (qualité, similaires, image dans l'image, aide) regroupées dans un menu « Options de
+  lecture ».
+
+### Ajouté
+
+- **Carte couchée sur téléphone** : affiche à gauche, nom sur deux lignes, catégorie et
+  programme à droite. Le nom complet se lit, la catégorie aussi, sans rien survoler.
+- **Fiche de chaîne façon plateforme** : bandeau « En direct » avec l'émission en cours, ses
+  horaires, puis trois émissions à suivre. Les informations techniques passent dans un bloc
+  repliable au lieu d'occuper la page.
+- **Programme sur les chaînes proches** : la fiche peint aussi les cartes voisines.
+- **Guide par chaîne** : `GET /api/epg?ids=…` ne rend que les lignes demandées, au lieu de
+  charger soixante grilles pour en afficher une.
+- **Accès au guide depuis l'accueil** : troisième action du bandeau de tête.
+
+### Note
+
+- Aucune information du site n'est réservée au survol : programme, état, rang et catégorie
+  sont lisibles à l'arrêt, sur un écran tactile comme à la souris.
+
 ## [3.9.0] — 2026-10-26
 
 La console d'administration devient un poste de pilotage : plusieurs personnes, des droits

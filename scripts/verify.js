@@ -44,7 +44,7 @@ async function main() {
   await store.init();
 
   /* ---------------------------------------------------- contrat des données */
-  check('version du logiciel', VERSION === '3.9.0', VERSION);
+  check('version du logiciel', VERSION === '3.10.0', VERSION);
   check('20 codes d’erreur', Object.keys(ERRORS).length === 20, `${Object.keys(ERRORS).length} codes`);
   check('82 messages du §9', MESSAGES.length === 82, `${MESSAGES.length} messages`);
   check('6 familles de messages', FAMILIES.length === 6, `${FAMILIES.length} familles`);

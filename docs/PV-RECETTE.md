@@ -299,6 +299,30 @@ Réserve : le guide de démonstration est une grille figée de 48 h. Passé ce d
 relancer `npm run epg:demo` puis `npm run build:static` : la page l'écrit sans détour
 (« Programme non communiqué ») au lieu d'inventer un programme.
 
+### Recette des écrans de la 3.10.0
+
+Preuves : `npm test` (263 tests), rendu DOM sous jsdom 24 sur le serveur local avec le guide
+de démonstration actif, et lecture des règles de la feuille de style.
+
+| Point | Vérification | Résultat |
+|---|---|---|
+| Carte | Affiche 16/9 propre, nom sur deux lignes, catégorie entière, programme en cours, commande de lecture dans l'angle | conforme |
+| Bouton de lecture | Plus aucun voile sur le logo ni disque permanent sur écran tactile ; 44 px au doigt | conforme |
+| Téléphone | Carte couchée : affiche 104 px à gauche, nom sur deux lignes à droite, cœur de 44 px sans recouvrement | conforme |
+| Débordement | `overflow-x:clip` sur la page, cartes et grilles en `min-width:0` : plus de glissement latéral | conforme |
+| En-tête de téléphone | Une rangée : logo, recherche pleine largeur utile, favoris ; les outils clavier sont retirés | conforme |
+| Fiche de chaîne | Bandeau « En direct » (Talk-show, 18:00 à 21:00), puis 21:00 Talents, 00:00 Humour, 03:00 Téléréalité | conforme |
+| Informations techniques | Bloc repliable, 10 éléments conservés, fermé par défaut | conforme |
+| Chaînes proches | Programme peint sur les cartes voisines (3 sur 8 au moment de la mesure, les autres sans guide) | conforme |
+| Lecteur au pouce | Six commandes essentielles visibles, menu « Options de lecture » pour qualité, similaires, image dans l'image et aide | conforme |
+| Guide par chaîne | `GET /api/epg?ids=…` rend une seule ligne, identifiant inconnu rend une grille vide | conforme |
+| Accueil | Trois actions dans le bandeau de tête, dont « Le guide des programmes » | conforme |
+| Design | Aucun dégradé, aucun cadratin, aplatissement des survols, jetons seuls, accent unique | conforme |
+
+Réserve : la vérification visuelle est faite sur les règles de la feuille de style et sur le
+DOM produit, pas sur une capture d'écran : aucun navigateur graphique n'est disponible dans
+l'atelier. Le rendu réel est contrôlé après publication, sur le site en ligne.
+
 ## 9. Annexes
 
 - `README.md` — démarrage, architecture, API, mesures, limites.
