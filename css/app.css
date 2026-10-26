@@ -1039,6 +1039,9 @@ main{min-width:0}
    Une rangée qui tient sur 360 px, des cibles de 44 px, les options rares dans un menu. */
 .player-more{display:none}
 .player-options{display:grid; gap:var(--s4)}
+.player-options .field{display:grid; gap:var(--s1)}
+.player-options .field-label{font-size:var(--fs-sm); font-weight:600}
+.player-options .chips{flex-wrap:wrap; overflow:visible}
 @media (max-width:619px){
   .player-controls{padding:var(--s2) var(--s3) calc(var(--s3) + env(safe-area-inset-bottom)); gap:var(--s2)}
   .player-controls .volume{flex:none}
