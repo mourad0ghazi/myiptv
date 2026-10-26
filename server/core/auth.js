@@ -65,7 +65,7 @@ export class Sessions {
     this.map = new Map();
   }
 
-  create({ ip = '', userAgent = '' } = {}) {
+  create({ ip = '', userAgent = '', role = 'proprietaire', memberId = '', memberName = 'Propriétaire' } = {}) {
     const token = newToken();
     const now = Date.now();
     const session = {
@@ -75,6 +75,10 @@ export class Sessions {
       expiresAt: now + this.ttlMs,
       ip,
       userAgent: String(userAgent).slice(0, 120),
+      // 3.9.0 : la session porte le rôle, pour que chaque route vérifie la permission réelle.
+      role,
+      memberId,
+      memberName,
     };
     this.map.set(token, session);
     // Limite : les sessions les plus anciennes sont fermées.
@@ -101,6 +105,16 @@ export class Sessions {
     return this.map.delete(token);
   }
 
+  /** Ferme les sessions d'un seul membre : les autres comptes restent connectés. */
+  revokeMember(memberId) {
+    if (!memberId) return 0;
+    let closed = 0;
+    for (const [token, session] of this.map) {
+      if (session.memberId === memberId) { this.map.delete(token); closed += 1; }
+    }
+    return closed;
+  }
+
   revokeAll() {
     const count = this.map.size;
     this.map.clear();
@@ -124,6 +138,8 @@ export class Sessions {
         expiresAt: new Date(session.expiresAt).toISOString(),
         ip: session.ip,
         userAgent: session.userAgent,
+        role: session.role || 'proprietaire',
+        memberName: session.memberName || 'Propriétaire',
         current: false,
       }));
   }

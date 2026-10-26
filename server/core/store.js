@@ -13,6 +13,8 @@ const FILES = {
   health: 'health.json',
   learning: 'learning.json',
   reports: 'reports.json',
+  team: 'team.json',
+  plays: 'plays.json',
   audit: 'audit.log',
 };
 
@@ -92,6 +94,8 @@ export class Store {
     await this.saveHealthSnapshot();
     await this.saveLearning('init');
     await this.loadReports();
+    await this.loadTeam();
+    await this.loadPlays();
     return this;
   }
 
@@ -181,6 +185,31 @@ export class Store {
       lastRef: Number(data.lastRef) || 0,
       updatedAt: data.updatedAt || null,
     };
+  }
+
+  async loadTeam() {
+    const { data } = await this.readJson(this.file('team'), null);
+    this.team = Array.isArray(data?.members) ? data.members : [];
+    return this.team;
+  }
+
+  async saveTeam(reason = 'team') {
+    return this.enqueue(async () => {
+      await this.atomicWriteJson(this.file('team'), { version: 1, reason, members: this.team });
+    });
+  }
+
+  /** Compteurs de lecture : par chaîne, avec le dernier passage. Aucune adresse conservée. */
+  async loadPlays() {
+    const { data } = await this.readJson(this.file('plays'), null);
+    this.plays = data && typeof data === 'object' && data.counts ? data : { totals: {}, hours: {} };
+    return this.plays;
+  }
+
+  async savePlays(reason = 'plays') {
+    return this.enqueue(async () => {
+      await this.atomicWriteJson(this.file('plays'), { version: 1, reason, ...this.plays });
+    });
   }
 
   async saveReports(reason = 'reports') {

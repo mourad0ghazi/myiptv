@@ -4,10 +4,10 @@
 import { api } from '../api.js';
 import { COPY } from '../copy.js';
 import { h, icon, fmtNumber, skeletonGrid, emptyState, spinner, modal, logoNode, toast } from '../ui.js';
-import { channelCard, categoryChips, hiddenNotice } from '../components.js';
+import { channelCard, categoryChips, hiddenNotice, paintNow } from '../components.js';
 import { getPlayer } from '../player.js';
 import { prefs } from '../prefs.js';
-import { nowFor, heureCourte, progression } from '../epg-now.js';
+import { nowFor, heureCourte, progression, primeNow } from '../epg-now.js';
 import { mountRails } from './rails.js';
 
 /** Ligne de programme du héros : remplacée dès que le guide répond, jamais bloquante. */
@@ -229,6 +229,10 @@ export async function renderHome(container, ctx) {
     nextPage = payload.page + 1;
     announce(payload);
     paintMore(payload, { first: shown === slice.length });
+    // Programmes du lot visible : une requête au maximum, jamais bloquante pour l'affichage.
+    primeNow(slice.map((channel) => channel.id))
+      .then(() => paintNow(gridHost))
+      .catch(() => { /* guide muet : la ligne reste « non communiqué » */ });
   };
 
   const loadMore = async (button) => {
@@ -265,7 +269,7 @@ export async function renderHome(container, ctx) {
       resultsHost.replaceChildren(h('div', { class: 'fav-empty' },
         icon('heart', 26),
         h('p', { style: { fontWeight: '600' } }, 'Aucune chaîne en favori'),
-        h('p', { class: 'muted' }, 'Survolez une affiche et touchez le cœur : la chaîne reste ici, sur cet appareil.'),
+        h('p', { class: 'muted' }, 'Le cœur d’une affiche suffit : la chaîne reste ici, sur cet appareil.'),
         h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => setParam({ fav: '' }) }, 'Parcourir le catalogue')));
       return;
     }
@@ -279,6 +283,9 @@ export async function renderHome(container, ctx) {
     }));
     moreHost.replaceChildren();
     resultsHost.replaceChildren(gridHost, moreHost);
+    primeNow(favoris.map((item) => item.id))
+      .then(() => paintNow(gridHost))
+      .catch(() => { /* guide muet : rien à peindre */ });
   };
 
   const load = async () => {

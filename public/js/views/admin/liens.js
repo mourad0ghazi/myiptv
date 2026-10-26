@@ -4,6 +4,7 @@
 // Lecture seule sur le catalogue : toute modification passe par l'onglet Catalogue.
 
 import { Admin, download } from '../../api.js';
+import { modal } from '../../ui.js';
 import { h, icon, toast, copyText, emptyState, healthBadge, fmtRelative, hostOf, countryName, flagFor } from '../../ui.js';
 import { statCard } from '../../components.js';
 import { apiGuard } from './common.js';
@@ -76,7 +77,70 @@ function detailsRow(channel) {
   return h('div', { class: 'link-details' }, lines, facts);
 }
 
-function channelRow(channel, { threshold, onToggle, onTest, open, busy }) {
+/** Remplacement de lien : une seule adresse, testée avant d'enregistrer. */
+function replaceLink(channel, onDone) {
+  const input = h('input', {
+    type: 'url', id: 'nouveau-lien', value: channel.url, required: true, maxlength: '2048',
+    placeholder: 'https://…/index.m3u8', spellcheck: 'false',
+  });
+  const etat = h('p', { class: 'help', role: 'status' }, 'Le nouveau lien remplace l’ancien ; l’ancien est conservé comme variante.');
+  const tester = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, icon('retry', 14), 'Tester ce lien');
+  const enregistrer = h('button', { class: 'btn btn-primary', type: 'submit' }, icon('check', 15), 'Remplacer le lien');
+
+  tester.addEventListener('click', async () => {
+    const url = input.value.trim();
+    if (!/^https?:\/\//i.test(url)) { etat.textContent = 'Adresse incomplète : elle doit commencer par https://'; etat.dataset.tone = 'danger'; return; }
+    tester.disabled = true;
+    etat.textContent = 'Test en cours…';
+    try {
+      const mesure = await Admin.testLink(url);
+      etat.textContent = `${mesure.verdict}${mesure.httpStatus ? ` (HTTP ${mesure.httpStatus}, ${mesure.latencyMs} ms)` : ''}`;
+      etat.dataset.tone = mesure.ok ? 'success' : 'danger';
+    } catch (error) {
+      etat.textContent = `Test impossible ici : ${error.message}`;
+      etat.dataset.tone = 'warn';
+    } finally {
+      tester.disabled = false;
+    }
+  });
+
+  const form = h('form', { class: 'link-form', novalidate: true },
+    h('label', { for: 'nouveau-lien' }, 'Nouvelle adresse du flux'),
+    input,
+    h('div', { class: 'link-form-actions' }, tester, enregistrer),
+    etat);
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const url = input.value.trim();
+    if (!/^https?:\/\//i.test(url)) { etat.textContent = 'Adresse incomplète : elle doit commencer par https://'; etat.dataset.tone = 'danger'; return; }
+    enregistrer.disabled = true;
+    try {
+      await Admin.update(channel.id, { url });
+      toast('Lien remplacé. L’ancienne adresse reste disponible comme variante.', { tone: 'success', duration: 6000 });
+      onDone?.();
+    } catch (error) {
+      etat.textContent = error.message || 'Remplacement refusé.';
+      etat.dataset.tone = 'danger';
+      enregistrer.disabled = false;
+    }
+  });
+  return form;
+}
+
+function openLinkDialog(channel, onDone) {
+  // Le corps a besoin de la fonction de fermeture : on la récupère après création.
+  const boite = { close: () => {} };
+  const dialogue = modal({
+    title: `Remplacer le lien · ${channel.name}`,
+    body: replaceLink(channel, () => { boite.close(); onDone?.(); }),
+    actions: [],
+  });
+  boite.close = dialogue.close;
+  return dialogue;
+}
+
+function channelRow(channel, { threshold, onToggle, onTest, open, busy, onReplace }) {
   const actions = h('div', { class: 'row-actions' },
     copyButton('Lien', channel.url, { title: `Copier l’adresse du flux de ${channel.name}` }),
     copyButton('M3U', m3uLine(channel), { title: `Copier la ligne M3U de ${channel.name}` }),
@@ -102,6 +166,11 @@ function channelRow(channel, { threshold, onToggle, onTest, open, busy }) {
       'aria-label': `Tester le flux de ${channel.name}`,
       onClick: (event) => { event.stopPropagation(); onTest(channel); },
     }, icon('retry', 14), 'Tester'),
+    h('button', {
+      class: 'btn btn-quiet btn-sm', type: 'button',
+      'aria-label': `Remplacer le lien de ${channel.name}`,
+      onClick: (event) => { event.stopPropagation(); onReplace(channel); },
+    }, icon('edit', 14), 'Remplacer'),
     h('a', { class: 'btn btn-quiet btn-sm', href: `/chaine/${channel.id}`, 'data-link': '', title: 'Ouvrir la fiche publique' },
       icon('tv', 14), 'Fiche site'));
 
@@ -278,6 +347,9 @@ export async function renderLiens(panel, ctx, state, { stats } = {}) {
         onToggle: (id) => {
           if (local.open.has(id)) local.open.delete(id); else local.open.add(id);
           paint(data);
+        },
+        onReplace: (target) => {
+          openLinkDialog(target, () => { stats?.(); load(local.page); });
         },
         onTest: async (target) => {
           local.busy = true;

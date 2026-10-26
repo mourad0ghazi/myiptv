@@ -4,7 +4,7 @@
 
 import { api } from '../api.js';
 import { h, icon } from '../ui.js';
-import { channelCard } from '../components.js';
+import { channelCard, paintNow } from '../components.js';
 import { prefs } from '../prefs.js';
 import { nowCached, primeNow } from '../epg-now.js';
 
@@ -50,6 +50,10 @@ function poserCartes(track, chaines, { openChannel, openPlayer }) {
     onOpen: (channel) => openChannel(channel.id),
     onPlay: (channel) => openPlayer(channel),
   })));
+  // Les rails montrent le programme sans survol, dès que le guide a répondu.
+  primeNow(chaines.map((chaine) => chaine.id))
+    .then(() => paintNow(track))
+    .catch(() => { /* guide muet : la ligne reste « non communiqué » */ });
 }
 
 /**

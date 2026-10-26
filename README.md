@@ -256,6 +256,13 @@ L’ordre de contrôle est fixe : méthode (405) → taille (413) → type (415)
 | `POST /api/admin/backup` | sauvegarde immédiate + empreinte |
 | `POST /api/admin/restore` | restauration (confirmation `RESTAURER`) |
 | `POST /api/admin/password` | changement de mot de passe, révocation globale |
+| `GET /api/admin/diagnostic` | agent de contrôle : note, verdict, constats hiérarchisés |
+| `GET /api/admin/analytics?heures=` | lectures anonymes, par heure et par chaîne |
+| `GET /api/admin/audit?lines=` | journal lisible des actions |
+| `GET/POST /api/admin/team` | comptes d'équipe et rôles |
+| `PATCH/DELETE /api/admin/team/:id` | rôle, fermeture d'accès, suppression |
+| `POST /api/admin/link/test` | test d'une adresse candidate avant enregistrement |
+| `POST /api/events/play` | compteur de lecture anonyme |
 | `DELETE /api/admin/sessions` | fermeture de toutes les sessions |
 
 ### Exemples
@@ -274,6 +281,44 @@ curl -s -X POST localhost:3000/api/admin/backup -H "Authorization: Bearer $TOKEN
 ```
 
 ---
+
+### Cartes lisibles sans survol (3.9.0)
+
+Chaque carte porte désormais une ligne de programme permanente sous son titre : mention
+« En direct », émission en cours, horaires et barre de progression. Elle est remplie par lot
+(une requête pour la page visible, jamais une par carte) et s'efface proprement quand le
+guide n'a rien à dire (« Programme non communiqué »), ou disparaît si aucun guide n'est
+configuré.
+
+Sur téléphone, la grille passe à une colonne sous 520 px et à deux colonnes jusqu'à 899 px ;
+les cœurs font 44 px et restent visibles. Sur ordinateur, la même page se densifie : quatre
+colonnes jusqu'à 1279 px, six au-delà, textes plus grands. Les logos sont contenus sur un fond
+uni, sans filtre ni ombre, avec repli sur les initiales.
+
+Le guide de démonstration livré avec le site couvre 48 heures. Passé ce délai :
+`npm run epg:demo` puis `npm run build:static` le remettent à jour.
+
+### Console de pilotage et équipe (3.9.0)
+
+L'administration s'ouvre désormais sur **Pilotage**. Un agent lit l'état réel du catalogue et
+rend une note sur 100 avec des constats hiérarchisés : panne, blocage, flux instable, chaîne
+sans secours, chaînes jamais mesurées, guide manquant, logos absents, classement incertain.
+Chaque constat indique l'action attendue et mène à l'écran concerné, et le rapport se copie
+en un clic.
+
+Le même écran affiche l'usage réel : lectures par heure et classement des chaînes, à partir
+d'un compteur strictement anonyme (un identifiant de chaîne, aucune adresse), ainsi que les
+dernières actions du journal.
+
+**Équipe** crée des comptes nominatifs et attribue un rôle : propriétaire, administrateur,
+éditeur, modérateur ou analyste. Les permissions sont contrôlées par le serveur, route par
+route : un éditeur ne peut ni gérer les comptes, ni changer les réglages, ni supprimer une
+chaîne, même en appelant l'API directement. Fermer un accès coupe ses sessions sans toucher
+aux autres.
+
+**Remplacer un lien** : depuis la console des liens, l'ancienne adresse est conservée comme
+variante et la nouvelle est testée avant enregistrement (statut HTTP, latence, présence d'un
+manifeste HLS).
 
 ### Accueil galerie et lecteur cinéma (3.8.0)
 

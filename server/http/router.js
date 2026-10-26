@@ -30,9 +30,11 @@ function compile(pattern) {
 }
 
 export class Router {
-  constructor({ sessions = null, logger = console, config = {} } = {}) {
+  constructor({ sessions = null, logger = console, config = {}, authorize = null } = {}) {
     this.routes = [];
     this.sessions = sessions;
+    // 3.9.0 : contrôle de permission délégué au domaine (server/core/team.js).
+    this.authorize = authorize;
     this.logger = logger;
     this.config = config;
   }
@@ -46,6 +48,7 @@ export class Router {
       keys,
       handler,
       auth: Boolean(options.auth),
+      permission: options.permission || '',
       bodyLimit: options.bodyLimit ?? LIMITS.maxBodyPublic,
       allowBody: options.allowBody !== false,
       name: options.name || '',
@@ -165,6 +168,9 @@ export class Router {
         const token = /^Bearer\s+([a-f0-9]{48})$/i.exec(header)?.[1] || '';
         session = token && this.sessions ? this.sessions.touch(token) : null;
         if (!session) throw new AppError('ERR-07');
+        if (route.permission && this.authorize && !this.authorize(session, route.permission, this)) {
+          throw new AppError('ERR-09');
+        }
       }
 
       // Étape 5 — lecture et validation du corps.

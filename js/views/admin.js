@@ -13,8 +13,11 @@ import { renderHealth } from './admin/health.js';
 import { renderBackups } from './admin/backups.js';
 import { renderLiens } from './admin/liens.js';
 import { renderSignalements } from './admin/signalements.js';
+import { renderPilotage } from './admin/pilotage.js';
+import { renderEquipe } from './admin/equipe.js';
 
 const TABS = [
+  ['pilotage', 'Pilotage'],
   ['catalogue', 'Catalogue'],
   ['liens', 'Chaînes et liens'],
   ['signalements', 'Signalements'],
@@ -22,6 +25,7 @@ const TABS = [
   ['reglages', 'Réglages'],
   ['sante', 'Santé'],
   ['sauvegardes', 'Sauvegardes'],
+  ['equipe', 'Équipe'],
 ];
 
 export async function renderAdmin(container, ctx) {
@@ -54,7 +58,7 @@ export async function renderAdmin(container, ctx) {
   }
 
   const state = {
-    tab: TABS.some(([id]) => id === ctx.query.onglet) ? ctx.query.onglet : 'catalogue',
+    tab: TABS.some(([id]) => id === ctx.query.onglet) ? ctx.query.onglet : 'pilotage',
     page: 1,
     q: '',
     category: '',
@@ -104,13 +108,15 @@ export async function renderAdmin(container, ctx) {
     panel.setAttribute('aria-labelledby', `tab-${state.tab}`);
     panel.replaceChildren(spinner('Chargement…'));
     try {
-      if (state.tab === 'catalogue') await renderCatalogue(panel, ctx, state, { refreshStats, stats: () => stats });
+      if (state.tab === 'pilotage') await renderPilotage(panel, ctx);
+      else if (state.tab === 'equipe') await renderEquipe(panel, ctx);
+      else if (state.tab === 'catalogue') await renderCatalogue(panel, ctx, state, { refreshStats, stats: () => stats });
       else if (state.tab === 'liens') await renderLiens(panel, ctx, state, { stats: () => stats });
       else if (state.tab === 'signalements') await renderSignalements(panel, ctx, state, { stats: () => stats });
       else if (state.tab === 'import') await renderImport(panel, ctx, state, { refreshStats });
       else if (state.tab === 'reglages') await renderSettings(panel, ctx, { refreshStats });
       else if (state.tab === 'sante') await renderHealth(panel, ctx, state, { refreshStats, stats: () => stats });
-      else await renderBackups(panel, ctx, { refreshStats, stats: () => stats });
+      else if (state.tab === 'sauvegardes') await renderBackups(panel, ctx, { refreshStats, stats: () => stats });
     } catch (error) {
       if (apiGuard(ctx, error, { silent: true })) return;
       panel.replaceChildren(emptyState({
