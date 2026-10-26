@@ -52,9 +52,11 @@ async function main() {
   const parsed = JSON.parse(raw);
   const channels = (Array.isArray(parsed) ? parsed : parsed.channels || [])
     .filter((channel) => !channel.deleted && !channel.blocked && (channel.epgId || channel.tvgId))
-    .slice(0, 400);
+    .slice(0, 300);
 
-  // Grille de 24 heures à partir de l'heure pleine précédente, 8 créneaux de 3 heures.
+  // Grille de 48 heures à partir de l'heure pleine précédente, 16 créneaux de 3 heures.
+  // Deux jours de marge : un guide figé dans un site statique se périme, la démonstration
+  // reste lisible le lendemain d'une publication.
   const start = new Date();
   start.setUTCMinutes(0, 0, 0);
   start.setUTCHours(start.getUTCHours() - (start.getUTCHours() % 3));
@@ -71,10 +73,11 @@ async function main() {
   for (const channel of channels) {
     const id = channel.epgId || String(channel.tvgId).split('@')[0];
     const titles = slotTitles(channel.category);
-    for (let slot = 0; slot < 8; slot += 1) {
+    for (let slot = 0; slot < 16; slot += 1) {
       const from = new Date(start.getTime() + slot * 3 * 3600_000);
       const to = new Date(from.getTime() + 3 * 3600_000);
-      const title = titles[slot % titles.length];
+      // Décalage par chaîne : deux chaînes de même catégorie ne diffusent pas le même titre.
+      const title = titles[(slot + (channel.number || 0)) % titles.length];
       lines.push(`  <programme start="${stamp(from)}" stop="${stamp(to)}" channel="${xmlEscape(id)}">`
         + `<title lang="fr">${xmlEscape(title)}</title>`
         + `<desc lang="fr">${xmlEscape(`${title} — ${channel.name}. Grille de démonstration, à remplacer par un fournisseur réel.`)}</desc>`
@@ -86,9 +89,10 @@ async function main() {
   const content = `${lines.join('\n')}\n`;
   await fsp.writeFile(TARGET, content, 'utf8');
   process.stdout.write(`guide de démonstration : ${channels.length} chaînes, `
-    + `${channels.length * 8} programmes, ${Buffer.byteLength(content)} octets\n`);
+    + `${channels.length * 16} programmes, ${Buffer.byteLength(content)} octets\n`);
   process.stdout.write(`fichier : ${path.relative(ROOT, TARGET)}\n`);
   process.stdout.write('activation : Réglages → epgUrl = /epg-demo.xml\n');
+  process.stdout.write('durée : 48 heures à partir du dernier multiple de 3 heures\n');
 }
 
 main().catch((error) => {

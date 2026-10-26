@@ -16,8 +16,15 @@ import { nextProbeBatch, probeChannels } from '../core/health.js';
 import { buildTags, detectCountry, detectLanguage, detectQuality, groupKind, normalizeName, normalizeUrl } from '../core/text.js';
 import { buildPredicate, paginate, sortChannels } from '../core/search.js';
 import { queryInt, queryString } from '../http/router.js';
+import { registerPilotageRoutes } from './admin-pilotage.js';
 
 const now = () => new Date().toISOString();
+
+/** Nom lisible d'une chaîne, y compris supprimée : les compteurs d'usage la retrouvent. */
+function channelName(app, id) {
+  const channel = app.store.channels.find((item) => item.id === id);
+  return channel ? channel.name : 'Chaîne retirée';
+}
 
 function findChannel(app, id) {
   const channel = app.store.channels.find((item) => item.id === id);
@@ -87,7 +94,28 @@ function makeEntry({ name, url, urlNormalized, logo = '', group = '', quality, t
   };
 }
 
-export function registerAdminRoutes(router, app) {
+/** Table de permissions : chaque route d'administration nomme l'action qu'elle autorise. */
+export function permissionFor(method, pattern) {
+  if (pattern.includes('/team')) return 'team';
+  if (pattern.includes('/password') || pattern.includes('/sessions')) return 'team';
+  if (pattern.includes('/backup') || pattern.includes('/restore')) return 'backup';
+  if (pattern.includes('/settings') || pattern.includes('/rules')) return 'settings';
+  if (pattern.includes('/import')) return 'import';
+  if (pattern.includes('/audit') || pattern.includes('/analytics')) return 'analytics';
+  if (pattern.includes('/diagnostic')) return 'diagnostic';
+  if (method === 'DELETE' && /channels\/:id$/.test(pattern)) return 'catalogue.delete';
+  if (method === 'GET') return 'catalogue.read';
+  return 'catalogue.write';
+}
+
+export function registerAdminRoutes(base, app) {
+  // Le routeur reçoit la permission déduite du couple méthode + chemin : aucune route n'est oubliée.
+  const router = {
+    get: (pattern, handler, options = {}) => base.get(pattern, handler, { auth: true, bodyLimit: LIMITS.maxBodyAdmin, ...options, permission: options.permission || permissionFor('GET', pattern) }),
+    post: (pattern, handler, options = {}) => base.post(pattern, handler, { auth: true, bodyLimit: LIMITS.maxBodyAdmin, ...options, permission: options.permission || permissionFor('POST', pattern) }),
+    patch: (pattern, handler, options = {}) => base.patch(pattern, handler, { auth: true, bodyLimit: LIMITS.maxBodyAdmin, ...options, permission: options.permission || permissionFor('PATCH', pattern) }),
+    delete: (pattern, handler, options = {}) => base.delete(pattern, handler, { auth: true, bodyLimit: LIMITS.maxBodyAdmin, ...options, permission: options.permission || permissionFor('DELETE', pattern) }),
+  };
   app.settingsRef = () => app.store.settings;
   app.siteProtocolRef = () => app.siteProtocol;
 
@@ -786,6 +814,8 @@ export function registerAdminRoutes(router, app) {
   /* ---------------------------------------------------------------- sécurité */
 
   // EP-36 — changement de mot de passe.
+  registerPilotageRoutes(router, app);
+
   router.post('/api/admin/password', async ({ body, session, ip, requestId }) => {
     const current = String(body?.current || '');
     const next = String(body?.next || '');

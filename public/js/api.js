@@ -112,7 +112,7 @@ export const Public = {
 /** API admin : objet unique, testé par tests/api.test.js. */
 export const Admin = {
   session: () => api('/api/session'),
-  login: (password) => api('/api/login', { method: 'POST', body: { password } }),
+  login: (password, email = '') => api('/api/login', { method: 'POST', body: { password, email } }),
   logout: () => api('/api/logout', { method: 'POST', body: {} }),
   channels: (params) => api(`/api/admin/channels?${new URLSearchParams(params)}`),
   channel: (id) => api(`/api/admin/channels/${id}`),
@@ -146,4 +146,14 @@ export const Admin = {
   confirmReport: (id) => api(`/api/admin/reports/${encodeURIComponent(id)}/confirm`, { method: 'POST', body: {} }),
   rejectReport: (id, note = '') => api(`/api/admin/reports/${encodeURIComponent(id)}/reject`, { method: 'POST', body: { note } }),
   resetReports: (channelId) => api(`/api/admin/reports/${encodeURIComponent(channelId)}/reset`, { method: 'POST', body: {} }),
+  // 3.9.0 : pilotage, agent de diagnostic, usage et comptes d'équipe.
+  diagnostic: () => api('/api/admin/diagnostic'),
+  analytics: (hours = 168) => api(`/api/admin/analytics?heures=${hours}`),
+  audit: (lines = 60) => api(`/api/admin/audit?lines=${lines}`),
+  team: () => api('/api/admin/team'),
+  addMember: (payload) => api('/api/admin/team', { method: 'POST', body: payload }),
+  updateMember: (id, patch) => api(`/api/admin/team/${id}`, { method: 'PATCH', body: patch }),
+  removeMember: (id) => api(`/api/admin/team/${id}`, { method: 'DELETE', body: {} }),
+  testLink: (url) => api('/api/admin/link/test', { method: 'POST', body: { url }, timeout: 20_000 }),
+  trackPlay: (channelId) => api('/api/events/play', { method: 'POST', body: { channelId } }),
 };

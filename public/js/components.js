@@ -4,7 +4,7 @@ import { h, icon, logoNode, healthLabel } from './ui.js';
 import { prefs } from './prefs.js';
 import { COPY } from './copy.js';
 import { attacherPreview } from './preview.js';
-import { nowCached, nowFor, heureCourte, progression } from './epg-now.js';
+import { nowCached, nowFor, heureCourte, progression, guideDisponible } from './epg-now.js';
 
 /** Motif de non-lecture, en français et en trois mots (§9.4). */
 export function reasonLabel(reason) {
@@ -20,6 +20,40 @@ export function reasonLabel(reason) {
 }
 
 /** État lisible d'une chaîne : la carte ne montre jamais un simple point gris. */
+/**
+ * Ligne de programme des cartes : peinte depuis le cache du guide, sans requête.
+ * Les vues appellent primeNow() pour le lot visible, puis paintNow().
+ */
+export function paintNow(root) {
+  if (!root || typeof root.querySelectorAll !== 'function') return;
+  for (const ligne of root.querySelectorAll('.card-now')) {
+    if (ligne.dataset.state === 'blocked') continue;
+    const carte = ligne.closest('.card');
+    const id = carte?.dataset?.channelId;
+    if (!id) continue;
+    const titre = ligne.querySelector('.card-now-title');
+    const heures = ligne.querySelector('.card-now-hours');
+    const barre = ligne.querySelector('.card-now-bar');
+    if (!guideDisponible()) {
+      // Aucun guide configuré : la ligne disparaît au lieu de répéter « non communiqué ».
+      ligne.dataset.state = 'off';
+      continue;
+    }
+    const programme = nowCached(id);
+    if (!programme) {
+      ligne.dataset.state = 'empty';
+      if (titre) titre.textContent = 'Programme non communiqué';
+      if (heures) heures.textContent = '';
+      if (barre) barre.style.width = '0%';
+      continue;
+    }
+    ligne.dataset.state = 'live';
+    if (titre) titre.textContent = programme.title;
+    if (heures) heures.textContent = `${heureCourte(programme.start)} – ${heureCourte(programme.stop)}`;
+    if (barre) barre.style.width = `${Math.round(progression(programme) * 100)}%`;
+  }
+}
+
 export function stateLabel(channel) {
   if (channel.blocked) return { text: reasonLabel(channel.blockedReason), tone: 'danger' };
   if (channel.health === 'down') return { text: 'Indisponible à l’instant', tone: 'danger' };
@@ -107,7 +141,17 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
       channel.quality && channel.quality !== 'AUTO' ? h('span', { class: 'badge', style: { padding: '1px 6px', fontSize: 'var(--fs-xs)' } }, channel.quality) : null),
     h('span', { class: 'card-name', dir: 'auto', text: channel.name }),
     h('span', { class: 'card-sub', dir: 'auto', text: `${channel.categoryLabel || 'Non classée'}${channel.country ? ` · ${channel.country}` : ''}` })),
+  // Ligne de programme permanente : lisible sans survol, sur téléphone comme sur ordinateur.
+  // Le contenu est posé par paintNow() dès que le guide a répondu pour le lot de cartes.
+  h('span', { class: 'card-now', dataset: { state: channel.blocked ? 'blocked' : 'loading' } },
+    h('span', { class: 'card-now-head' },
+      channel.blocked ? null : h('span', { class: 'card-now-live' }, 'En direct'),
+      h('span', { class: 'card-now-hours' }, channel.blocked ? '' : '…')),
+    h('span', { class: 'card-now-title' }, channel.blocked ? 'Lecture limitée sur ce site' : 'Programme en cours'),
+    h('span', { class: 'card-bar' }, h('i', { class: 'card-now-bar' }))),
   survol);
+  // L'identifiant est porté par la carte : programmes, file de lecture et favoris s'y raccrochent.
+  card.dataset.channelId = channel.id;
   attacherPreview(card, channel);
   return card;
 }

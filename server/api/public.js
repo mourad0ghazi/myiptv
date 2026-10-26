@@ -6,6 +6,7 @@ import { AppError, ERRORS } from '../core/errors.js';
 import { isPublic, projectCard, projectDetail } from '../core/channels.js';
 import { buildPredicate, paginate, sortChannels } from '../core/search.js';
 import { normalizeQuery, normalizeKey } from '../core/text.js';
+import { checkMemberPassword, findMember, publicMember, ROLES } from '../core/team.js';
 import { buildEpg } from '../core/epg.js';
 import { catalogForClient } from '../core/messages.js';
 import { reportThreshold } from '../core/reports.js';
@@ -132,6 +133,30 @@ export function registerPublicRoutes(router, app) {
     },
     cache: 'no-store',
   }));
+
+  /**
+   * EP-00 — compteur de lecture, anonyme.
+   * Un identifiant de chaîne, rien d'autre : ni adresse, ni appareil, ni identifiant visiteur.
+   * Les compteurs servent au pilotage éditorial (ce qui marche, ce qui ne marche pas).
+   */
+  router.post('/api/events/play', async ({ body }) => {
+    const id = String(body?.channelId || '').slice(0, 32);
+    if (!/^[a-z0-9]{4,32}$/i.test(id)) throw new AppError('ERR-04', { field: 'channelId', params: { champ: 'chaîne' } });
+    const channel = app.store.channels.find((item) => item.id === id && !item.deleted);
+    if (!channel) throw new AppError('ERR-10');
+    const plays = app.store.plays || (app.store.plays = { totals: {}, hours: {} });
+    const heure = new Date().toISOString().slice(0, 13);
+    const entry = plays.totals[id] || { count: 0, lastAt: '' };
+    entry.count += 1;
+    entry.lastAt = new Date().toISOString();
+    plays.totals[id] = entry;
+    plays.hours[heure] = (plays.hours[heure] || 0) + 1;
+    // Les heures anciennes sont élaguées : 30 jours suffisent au pilotage.
+    const limite = new Date(Date.now() - 30 * 24 * 3600_000).toISOString().slice(0, 13);
+    for (const key of Object.keys(plays.hours)) if (key < limite) delete plays.hours[key];
+    app.store.savePlays('lecture').catch(() => {});
+    return { body: { ok: true }, cache: 'no-store' };
+  });
 
   // EP-02 — configuration publique.
   router.get('/api/config', () => {
@@ -432,6 +457,7 @@ export function registerPublicRoutes(router, app) {
   // Connexion.
   router.post('/api/login', async ({ body, ip, req }) => {
     const password = typeof body?.password === 'string' ? body.password : '';
+    const email = typeof body?.email === 'string' ? body.email.trim() : '';
     if (!password) throw new AppError('ERR-02', { field: 'password', params: { champ: 'mot de passe' } });
     if (password.length > 200) throw new AppError('ERR-04', { field: 'password', params: { champ: 'mot de passe' } });
     const guard = app.loginGuard.check(ip);
@@ -441,20 +467,40 @@ export function registerPublicRoutes(router, app) {
         headers: { 'Retry-After': String(guard.retryAfterSeconds) },
       });
     }
-    const valid = await app.auth.verify(password);
+    // Deux portes : le propriétaire par son mot de passe historique, un membre par e-mail + mot de passe.
+    const member = email ? findMember(app.store.team, email) : null;
+    if (email && !member) {
+      app.loginGuard.fail(ip);
+      await app.store.audit('login.fail', { ip, result: 'compte inconnu', email });
+      throw new AppError('ERR-08');
+    }
+    const valid = member ? await checkMemberPassword(member, password) : await app.auth.verify(password);
     if (!valid) {
       app.loginGuard.fail(ip);
-      await app.store.audit('login.fail', { ip, result: 'refus' });
+      await app.store.audit('login.fail', { ip, result: member?.disabled ? 'compte désactivé' : 'refus' });
       throw new AppError('ERR-08');
     }
     app.loginGuard.success(ip);
-    const session = app.sessions.create({ ip, userAgent: req.headers['user-agent'] || '' });
-    await app.store.audit('login.success', { ip });
+    const session = app.sessions.create({
+      ip,
+      userAgent: req.headers['user-agent'] || '',
+      role: member ? member.role : 'proprietaire',
+      memberId: member ? member.id : '',
+      memberName: member ? member.name : 'Propriétaire',
+    });
+    if (member) {
+      member.lastLoginAt = new Date().toISOString();
+      await app.store.saveTeam('connexion');
+    }
+    await app.store.audit('login.success', { ip, role: session.role, membre: session.memberName });
     return {
       body: {
         token: session.token,
         expiresAt: new Date(session.expiresAt).toISOString(),
-        defaultPassword: app.auth.isDefaultPasswordActive(),
+        defaultPassword: member ? false : app.auth.isDefaultPasswordActive(),
+        role: session.role,
+        roleLabel: ROLES[session.role]?.label || 'Propriétaire',
+        member: member ? publicMember(member) : { name: 'Propriétaire', role: 'proprietaire', email: '' },
         message: 'Connexion réussie.',
       },
       cache: 'no-store',

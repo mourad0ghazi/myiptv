@@ -3,6 +3,59 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.9.0] — 2026-10-26
+
+La console d'administration devient un poste de pilotage : plusieurs personnes, des droits
+précis, un agent qui dit ce qui ne va pas, et des chiffres réels sur ce qui est regardé.
+
+### Ajouté
+
+- **Équipe et permissions** : comptes nominatifs (nom, e-mail, mot de passe propre), cinq
+  rôles (propriétaire, administrateur, éditeur, modérateur, analyste) et dix permissions
+  élémentaires. Le contrôle est fait par le serveur avant le corps de la route : un rôle ne
+  peut pas dépasser ce qu'il annonce, même en appelant l'API directement.
+- **Connexion par e-mail** : un membre se connecte avec son adresse et son mot de passe ;
+  le propriétaire garde son mot de passe historique. Fermer un accès coupe uniquement les
+  sessions de ce membre.
+- **Onglet Pilotage** : agent de diagnostic qui lit l'état réel (panne, blocage, flux
+  instable, absence de secours, chaînes non mesurées, guide manquant, logos, confiance) et
+  rend une note sur 100, un verdict et des constats hiérarchisés, chacun avec l'action
+  attendue et le lien vers l'écran concerné. Rapport copiable en un clic.
+- **Usage réel et anonyme** : `POST /api/events/play` compte une lecture par chaîne (aucune
+  adresse, aucun identifiant de visiteur), `GET /api/admin/analytics` rend les totaux, les
+  lectures par heure et le classement des chaînes.
+- **Journal lisible** : `GET /api/admin/audit` expose les dernières actions (qui, quand,
+  quoi) au lieu de rester dans un fichier.
+- **Remplacement de lien** : bouton « Remplacer » dans la console des liens, avec test réel
+  de l'adresse avant enregistrement (`POST /api/admin/link/test` : statut, latence,
+  présence d'un manifeste). L'ancienne adresse est conservée comme variante.
+
+- **Programme sans survol** : chaque carte porte une ligne permanente sous son titre
+  (mention « En direct », émission, horaires, barre de progression), alimentée une fois par
+  lot de cartes. Le téléphone n'a plus rien à survoler pour savoir ce qui passe.
+- **Téléphone** : une colonne sous 520 px, deux colonnes jusqu'à 899 px, titres agrandis,
+  cœurs de 44 px toujours visibles, logos contenus sur fond uni sans ombre.
+- **Ordinateur** : quatre colonnes jusqu'à 1279 px, six au-delà, textes plus grands, même
+  page, plus dense et plus lisible.
+- **Mouvement** : fondu d'entrée de 220 ms, supprimé quand le système demande moins
+  d'animation.
+
+### Modifié
+
+- L'onglet par défaut de l'administration est « Pilotage » : on voit d'abord ce qui bloque.
+- Le guide de démonstration couvre 48 h au lieu de 24 h, avec des titres variés d'une chaîne
+  à l'autre, et se régénère par `npm run epg:demo`.
+- L'état vide des favoris ne parle plus de survol : une phrase qui marche au doigt comme à
+  la souris.
+- Le compteur de lectures est branché sur l'ouverture réelle du lecteur, pas sur un clic de
+  carte.
+
+### Note
+
+- L'identifiant d'une chaîne reste l'empreinte de son adresse : remplacer un lien crée une
+  nouvelle identité, et l'ancienne adresse devient une variante. Les favoris enregistrés sur
+  l'ancien identifiant restent visibles localement.
+
 ## [3.8.0] — 2026-10-25
 
 L'accueil devient une galerie qui se pilote au cœur, le lecteur un poste de cinéma, et le

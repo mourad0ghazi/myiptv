@@ -430,6 +430,23 @@ ajoute les deux, sans modifier les 17 réglages ni les invariants de suppression
 | Console | inventaire en lecture seule, aucune écriture hors routes du catalogue | `server/api/console.js` |
 | Session | toutes les routes `/api/admin/*` de la console exigent un jeton | `tests/reports.test.js` |
 
+## 4.12 Console de pilotage et comptes (3.9.0)
+
+La 3.9.0 ouvre l'administration à une équipe, sans jamais élargir les droits par l'interface :
+chaque route nomme la permission qu'elle exige, et le serveur la vérifie avant le corps.
+
+| Point | Règle appliquée | Preuve |
+|---|---|---|
+| Rôles | cinq rôles, dix permissions, aucune permission implicite | `server/core/team.js`, `tests/admin.test.js` |
+| Contrôle serveur | permission évaluée à l'étape 4 du routeur, avant validation | `server/http/router.js`, `permissionFor` |
+| Éditeur | lecture du catalogue, import, diagnostic, usage ; refus des comptes, réglages et suppressions | `tests/admin.test.js` |
+| Fermeture d'accès | sessions du seul membre concerné révoquées | `Sessions.revokeMember`, `tests/admin.test.js` |
+| Mots de passe | scrypt N=16384, longueur minimale de 10, empreinte jamais renvoyée | `hashPassword`, `publicMember` |
+| Agent | lecture seule, constats hiérarchisés, chaque constat mène à un écran | `GET /api/admin/diagnostic` |
+| Usage | un identifiant de chaîne, aucune adresse, aucune donnée d'appareil | `POST /api/events/play` |
+| Journal | action, acteur, résultat, horodatage | `GET /api/admin/audit` |
+| Remplacement de lien | adresse testée avant écriture, ancienne conservée en variante | `POST /api/admin/link/test`, `tests/admin.test.js` |
+
 ## 4.11 Interface et postes de lecture (3.8.0)
 
 La 3.8.0 ne change aucune règle de catalogue. Elle rend l'interface vérifiable et ajoute les

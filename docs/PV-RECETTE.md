@@ -35,12 +35,11 @@ régime normal.
 Commande : `npm test`
 
 ```text
-# tests 207
-# pass 207
+# tests 261
+# pass 261
 # fail 0
 # cancelled 0
 # skipped 0
-# duration_ms 18450.118203
 ```
 
 Aucun échec, aucun test ignoré. Les suites d’API démarrent chacune leur propre serveur sur un
@@ -53,12 +52,13 @@ Détail par suite :
 | `tests/core.test.js` | 33 | conforme | parseur (BOM, CRLF, arabe, virgules, `#EXTGRP`, `//host`, HLS refusé), 2 fixtures de 2 000 lignes, déduplication, fusion des variantes, catégorisation, confiance, recherche (accents, arabe, pays), pagination, tri, réglages, contrat de chaîne, assertions A1–A10 |
 | `tests/api.test.js` | 28 | conforme | 42 routes, 20 codes d’erreur, ordre de contrôle, pagination bornée, compression, en-têtes, importation complète (aperçu → commit → annulation), idempotence, verrou concurrent, sauvegarde/restauration, mot de passe, écriture atomique, refus de démarrage en production |
 | `tests/security.test.js` | 15 | conforme | scrypt, jetons, TTL, plafond de sessions, force brute, audit sans secret, CSP, injection, traversée de chemin, sauvegarde corrompue, fichiers publics sans script en ligne |
-| `tests/client.test.js` | 30 | conforme | jetons CSS, quatre points de rupture, classes présentes, 12 mires distinctes, 7 états, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, PWA |
+| `tests/client.test.js` | 36 | conforme | jetons CSS, quatre points de rupture, classes présentes, 12 mires distinctes, 7 états, une seule reprise, garde-fous clavier, ARIA, plafond de cartes, PWA |
 | `tests/conformite.test.js` | 13 | conforme | 900 lignes maximum, aucun marqueur de travail, zéro dépendance, 20 codes, 17 réglages, 18 catégories, documents présents, 118 critères couverts |
 | `tests/learning.test.js` | 12 | conforme | F-22 : découpage des noms, support minimal, bornes de poids, priorité du manuel, effet réel sur le classement d’une chaîne, exposition dans l’administration |
 | `tests/migrate.test.js` | 14 | conforme | F-24 : DDL idempotent et typé, échappement SQL, aller-retour exact (accents, guillemets, arabe, tabulations), `ON CONFLICT`, modes `--plan`/`--write`/`--verify`/`--reverse`, journal `migration.export` |
 | `tests/messages.test.js` | 9 | conforme | 82 messages du §9 (identifiants, ordre, familles), textes exacts mot pour mot, zéro jargon, substitution des variables, table `ERR → message` complète, catalogue servi par l’API |
 | `tests/epg.test.js` | 25 | conforme | XMLTV valide et cassé, gzip reconnu à la signature, fuseaux ±HHMM, entités et accents, plafonds (20 Mo, 200 000 programmes), appariement `epgId`/`tvgId`, grille et direct, cache TTL et verrou |
+| `tests/admin.test.js` | 13 | conforme | console de pilotage : diagnostic noté et constats, analytique anonyme, journal, cinq rôles et permissions vérifiées par le serveur, fermeture d'un accès sans toucher au propriétaire, remplacement de lien et conservation de l'ancienne adresse |
 | `tests/alerts.test.js` | 11 | conforme | douze seuils du §10.4 (déclenchement au-delà, silence en deçà), priorité des alertes bloquantes, exposition dans `/api/admin/stats`, guide servi par `/api/epg` avec source locale réelle |
 
 ---
@@ -274,6 +274,30 @@ et parcours HTTP réel sur le serveur local.
 
 Réserve maintenue : aucune sonde réelle n'a été exécutée sur les 1508 chaînes ; la santé
 reste `unknown` et l'interface l'écrit sans détour.
+
+### Recette des écrans de la 3.9.0
+
+Preuves : `npm test` (261 tests, dont 10 tests de design et 13 tests d'administration),
+vérifications DOM sous jsdom 24, parcours HTTP réel et importation des 1508 chaînes.
+
+| Point | Vérification | Résultat |
+|---|---|---|
+| Onglets d'administration | Neuf onglets, Pilotage en premier ; Catalogue, Chaînes et liens, Signalements, Importation, Réglages, Santé, Sauvegardes, Équipe | conforme |
+| Pilotage | Douze indicateurs, trois constats hiérarchisés avec lien « Traiter », rapport copiable, note 78 au moment de la recette (mot de passe par défaut, chaînes jamais mesurées, logos manquants) | conforme |
+| Analytique | Trois lectures réelles comptées, répartition par heure et classement par chaîne ; aucune adresse, aucun identifiant de visiteur | conforme |
+| Équipe | Création d'un compte éditeur, connexion par e-mail, changement de rôle, refus 403 sur `/api/admin/team` et `PATCH /api/admin/settings`, fermeture d'accès ramenant le membre à 401 sans déconnecter le propriétaire | conforme |
+| Remplacement de lien | Bouton « Remplacer » sur chaque ligne, test réel de l'adresse (statut, latence, manifeste), nouvelle adresse enregistrée, ancienne conservée en variante | conforme |
+| Accueil — programme sans survol | Ligne permanente sous le titre : mention « En direct », titre, horaires, barre ; 58 cartes renseignées sur 78 sans aucune interaction, 20 restant honnêtement « Programme non communiqué » | conforme |
+| Accueil — téléphone | Une colonne sous 520 px, deux colonnes de 520 à 899 px, cœur de 44 px toujours visible, aucun texte caché derrière un survol | conforme |
+| Accueil — ordinateur | Quatre colonnes de 900 à 1279 px, six au-delà, titres et lignes de programme plus grands, logo contenu sur fond uni | conforme |
+| Logos | Aucun filtre, aucune ombre : `object-fit:contain` sur fond `--bg-2`, repli sur les initiales | conforme |
+| Mouvement | Fondu d'entrée de 220 ms, supprimé si `prefers-reduced-motion` | conforme |
+| Guide de démonstration | 300 chaînes, 16 créneaux de 3 h, titres variés par chaîne, 48 h de couverture ; l'EPG en direct répond sur les cinq premières chaînes | conforme |
+| Design | Zéro dégradé, zéro cadratin, zéro ombre de survol, jetons seuls, accent unique, `npm test` complet vert | conforme |
+
+Réserve : le guide de démonstration est une grille figée de 48 h. Passé ce délai, il faut
+relancer `npm run epg:demo` puis `npm run build:static` : la page l'écrit sans détour
+(« Programme non communiqué ») au lieu d'inventer un programme.
 
 ## 9. Annexes
 

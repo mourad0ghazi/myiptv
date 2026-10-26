@@ -363,6 +363,70 @@ describe('Routage client et rendu', () => {
   });
 });
 
+describe('Console de pilotage et équipe (3.9.0)', () => {
+  test('neuf onglets, Pilotage en premier', async () => {
+    const admin = await read('public/js/views/admin.js');
+    const ordered = [...admin.matchAll(/\['(\w+)',\s*'/g)].map((found) => found[1]);
+    assert.equal(ordered[0], 'pilotage', 'le pilotage passe avant le catalogue');
+    for (const onglet of ['pilotage', 'catalogue', 'liens', 'signalements', 'import', 'reglages', 'sante', 'sauvegardes', 'equipe']) {
+      assert.ok(ordered.includes(onglet), `onglet ${onglet} absent`);
+    }
+  });
+
+  test('pilotage : verdict, constats actionnables, usage, journal', async () => {
+    const vue = await read('public/js/views/admin/pilotage.js');
+    assert.match(vue, /diagnostic/);
+    assert.match(vue, /analytics/);
+    assert.match(vue, /audit/);
+    assert.match(vue, /'Traiter'/);
+    assert.match(vue, /Copier le rapport/);
+    // chaque constat porte un lien vers l'écran qui le corrige
+    assert.match(vue, /constat\.lien/);
+  });
+
+  test('équipe : rôles, création, fermeture d’accès, matrice', async () => {
+    const vue = await read('public/js/views/admin/equipe.js');
+    // Les rôles viennent du serveur : l'écran les rend, il ne les réinvente pas.
+    assert.match(vue, /data\.roles/);
+    const contrat = await read('server/core/team.js');
+    for (const role of ['proprietaire', 'administrateur', 'editeur', 'moderateur', 'analyste']) {
+      assert.match(contrat, new RegExp(`\\b${role}: \\{`), `rôle ${role} absent du contrat serveur`);
+    }
+    assert.match(vue, /Admin\.addMember/);
+    assert.match(vue, /Fermer l’accès/);
+    assert.match(vue, /permissions/);
+    // aucun mot de passe affiché après création
+    assert.equal(/password\s*\)\s*textContent/.test(vue), false);
+  });
+
+  test('cartes : programme permanent et logos propres', async () => {
+    const components = await read('public/js/components.js');
+    // La ligne de programme est dans la carte, pas seulement dans le panneau de survol.
+    assert.match(components, /class: 'card-now'/);
+    assert.match(components, /export function paintNow/);
+    assert.match(components, /primeNow/);
+    // Le logo n'est ni bridé ni filtré : mise à l'échelle contenue sur fond uni.
+    assert.equal(/filter:\s*drop-shadow/.test(css.match(/\.card-media img\{[^}]*\}/)?.[0] || ''), false,
+      'aucune ombre sur un logo');
+    assert.match(css, /\.card-media img\{[^}]*object-fit:contain/);
+  });
+
+  test('téléphone : une colonne, cœur de 44 px, aucune information au survol seul', async () => {
+    assert.match(css, /@media \(max-width:519px\)\{[\s\S]{0,120}\.grid\{grid-template-columns:minmax\(0,1fr\)/);
+    assert.match(css, /@media \(hover:none\), \(pointer:coarse\)\{[\s\S]{0,160}\.card-fav\{[^}]*width:44px; height:44px/);
+    // L'entrée des cartes respecte le mouvement réduit.
+    assert.match(css, /@media \(prefers-reduced-motion:reduce\)\{[\s\S]{0,120}\.card\{animation:none\}/);
+  });
+
+  test('connexion : e-mail facultatif, libellé de rôle', async () => {
+    const login = await read('public/js/views/login.js');
+    assert.match(login, /admin-email/);
+    assert.match(login, /type="email"|'email'/);
+    assert.match(login, /roleLabel/);
+    assert.match(login, /Laissez vide/);
+  });
+});
+
 describe('PWA et résilience hors ligne', () => {
   test('manifeste installable et icônes locales', async () => {
     const manifest = JSON.parse(await read('public/manifest.webmanifest'));

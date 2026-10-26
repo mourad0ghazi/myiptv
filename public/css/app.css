@@ -153,7 +153,7 @@ main{max-width:1280px; margin:0 auto; padding:var(--s5) var(--s5) var(--s7); min
 .card-media{position:relative; aspect-ratio:16/10; display:grid; place-items:center; padding:var(--s4);
   background:var(--bg-2); overflow:hidden}
 .card-media::after{content:""; position:absolute; inset:0; background:none}
-.card-media img{max-width:100%; max-height:100%; object-fit:contain; position:relative; z-index:1; filter:drop-shadow(0 8px 16px rgba(0,0,0,.55))}
+.card-media img{max-width:100%; max-height:100%; object-fit:contain; position:relative; z-index:1}
 .card-initial{font-size:var(--fs-xl); font-weight:800; color:rgba(255,255,255,.92); position:relative; z-index:1; letter-spacing:-.03em}
 .card-play{position:absolute; inset:0; display:grid; place-items:center; opacity:0; z-index:2; background:rgba(4,6,10,.42);
   transition:opacity var(--d-base) var(--ease)}
@@ -802,3 +802,105 @@ body.tv-mode .header-inner{padding:var(--s4) var(--s5)}
 /* ------------------------------------------------------------ installation PWA */
 .install-row{display:flex; align-items:center; gap:var(--s2); flex-wrap:wrap}
 .install-note{font-size:var(--fs-xs); color:var(--muted); max-width:60ch}
+
+/* ===================================================================== 3.9.0
+   Console de pilotage : agent de diagnostic, usage, équipe, remplacement de lien.
+   Une bordure, un accent, des chiffres tabulaires. Aucune ombre, aucun dégradé. */
+
+.console-block{border:1px solid var(--line); border-radius:var(--r-md); background:var(--panel); padding:var(--s4); display:grid; gap:var(--s3)}
+.console-block h3{margin:0; font-size:var(--fs-md); letter-spacing:-.01em}
+.console-grid{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr); gap:var(--s3); align-items:start}
+@media (max-width:899px){ .console-grid{grid-template-columns:1fr} }
+
+.agent-list{display:grid; gap:var(--s2)}
+.agent-item{display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:start; gap:var(--s3);
+  padding:var(--s3); border:1px solid var(--line); border-radius:var(--r-sm); background:var(--bg-2)}
+.agent-item[data-severite="critique"]{border-color:var(--accent-line)}
+.agent-badge{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-xs); font-weight:700;
+  letter-spacing:.04em; text-transform:uppercase; color:var(--muted); white-space:nowrap; padding-top:2px}
+.agent-item[data-severite="critique"] .agent-badge{color:var(--accent)}
+.agent-item[data-severite="avertissement"] .agent-badge{color:var(--warn)}
+.agent-body h3{margin:0 0 2px; font-size:var(--fs-sm)}
+.agent-body p{margin:0; font-size:var(--fs-xs); line-height:1.45}
+.agent-action{display:inline-flex; align-items:center; gap:4px; margin-top:6px; color:var(--text); font-weight:600}
+@media (max-width:619px){ .agent-item{grid-template-columns:1fr} .agent-item .btn{justify-self:start} }
+
+.spark{display:flex; align-items:flex-end; gap:2px; height:64px; padding:var(--s2); border:1px solid var(--line);
+  border-radius:var(--r-sm); background:var(--bg-2)}
+.spark-bar{flex:1; min-width:3px; background:var(--accent); border-radius:2px; opacity:.85}
+
+.team-row{display:grid; grid-template-columns:36px minmax(140px,1.4fr) auto minmax(140px,auto) minmax(120px,1fr) auto;
+  gap:var(--s3); align-items:center; padding:var(--s3); border:1px solid var(--line); border-radius:var(--r-sm);
+  background:var(--bg-2); min-width:0}
+.team-row[data-desactive="true"]{opacity:.55}
+.team-avatar{display:grid; place-items:center; width:36px; height:36px; border-radius:var(--r-sm);
+  background:var(--panel-strong); color:var(--text); font-size:var(--fs-xs); font-weight:700; letter-spacing:.02em}
+.team-id{display:grid; gap:1px; min-width:0}
+.team-id strong{font-size:var(--fs-sm); font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.team-id span{font-size:var(--fs-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.team-date{font-size:var(--fs-xs)}
+.team-actions{display:flex; gap:var(--s1); justify-content:flex-end}
+@media (max-width:899px){
+  .team-row{grid-template-columns:36px minmax(0,1fr) auto; grid-template-areas:"avatar id role" ". actions actions"; row-gap:var(--s2)}
+  .team-row .team-avatar{grid-area:avatar} .team-id{grid-area:id}
+  .team-row > .badge{grid-area:role} .team-row .select{grid-column:2 / 3}
+  .team-date{display:none} .team-actions{grid-column:2 / -1; justify-content:flex-start}
+}
+.perm-ok{display:inline-flex; color:var(--ok)}
+.perm-no{font-size:var(--fs-xs); color:var(--muted)}
+
+.link-form{display:grid; gap:var(--s2)}
+.link-form label{font-size:var(--fs-sm); font-weight:600}
+.link-form-actions{display:flex; gap:var(--s2); flex-wrap:wrap; margin-top:var(--s1)}
+
+/* ============================================ 3.9.0 · cartes lisibles sans survol */
+/* Le logo respire : fond uni, mise à l'échelle contenue, aucun filtre décoratif. */
+.card-media{padding:var(--s5); background:var(--bg-2); border-bottom:1px solid var(--line-soft)}
+.card-media img{width:auto; height:auto; max-width:100%; max-height:100%; object-fit:contain; filter:none}
+.card{animation:carte-entree var(--d-base) var(--ease) both}
+@keyframes carte-entree{from{opacity:0} to{opacity:1}}
+
+/* Programme en cours : permanent, sous le titre, lisible d'un seul regard. */
+.card-now{display:flex; flex-direction:column; gap:3px; padding:var(--s2) var(--s3) var(--s3); min-width:0}
+.card-now-head{display:flex; align-items:center; justify-content:space-between; gap:var(--s2); min-width:0}
+.card-now-live{font-size:var(--fs-xs); font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--accent); flex:none}
+.card-now-hours{font-size:var(--fs-xs); color:var(--muted); font-variant-numeric:tabular-nums; flex:none}
+.card-now-title{font-size:var(--fs-xs); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.card-now[data-state="live"] .card-now-title{color:var(--text)}
+.card-now .card-bar{margin-top:1px}
+.card-now-bar{display:block; height:100%; width:0; background:var(--accent); transition:width var(--d-base) var(--ease)}
+
+/* Le cœur reste atteignable au doigt : 44 px sur écran tactile, toujours visible. */
+@media (hover:none), (pointer:coarse){
+  .card-fav{opacity:1; width:44px; height:44px; top:6px; right:6px}
+  .card-now-title{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
+}
+
+/* Densité : une colonne sur téléphone, deux sur tablette, quatre puis six sur ordinateur. */
+@media (max-width:899px){ .grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:619px){
+  .grid{gap:var(--s3)}
+  .card-name{font-size:var(--fs-md); min-height:0}
+  .card-body{padding:var(--s3) var(--s3) var(--s2)}
+  .card-media{padding:var(--s4)}
+  .card-now{padding:var(--s2) var(--s3) var(--s3)}
+}
+@media (max-width:519px){
+  .grid{grid-template-columns:minmax(0,1fr); gap:var(--s4)}
+  .card-media{aspect-ratio:16/9; padding:var(--s6)}
+  .card-name{font-size:var(--fs-lg)}
+  .card-now-title{font-size:var(--fs-sm)}
+}
+@media (min-width:1280px){
+  .card-name{font-size:var(--fs-md); min-height:0}
+  .card-body{padding:var(--s3) var(--s4) var(--s2)}
+  .card-now{padding:var(--s2) var(--s4) var(--s4)}
+  .grid{grid-template-columns:repeat(6,minmax(0,1fr)); gap:var(--s4)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .card{animation:none}
+  .card-now-bar{transition:none}
+}
+.card-now[data-state="off"]{display:none}
+.card-now[data-state="empty"] .card-now-live,.card-now[data-state="loading"] .card-now-live{display:none}

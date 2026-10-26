@@ -16,6 +16,12 @@ export function renderLogin(container, ctx) {
   const errorText = h('p', {});
   errorBox.append(icon('alert', 16), errorText);
 
+  // 3.9.0 : un membre d'équipe se connecte avec son e-mail ; le propriétaire peut le laisser vide.
+  const email = h('input', {
+    type: 'email', id: 'admin-email', name: 'email', autocomplete: 'username', maxlength: '120',
+    'aria-describedby': 'email-help', placeholder: 'vous@exemple.com', value: params.get('email') || '',
+  });
+
   const input = h('input', {
     type: 'password', id: 'admin-password', name: 'password', required: true,
     autocomplete: 'current-password', minlength: '1', maxlength: '200',
@@ -42,6 +48,10 @@ export function renderLogin(container, ctx) {
       h('p', { class: 'muted' }, COPY.login.subtitle)),
     errorBox,
     h('div', { class: 'field' },
+      h('label', { for: 'admin-email' }, 'Adresse e-mail'),
+      email,
+      h('p', { class: 'help', id: 'email-help' }, 'Laissez vide pour le compte propriétaire.')),
+    h('div', { class: 'field' },
       h('label', { for: 'admin-password' }, COPY.login.password),
       h('div', { class: 'input-with-action' }, input, toggle),
       h('p', { class: 'help', id: 'password-help' }, COPY.login.hint)),
@@ -67,9 +77,11 @@ export function renderLogin(container, ctx) {
     submit.disabled = true;
     submit.replaceChildren(icon('retry', 16), 'Connexion…');
     try {
-      const session = await api('/api/login', { method: 'POST', body: { password } });
+      const session = await api('/api/login', { method: 'POST', body: { password, email: email.value.trim() } });
       auth.set(session.token);
-      toast('Connexion réussie.', { tone: 'success', duration: 3000 });
+      toast(session.role && session.role !== 'proprietaire'
+        ? `Connexion réussie : ${session.roleLabel}.`
+        : 'Connexion réussie.', { tone: 'success', duration: 3000 });
       if (session.defaultPassword) {
         toast('Mot de passe par défaut actif : changez-le dans l’onglet Sauvegardes.', { tone: 'info', duration: 8000 });
       }
@@ -93,6 +105,6 @@ export function renderLogin(container, ctx) {
 
   view.append(form);
   container.replaceChildren(view);
-  queueMicrotask(() => input.focus({ preventScroll: true }));
+  queueMicrotask(() => (email.value ? input : email).focus({ preventScroll: true }));
   return () => {};
 }

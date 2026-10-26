@@ -86,6 +86,8 @@ class Player {
     document.body.style.overflow = 'hidden';
     prefs.pushHistory(channel);
     prefs.setLastChannel(channel);
+    // Compteur d'usage anonyme : un identifiant de chaîne, rien de plus. Un échec reste muet.
+    if (channel?.id) api('/api/events/play', { method: 'POST', body: { channelId: channel.id } }).catch(() => {});
 
     const isHttps = location.protocol === 'https:';
     const qualityOptions = [

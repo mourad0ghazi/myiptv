@@ -14,6 +14,7 @@ import { Ingest } from './core/ingest.js';
 import { ProbeLimiter, probeChannels } from './core/health.js';
 import { EpgCache } from './core/epg.js';
 import { computeAlerts } from './core/alerts.js';
+import { can } from './core/team.js';
 import { LoginGuard, Sessions, bootstrapPassword, verifyPassword } from './core/auth.js';
 import { buildChannel, isPublic, sanitizeChannel } from './core/channels.js';
 import { categorizeEntry, compileRules } from './core/classify.js';
@@ -176,7 +177,11 @@ export async function createApp() {
   await seedFromFile(app);
   app.index.rebuild(store.channels.filter((channel) => !channel.deleted));
 
-  const router = new Router({ sessions: app.sessions, logger });
+  const router = new Router({
+    sessions: app.sessions,
+    logger,
+    authorize: (session, permission) => can(session?.role, permission),
+  });
   registerPublicRoutes(router, app);
   registerAdminRoutes(router, app);
   registerReportRoutes(router, app);
