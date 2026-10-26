@@ -4,6 +4,7 @@
 import { api } from './api.js';
 import { COPY } from './copy.js';
 import { h, icon, toast, copyText, logoNode } from './ui.js';
+import { openPlayerOptions, openShortcuts } from './player-menu.js';
 import { prefs } from './prefs.js';
 import { nowFor, heureCourte, progression } from './epg-now.js';
 
@@ -103,7 +104,7 @@ class Player {
     this.video.muted = prefs.muted();
 
     const qualitySelect = qualityOptions.length > 1
-      ? h('select', { class: 'select', 'aria-label': 'Choisir la qualité', onChange: (event) => this.switchQuality(event.target.value) },
+      ? h('select', { class: 'select player-quality', 'aria-label': 'Choisir la qualité', onChange: (event) => this.switchQuality(event.target.value) },
         qualityOptions.map((item) => h('option', { value: item.url }, `${item.quality || 'AUTO'} · ${item.label || 'variante'}`)))
       : null;
 
@@ -165,12 +166,14 @@ class Player {
         this.levelSelect,
         qualitySelect,
         this.similarBtn = h('button', {
-          class: 'player-btn', type: 'button', 'aria-label': 'Chaînes similaires', 'aria-expanded': 'false',
+          class: 'player-btn player-inline', type: 'button', 'aria-label': 'Chaînes similaires', 'aria-expanded': 'false',
           onClick: () => this.toggleSimilar(),
         }, icon('grid', 18)),
-        h('button', { class: 'player-btn', type: 'button', 'aria-label': 'Image dans l’image', onClick: () => this.pictureInPicture() }, icon('pip', 18)),
+        h('button', { class: 'player-btn player-inline', type: 'button', 'aria-label': 'Image dans l’image', onClick: () => this.pictureInPicture() }, icon('pip', 18)),
         h('button', { class: 'player-btn', type: 'button', 'aria-label': 'Plein écran', onClick: () => this.fullscreen() }, icon('full', 18)),
-        h('button', { class: 'player-btn', type: 'button', 'aria-label': 'Raccourcis du lecteur', onClick: () => this.showShortcuts() }, icon('settings', 18))));
+        h('button', { class: 'player-btn player-inline', type: 'button', 'aria-label': 'Raccourcis du lecteur', onClick: () => this.showShortcuts() }, icon('settings', 18)),
+        // Au téléphone, les commandes rares passent dans ce menu : une rangée lisible au pouce.
+        h('button', { class: 'player-btn player-more', type: 'button', 'aria-label': 'Plus d’options de lecture', onClick: () => this.showOptions() }, icon('dots', 18))));
 
     this.dock = h('div', { class: 'player-dock', hidden: true, 'aria-label': 'Chaînes proches' },
       h('div', { class: 'player-similar', id: 'player-similar' }));
@@ -820,13 +823,11 @@ class Player {
   }
 
   showShortcuts() {
-    const list = COPY.player.shortcuts.map(([keys, label]) => h('div', { class: 'variant' },
-      h('span', {}, h('span', { class: 'kbd', text: keys })),
-      h('span', { class: 'muted', text: label })));
-    import('./ui.js').then(({ modal }) => {
-      const box = modal({ title: 'Raccourcis du lecteur', body: h('div', {}, list) });
-      return box;
-    });
+    openShortcuts();
+  }
+
+  showOptions() {
+    openPlayerOptions(this);
   }
 
   setState(state) {

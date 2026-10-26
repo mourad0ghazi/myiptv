@@ -361,8 +361,14 @@ export function registerPublicRoutes(router, app) {
         cache: 'public, max-age=30',
       };
     }
+    // Une fiche de chaîne ne demande que son propre programme : « ids » évite de charger
+    // soixante grilles pour en afficher une seule.
+    const demandes = String(queryString(query, 'ids', { max: 900 }) || '')
+      .split(',').map((id) => id.trim()).filter(Boolean).slice(0, LIMITS.pageSizeMax);
+    const filtre = demandes.length ? new Set(demandes) : null;
     const visible = app.store.channels
       .filter((channel) => isPublic(channel, app.store.settings) && !channel.deleted)
+      .filter((channel) => !filtre || filtre.has(channel.id))
       .sort((a, b) => a.number - b.number);
     const grid = buildEpg(visible, loaded.parsed, {
       from: Date.now(),

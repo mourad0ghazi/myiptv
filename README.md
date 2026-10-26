@@ -282,6 +282,21 @@ curl -s -X POST localhost:3000/api/admin/backup -H "Authorization: Bearer $TOKEN
 
 ---
 
+### Expérience du visiteur (3.10.0)
+
+La carte a été refaite pour se lire d'un regard : affiche propre, nom sur deux lignes,
+catégorie et programme permanent, commande de lecture discrète dans l'angle (elle ne recouvre
+plus le logo). Sur téléphone, la carte se couche : l'affiche à gauche, tout le reste à
+droite, texte complet.
+
+La fiche d'une chaîne ouvre sur ce qui compte : le programme en cours, ses horaires, puis les
+trois émissions à suivre. Les informations techniques (identifiant de guide, source, droits,
+classement) sont dans un bloc repliable, présentes mais discrètes. Les chaînes proches
+affichent leur programme.
+
+L'en-tête de téléphone tient sur une rangée, et le lecteur aussi : les commandes essentielles
+au pouce, les options rares dans un menu unique.
+
 ### Cartes lisibles sans survol (3.9.0)
 
 Chaque carte porte désormais une ligne de programme permanente sous son titre : mention

@@ -62,7 +62,10 @@ function heroBlock(hero, { config, openChannel, openPlayer }) {
           featured.blocked ? h('span', { class: 'badge', dataset: { tone: 'danger' } }, icon('lock', 13), 'Lecture limitée') : null),
         h('div', { class: 'hero-actions' },
           h('button', { class: 'btn btn-primary', type: 'button', onClick: () => openPlayer(featured) }, icon('play', 16), COPY.actions.watch),
-          h('button', { class: 'btn btn-ghost', type: 'button', onClick: () => openChannel(featured.id) }, 'Voir la fiche')))),
+          h('button', { class: 'btn btn-ghost', type: 'button', onClick: () => openChannel(featured.id) }, 'Voir la fiche'),
+          // Entrée du guide depuis l'accueil : les rangées de programmes restent à un geste.
+          h('a', { class: 'btn btn-quiet', href: '/guide', 'data-link': '' },
+            icon('list', 16), 'Le guide des programmes')))),
     rail.length ? h('div', { class: 'hero-rail', 'aria-label': 'Autres suggestions' },
       rail.map((channel) => h('button', {
         class: 'hero-mini', type: 'button', onClick: () => openChannel(channel.id),
