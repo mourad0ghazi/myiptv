@@ -36,22 +36,54 @@ export const auth = {
 
 const cache = new Map();
 
+/** Version de la publication, remplacée à la construction : elle périme toute copie ancienne. */
+const PUBLICATION = '3.15.0';
+
+/** Délai au-delà duquel une donnée manquante est dite manquante, plutôt qu'attendue sans fin. */
+const DELAI_DONNEES = Number(globalThis.STREAMTV_DELAI_DONNEES) > 0
+  ? Number(globalThis.STREAMTV_DELAI_DONNEES)
+  : 12_000;
+
+/**
+ * Charge un instantané JSON une seule fois. Trois garanties, apprises d'un écran resté
+ * bloqué sur « Recherche en cours » : l'adresse porte la version de la publication, donc
+ * aucune copie ancienne ne peut être resservie ; un délai maximum interrompt l'attente ;
+ * un échec est oublié, pour qu'un nouvel essai redemande vraiment le fichier.
+ */
 async function snapshot(name) {
   if (cache.has(name)) return cache.get(name);
   const pending = (async () => {
+    const adresse = `${withBase(`demo/${name}.json`)}?v=${PUBLICATION}`;
+    const controleur = new AbortController();
+    const minuterie = setTimeout(() => controleur.abort(), DELAI_DONNEES);
     let response;
     try {
-      response = await fetch(withBase(`demo/${name}.json`), { credentials: 'same-origin' });
-    } catch {
-      throw new ApiError('La connexion a été interrompue. Vérifiez votre réseau puis réessayez.', { code: 'P-09' });
+      response = await fetch(adresse, {
+        credentials: 'same-origin', cache: 'no-cache', signal: controleur.signal,
+      });
+    } catch (error) {
+      throw new ApiError(error?.name === 'AbortError'
+        ? 'Le catalogue met trop de temps à arriver. Vérifiez la connexion, puis touchez « Réessayer ».'
+        : 'La connexion a été interrompue. Vérifiez votre réseau puis réessayez.', { code: 'P-09' });
+    } finally {
+      clearTimeout(minuterie);
     }
     if (!response.ok) {
       throw new ApiError('Le catalogue de démonstration est introuvable. Rechargez la page.', { code: 'ERR-18' });
     }
-    return response.json();
+    try {
+      return await response.json();
+    } catch {
+      throw new ApiError('Le catalogue reçu est incomplet. Rechargez la page pour le retélécharger.', { code: 'ERR-18' });
+    }
   })();
-  cache.set(name, pending);
-  return pending;
+  // Un échec n'est jamais gardé : le bouton « Réessayer » refait une vraie demande.
+  const suivi = pending.catch((error) => {
+    cache.delete(name);
+    throw error;
+  });
+  cache.set(name, suivi);
+  return suivi;
 }
 
 const plain = (text) => String(text ?? '')
@@ -88,7 +120,9 @@ function matches(entry, filters) {
 }
 
 async function list(params, { search = false } = {}) {
-  const catalog = await snapshot('catalog');
+  // Premier écran : cartes et index de recherche seulement, trois fois plus léger que le
+  // catalogue complet, qui n'est ouvert qu'à l'ouverture d'une fiche.
+  const catalog = await snapshot('cards');
   const filters = {
     category: params.get('category') || '',
     country: params.get('country') || '',

@@ -717,19 +717,30 @@ async function boot() {
 
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+  // Un onglet déjà piloté par un worker : si une nouvelle version prend la main, on recharge
+  // une seule fois, tout de suite. C'est ce qui évite qu'une coquille ancienne serve un site
+  // nouveau, situation où l'écran restait sur « Recherche en cours ».
+  const dejaPilote = Boolean(navigator.serviceWorker.controller);
+  let recharge = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!dejaPilote || recharge) return;
+    recharge = true;
+    window.location.reload();
+  });
   try {
     const registration = await navigator.serviceWorker.register(withBase('sw.js'), { scope: BASE });
+    // Une version en attente n'attend pas la fermeture des onglets.
+    registration.waiting?.postMessage({ type: 'skip-waiting' });
     registration.addEventListener('updatefound', () => {
       const worker = registration.installing;
       if (!worker) return;
       worker.addEventListener('statechange', () => {
-        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-          toast('Une nouvelle version est prête. Rechargez pour en profiter.', {
-            tone: 'info', duration: 12_000, actionLabel: 'Recharger',
-            onAction: () => window.location.reload(),
-          });
-        }
+        if (worker.state === 'installed') registration.waiting?.postMessage({ type: 'skip-waiting' });
       });
+    });
+    // Vérification de mise à jour à chaque retour sur l'onglet, sans réseau superflu.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') registration.update().catch(() => {});
     });
   } catch {
     // Le site fonctionne sans service worker : aucune action utilisateur requise.

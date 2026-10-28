@@ -315,6 +315,28 @@ STREAMTV_TLS_CERT=/etc/streamtv/cert.pem STREAMTV_TLS_KEY=/etc/streamtv/key.pem 
 
 Le cookie d'entrée de la console est alors marqué `Secure`, et le site n'accepte plus le HTTP.
 
+### Le site publié et ses données (3.15.0)
+
+Le catalogue public n'est pas servi par le serveur Node : il est figé en deux fichiers, et
+c'est cette séparation qui garde le premier écran rapide.
+
+| Fichier | Poids | Quand il est téléchargé |
+|---|---|---|
+| `demo/cards.json` | 684 Ko | au premier écran : cartes et index de recherche |
+| `demo/catalog.json` | 2,4 Mo | à l'ouverture d'une fiche seulement : détails et adresses de flux |
+
+Trois règles tiennent l'affichage :
+
+1. Les fichiers `demo/*.json` ne passent **jamais** par le cache du service worker : ils
+   viennent du réseau, avec un délai maximum de dix secondes.
+2. Leur adresse porte la version (`?v=3.15.0`) : une copie ancienne ne peut pas être resservie.
+3. La couche de lecture abandonne au bout de douze secondes et propose « Réessayer » ; un
+   échec est oublié, donc le nouvel essai redemande vraiment le fichier.
+
+```bash
+npm run build:static        # reconstruit demo/cards.json, demo/catalog.json et le site
+```
+
 ### Premier lancement (3.14.0)
 
 La première fois que la console s'ouvre, elle demande ce qui lui manque pour être vraiment
