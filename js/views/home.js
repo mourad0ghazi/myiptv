@@ -349,6 +349,29 @@ export async function renderHome(container, ctx) {
           actionLabel: COPY.states.categoryEmpty.action,
           onAction: () => setParam({ cat: '' }),
         }));
+      } else if (state.country || state.lang || state.quality) {
+        // État vide utile : la liste est vide parce que les filtres la vident. On dit
+        // lesquels sont actifs et on les retire d'un geste, plutôt que de laisser le vide.
+        const filtres = [
+          state.country ? { clef: 'pays', valeur: state.country, clear: () => setParam({ country: '' }) } : null,
+          state.lang ? { clef: 'langue', valeur: state.lang, clear: () => setParam({ lang: '' }) } : null,
+          state.quality ? { clef: 'qualité', valeur: state.quality, clear: () => setParam({ quality: '' }) } : null,
+        ].filter(Boolean);
+        resultsHost.replaceChildren(emptyState({
+          iconName: 'filter',
+          title: COPY.states.filterEmpty.title,
+          message: COPY.states.filterEmpty.message,
+          actionLabel: COPY.states.filterEmpty.action,
+          onAction: () => setParam({ country: '', lang: '', quality: '' }),
+        }));
+        if (filtres.length) {
+          resultsHost.append(h('div', { class: 'chips', style: { justifyContent: 'center', marginTop: '12px' } },
+            filtres.map((filtre) => h('button', {
+              class: 'chip', type: 'button',
+              title: `Retirer le filtre ${filtre.clef}`,
+              onClick: filtre.clear,
+            }, `${filtre.clef} : ${filtre.valeur} · retirer`))));
+        }
       } else {
         resultsHost.replaceChildren(emptyState({
           iconName: 'tv',

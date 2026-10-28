@@ -315,6 +315,43 @@ STREAMTV_TLS_CERT=/etc/streamtv/cert.pem STREAMTV_TLS_KEY=/etc/streamtv/key.pem 
 
 Le cookie d'entrée de la console est alors marqué `Secure`, et le site n'accepte plus le HTTP.
 
+### Premier lancement (3.14.0)
+
+La première fois que la console s'ouvre, elle demande ce qui lui manque pour être vraiment
+la vôtre. Quatre étapes, chacune vérifiée par le serveur :
+
+| Étape | Ce qui est demandé | Pourquoi |
+|---|---|---|
+| Votre nom | un nom, 2 à 60 caractères | il signe chaque action du journal |
+| Votre mot de passe | 12 caractères, une lettre, un chiffre | le mot de passe de démonstration est public |
+| Code de connexion | l'adresse qui reçoit le code | seconde serrure, facultative |
+| Cet appareil | autoriser l'appareil de travail | support du verrou d'appareil |
+
+```bash
+curl -s http://localhost:3000/api/admin/setup -H "Authorization: Bearer $JETON"
+```
+
+Les deux premières étapes sont obligatoires : tant que le mot de passe de démonstration
+est actif, `termine` vaut `false` et `restantes` nomme ce qui manque. L'écran peut être
+passé (« Plus tard »), la console reste utilisable, mais le rappel ne disparaît pas.
+
+### Journal en phrases (3.14.0)
+
+Le journal interne enregistre des codes ; l'écran affiche des phrases. La traduction vit
+dans `server/core/journal.js` et couvre tous les codes réellement émis, lus dans le code
+par le test.
+
+```
+15:04  Connexion réussie
+15:07  Action groupée sur 12 chaînes : masquer
+15:09  Réglages modifiés : nom du propriétaire, adresse du code
+15:12  Action technique : quelque.chose.de.neuf
+```
+
+Chaque ligne porte son heure, son auteur, son ton (information, attention, danger). Un
+code inconnu n'est jamais masqué : il est dit « action technique », avec son nom, pour que
+le diagnostic reste possible.
+
 ### Accès par lien (3.13.0)
 
 Pour ouvrir la console sans transmettre de mot de passe : onglet **Accès**, créer un lien,

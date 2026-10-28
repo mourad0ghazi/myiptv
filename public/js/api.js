@@ -138,6 +138,8 @@ export const Admin = {
   session: () => api('/api/session'),
   login: (password, email = '') => api('/api/login', { method: 'POST', body: { password, email, deviceId: deviceId() } }),
   gate: () => api('/api/admin/gate'),
+  setup: () => api('/api/admin/setup'),
+  saveIdentity: (name) => api('/api/admin/setup/identity', { method: 'POST', body: { name } }),
   accessLinks: () => api('/api/admin/access-links'),
   createAccessLink: (payload) => api('/api/admin/access-links', { method: 'POST', body: payload }),
   revokeAccessLink: (id) => api(`/api/admin/access-links/${encodeURIComponent(id)}`, { method: 'DELETE', body: {} }),

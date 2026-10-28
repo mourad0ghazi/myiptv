@@ -3,6 +3,39 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.14.0] - 2026-10-28
+
+La console parle français et commence par vous. Un journal qui dit ce qui s'est passé,
+un premier lancement qui réclame un nom et un mot de passe à vous, et un catalogue qui
+explique pourquoi une liste est vide au lieu de laisser un cadre blanc.
+
+### Ajouté
+
+- **Journal en phrases** (`server/core/journal.js`). Les 37 codes techniques réellement émis
+  par le serveur deviennent des phrases : « Connexion réussie », « Action groupée sur 12
+  chaînes : masquer », « Réglages modifiés : nom du propriétaire, adresse du code ». Chaque
+  ligne porte son heure, son auteur et son ton (information, attention, danger). Un code
+  inconnu n'est jamais masqué : il s'affiche comme action technique, avec son nom.
+- **Premier lancement** (`/api/admin/setup`). Quatre étapes vérifiées côté serveur : votre
+  nom, votre mot de passe, le code de connexion, cet appareil. Tant que le mot de passe de
+  démonstration vit, le passage est obligatoire et le dit clairement.
+- **Nom du propriétaire en tête de console** : « Console de Mourad » au lieu de « Console »,
+  et signature de chaque action du journal.
+- **État vide utile sur les filtres** : quand un pays, une langue ou une qualité vident la
+  liste, l'écran nomme les filtres actifs et propose de les retirer un par un.
+
+### Modifié
+
+- `GET /api/admin/audit` renvoie en plus `phrase` et `ton` par entrée, et `resume` : la
+  même donnée, lisible sans dictionnaire de codes.
+- Les actions groupées sont de ton « attention » : masquer douze chaînes n'est pas anodin.
+
+### Vérifié
+
+- 320 tests (`node --test tests/*.test.js`), dont 13 nouveaux : traduction du journal,
+  couverture de tous les codes émis lus dans le code source, et premier lancement contre
+  un vrai serveur (nom, refus d'un nom vide, mot de passe à soi, fin du passage).
+
 ## [3.13.0] - 2026-10-28
 
 La console s'ouvre par un lien. Vous créez un lien, vous choisissez le rôle et la durée,
