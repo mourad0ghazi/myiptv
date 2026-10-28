@@ -8,7 +8,7 @@ export const SETTING_KEYS = [
   'brand', 'tagline', 'accent', 'logoUrl', 'pageSize', 'defaultSort', 'showAdult',
   'autoHideAdult', 'featuredIds', 'heroMode', 'showHealthBadge', 'epgUrl', 'footerNote',
   'maintenanceMode', 'targetTable', 'confidenceFloor', 'pageTitleSuffix',
-  'adminPath', 'adminDeviceLock',
+  'adminPath', 'adminDeviceLock', 'adminEmail',
 ];
 
 export const DEFAULTS = Object.freeze({
@@ -33,6 +33,8 @@ export const DEFAULTS = Object.freeze({
   adminPath: 'console-privee',
   // Quand ce verrou est actif, seul un appareil enregistré peut ouvrir une session.
   adminDeviceLock: false,
+  // Adresse qui reçoit le code à six chiffres. Vide : le second facteur est désactivé.
+  adminEmail: '',
 });
 
 const HERO_MODES = ['featured', 'random', 'first'];
@@ -76,6 +78,8 @@ export const SCHEMA = [
     help: 'Lettres minuscules, chiffres et tirets. Exemple : atelier-7f3k. La console n’existe qu’à cette adresse.' },
   { key: 'adminDeviceLock', type: 'boolean', label: 'Réserver la console aux appareils enregistrés',
     help: 'Une fois activé, un mot de passe seul ne suffit plus : l’appareil doit avoir été enregistré depuis la console.' },
+  { key: 'adminEmail', type: 'email', label: 'Code de connexion envoyé par e-mail', maxLength: 120,
+    help: 'Vide : second facteur désactivé. Sinon, chaque connexion à la console reçoit un code de six chiffres à cette adresse.' },
 ];
 
 const SCHEMA_BY_KEY = Object.fromEntries(SCHEMA.map((item) => [item.key, item]));
@@ -136,6 +140,16 @@ export function validateSettings(input, { existingIds = null, base = DEFAULTS } 
         }
         if (RESERVED_PATHS.has(text)) {
           errors.push(fail(key, 'ERR-04', { champ: `${spec.label} (mot réservé par le site)` }));
+          break;
+        }
+        settings[key] = text;
+        break;
+      }
+      case 'email': {
+        const text = cleanText(value);
+        if (!text) { settings[key] = ''; break; }
+        if (text.length > spec.maxLength || !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(text)) {
+          errors.push(fail(key, 'ERR-04', { champ: spec.label }));
           break;
         }
         settings[key] = text;

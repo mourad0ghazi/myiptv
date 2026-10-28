@@ -2,6 +2,7 @@
 // Aucune dépendance externe : node:http, node:fs, node:crypto et le reste de la bibliothèque standard.
 
 import fsp from 'node:fs/promises';
+import https from 'node:https';
 import http from 'node:http';
 import path from 'node:path';
 import process from 'node:process';
@@ -16,6 +17,8 @@ import { EpgCache } from './core/epg.js';
 import { computeAlerts } from './core/alerts.js';
 import { can } from './core/team.js';
 import { LoginGuard, Sessions, bootstrapPassword, verifyPassword } from './core/auth.js';
+import { mailConfig, mailReady, sendMail } from './core/mailer.js';
+import { TwoFactor } from './core/twofactor.js';
 import { buildChannel, isPublic, sanitizeChannel } from './core/channels.js';
 import { categorizeEntry, compileRules } from './core/classify.js';
 import { dedupe, finalizeEntries } from './core/dedupe.js';
@@ -163,6 +166,21 @@ export async function createApp() {
     },
   };
 
+  // Envoi du code de connexion : configuration par l'environnement, jamais par le dépôt.
+  app.mail = mailConfig();
+  app.mailer = {
+    send: (message) => sendMail(app.mail, message),
+    test: () => sendMail(app.mail, {
+      to: store.settings.adminEmail,
+      subject: 'Test d’envoi StreamTV',
+      text: 'Cet envoi confirme que la console peut vous joindre. Aucun code n’est contenu dans ce message.',
+    }),
+  };
+  // Prêt côté serveur : un serveur d'envoi configuré, une adresse de destination enregistrée.
+  app.smtpReady = () => mailReady(app.mail);
+  app.mailReady = () => app.smtpReady() && Boolean(String(store.settings.adminEmail || '').trim());
+  app.twoFactor = new TwoFactor();
+
   try {
     await bootstrapPassword(store);
   } catch (error) {
@@ -242,7 +260,20 @@ export async function main(options = {}) {
   const port = Number(options.port || process.env.PORT || 3000);
   const host = options.host || process.env.HOST || '0.0.0.0';
 
-  const server = http.createServer(async (req, res) => {
+  // Chiffrement natif : avec un certificat et sa clé, le serveur parle HTTPS directement.
+  // Sans certificat, il reste en HTTP derrière un proxy ou un tunnel qui fournit le TLS.
+  const certPath = process.env.STREAMTV_TLS_CERT || '';
+  const keyPath = process.env.STREAMTV_TLS_KEY || '';
+  let tlsOptions = null;
+  if (certPath && keyPath) {
+    try {
+      tlsOptions = { key: await fsp.readFile(path.resolve(keyPath)), cert: await fsp.readFile(path.resolve(certPath)) };
+    } catch (error) {
+      throw new Error(`Certificat TLS illisible : ${error.message}`);
+    }
+  }
+
+  const handler = async (req, res) => {
     const started = Date.now();
     try {
       const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
@@ -304,7 +335,10 @@ export async function main(options = {}) {
       logger.error(`requête non gérée: ${error?.message}`);
       if (!res.headersSent) sendText(req, res, 500, 'Une erreur interne est survenue. Réessayez.');
     }
-  });
+  };
+
+  const server = tlsOptions ? https.createServer(tlsOptions, handler) : http.createServer(handler);
+  if (tlsOptions) logger.info('TLS actif : le trafic est chiffré de bout en bout.');
 
   server.keepAliveTimeout = 65_000;
   server.headersTimeout = 70_000;
@@ -319,7 +353,7 @@ export async function main(options = {}) {
   });
 
   logger.info(`${app.store.settings.brand} v${app.version} — ${app.store.channels.length} chaînes, ${app.routeCount} routes`);
-  logger.info(`écoute sur http://${host}:${port}`);
+  logger.info(`écoute sur ${tlsOptions ? 'https' : 'http'}://${host}:${port}`);
 
   const shutdown = async (signal) => {
     logger.info(`arrêt demandé (${signal})`);

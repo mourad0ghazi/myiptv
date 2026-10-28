@@ -1,7 +1,7 @@
 // public/js/views/login.js · écran 6 : connexion administration, un seul mot de passe.
 // Messages d'erreur inline, jamais de fenêtre native ; 429 affiche le délai exact.
 
-import { auth, api, ApiError } from '../api.js';
+import { Admin, auth, api, ApiError, deviceId } from '../api.js';
 import { COPY } from '../copy.js';
 import { consoleHref, rememberConsole } from '../console.js';
 import { h, icon, toast } from '../ui.js';
@@ -66,6 +66,116 @@ export function renderLogin(container, ctx) {
     errorBox.hidden = false;
   };
 
+  const finish = (session) => {
+    auth.set(session.token);
+    if (session.entry) rememberConsole(session.entry);
+    toast(session.role && session.role !== 'proprietaire'
+      ? `Connexion réussie : ${session.roleLabel}.`
+      : 'Connexion réussie.', { tone: 'success', duration: 3000 });
+    if (session.defaultPassword) {
+      toast('Mot de passe par défaut actif : changez-le dans l’onglet Sauvegardes.', { tone: 'info', duration: 8000 });
+    }
+    navigate(session.entry && (next === '/connexion' || !next) ? session.entry : next, { replace: true });
+  };
+
+  /**
+   * Étape 2 : le mot de passe est juste, la session reste fermée tant que le code
+   * envoyé par e-mail n'est pas saisi. Le champ est prévu pour le clavier numérique.
+   */
+  const showCodeStep = (challenge) => {
+    const code = h('input', {
+      type: 'text', id: 'admin-code', name: 'code', inputmode: 'numeric', pattern: '[0-9]{6}',
+      autocomplete: 'one-time-code', maxlength: '6', required: true, 'aria-describedby': 'code-help',
+      placeholder: '000000', style: { letterSpacing: '0.35em', fontSize: '20px' },
+    });
+    const valider = h('button', { class: 'btn btn-primary btn-block', type: 'submit' }, icon('check', 16), 'Valider le code');
+    const renvoyer = h('button', { class: 'btn btn-quiet btn-block', type: 'button', disabled: true }, 'Renvoyer un code');
+    const compte = h('p', { class: 'help', id: 'code-help' },
+      `Code envoyé à ${challenge.email || 'votre adresse'}. Il reste valable dix minutes.`);
+    let horloge = null;
+    const armer = (depart) => {
+      let secondes = Math.max(0, Number(depart) || 0);
+      clearInterval(horloge);
+      const afficher = () => {
+        if (secondes <= 0) {
+          renvoyer.disabled = false;
+          renvoyer.textContent = 'Renvoyer un code';
+          clearInterval(horloge);
+          return;
+        }
+        renvoyer.disabled = true;
+        renvoyer.textContent = `Renvoyer un code (${secondes} s)`;
+        secondes -= 1;
+      };
+      afficher();
+      horloge = setInterval(afficher, 1000);
+    };
+    armer(challenge.resendAfter);
+
+    const formCode = h('form', { class: 'login-shell', novalidate: true, autocomplete: 'off' },
+      h('div', { class: 'login-head' },
+        h('span', { class: 'brand-mark', 'aria-hidden': 'true' }, icon('shield', 24)),
+        h('h1', {}, 'Code de vérification'),
+        h('p', { class: 'muted' }, 'Le mot de passe ne suffit pas : saisissez le code à six chiffres reçu par e-mail.')),
+      errorBox,
+      h('div', { class: 'field' },
+        h('label', { for: 'admin-code' }, 'Code à six chiffres'),
+        code,
+        compte),
+      valider,
+      renvoyer,
+      h('button', {
+        class: 'btn btn-quiet btn-sm', type: 'button',
+        onClick: () => { clearInterval(horloge); renderLogin(container, ctx); },
+      }, 'Revenir au mot de passe'));
+
+    formCode.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      errorBox.hidden = true;
+      const valeur = code.value.replace(/\s+/g, '');
+      if (!/^\d{6}$/.test(valeur)) {
+        showError('Le code comporte six chiffres.');
+        code.focus();
+        return;
+      }
+      valider.disabled = true;
+      valider.replaceChildren(icon('retry', 16), 'Vérification…');
+      try {
+        finish(await Admin.loginCode(challenge.challengeId, valeur));
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 429) {
+          const minutes = Math.max(1, Math.ceil((Number(error.retryAfter || 900) / 60)));
+          showError(COPY.login.locked(minutes));
+        } else {
+          showError(error.message || 'Code refusé.');
+        }
+        code.select();
+      } finally {
+        valider.disabled = false;
+        valider.replaceChildren(icon('check', 16), 'Valider le code');
+      }
+    });
+
+    renvoyer.addEventListener('click', async () => {
+      renvoyer.disabled = true;
+      try {
+        const relance = await Admin.resendCode(challenge.challengeId);
+        errorBox.hidden = true;
+        compte.textContent = `Nouveau code envoyé à ${relance.email || challenge.email || 'votre adresse'}.`;
+        toast(relance.message || 'Nouveau code envoyé.', { tone: 'success' });
+        armer(relance.resendAfter);
+        code.value = '';
+        code.focus();
+      } catch (error) {
+        showError(error.message || 'Renvoi impossible.');
+        armer(Number(error.retryAfter) || 60);
+      }
+    });
+
+    container.replaceChildren(h('div', { class: 'view' }, formCode));
+    formCode.querySelector('#admin-code')?.focus();
+  };
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     errorBox.hidden = true;
@@ -78,16 +188,12 @@ export function renderLogin(container, ctx) {
     submit.disabled = true;
     submit.replaceChildren(icon('retry', 16), 'Connexion…');
     try {
-      const session = await api('/api/login', { method: 'POST', body: { password, email: email.value.trim() } });
-      auth.set(session.token);
-      if (session.entry) rememberConsole(session.entry);
-      toast(session.role && session.role !== 'proprietaire'
-        ? `Connexion réussie : ${session.roleLabel}.`
-        : 'Connexion réussie.', { tone: 'success', duration: 3000 });
-      if (session.defaultPassword) {
-        toast('Mot de passe par défaut actif : changez-le dans l’onglet Sauvegardes.', { tone: 'info', duration: 8000 });
+      const session = await api('/api/login', { method: 'POST', body: { password, email: email.value.trim(), deviceId: deviceId() } });
+      if (session.requiresCode) {
+        showCodeStep(session);
+        return;
       }
-      navigate(session.entry && next === '/connexion' ? session.entry : next, { replace: true });
+      finish(session);
     } catch (error) {
       if (error instanceof ApiError && error.status === 429) {
         const minutes = Math.max(1, Math.ceil((Number(error.retryAfter || error.headers?.['retry-after'] || 900) / 60)));

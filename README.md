@@ -66,6 +66,15 @@ Pour repartir d’un catalogue vierge : arrêter le serveur, supprimer le conten
 | `ADMIN_PASSWORD` | `admin` | mot de passe initial ; à changer avant toute mise en ligne |
 | `HTTPS` | vide | force les en-têtes HSTS et considère la requête comme sécurisée |
 | `STREAMTV_ACTOR` | `cli` | auteur inscrit dans le journal d’audit par `scripts/ingest.js` |
+| `STREAMTV_TLS_CERT` | vide | certificat PEM : le serveur parle HTTPS directement |
+| `STREAMTV_TLS_KEY` | vide | clé privée associée au certificat |
+| `STREAMTV_SMTP_HOST` | vide | serveur d’envoi du code de connexion (ex. `smtp.mail.yahoo.com`) |
+| `STREAMTV_SMTP_PORT` | `465` | port du serveur d’envoi |
+| `STREAMTV_SMTP_USER` | vide | compte d’envoi (ex. `M.0urad@yahoo.com`) |
+| `STREAMTV_SMTP_PASS` | vide | mot de passe d’application du compte d’envoi |
+| `STREAMTV_SMTP_FROM` | = utilisateur | expéditeur affiché |
+| `STREAMTV_SMTP_SECURE` | auto | `1` impose TLS dès la connexion (port 465) |
+| `STREAMTV_SMTP_TLS` | `1` | `0` désactive TLS et STARTTLS (réservé aux tests locaux) |
 
 En production (`NODE_ENV=production`), `ADMIN_PASSWORD` est **obligatoire** : sans lui, le
 serveur refuse de démarrer et l'écrit dans le journal (`AC-101`). Hors production, le mot de
@@ -285,6 +294,43 @@ curl -s -X POST localhost:3000/api/admin/backup -H "Authorization: Bearer $TOKEN
 ```
 
 ---
+
+### Les trois adresses
+
+| Quoi | Adresse |
+|---|---|
+| Catalogue public (GitHub Pages) | `https://mourad0ghazi.github.io/myiptv/` |
+| Console privée, sur l'ordinateur | `https://serveur-local/<adminPath>`, par défaut `/console-privee` |
+| Console privée, depuis le téléphone | la même adresse que ci-dessus, sur le réseau local ou à travers un tunnel HTTPS |
+
+Le catalogue public ne contient aucune console : seul le serveur Node la sert, et seulement sur
+le chemin privé. Deux serrures s'ajoutent au mot de passe : le verrou d'appareil (onglet
+Appareils) et le code à six chiffres envoyé par e-mail (réglage « Code de connexion »).
+
+Pour chiffrer le trafic sans intermédiaire, donnez un certificat au serveur :
+
+```bash
+STREAMTV_TLS_CERT=/etc/streamtv/cert.pem STREAMTV_TLS_KEY=/etc/streamtv/key.pem npm start
+```
+
+Le cookie d'entrée de la console est alors marqué `Secure`, et le site n'accepte plus le HTTP.
+
+### Code de connexion par e-mail (3.12.0)
+
+Avec Yahoo, un mot de passe d'application est nécessaire (compte → Sécurité → Mots de passe
+d'application) ; le mot de passe principal du compte est refusé par le serveur SMTP.
+
+```bash
+STREAMTV_SMTP_HOST=smtp.mail.yahoo.com \
+STREAMTV_SMTP_USER=M.0urad@yahoo.com \
+STREAMTV_SMTP_PASS='mot de passe d application' \
+npm start
+```
+
+Puis, dans la console, onglet Appareils, section « Code de connexion par e-mail » : saisir
+l'adresse de réception, « Enregistrer l'adresse », « Envoyer un test ». À la connexion suivante,
+le mot de passe n'ouvre plus que l'écran du code : six chiffres, dix minutes, cinq essais, un
+seul usage, lié à l'appareil qui a fait la demande.
 
 ### Console privée (3.11.0)
 

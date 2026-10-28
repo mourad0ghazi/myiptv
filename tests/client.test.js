@@ -539,3 +539,38 @@ describe('Console privée (3.11.0)', () => {
     assert.equal(/'\/(?:admin|administration)'/.test(index), false, 'plus de route /admin côté serveur');
   });
 });
+
+describe('Code de connexion par e-mail (3.12.0)', () => {
+  test('la connexion demande le code avant d’ouvrir la session', async () => {
+    const vue = await read('public/js/views/login.js');
+    assert.match(vue, /requiresCode/);
+    assert.match(vue, /Admin\.loginCode/);
+    assert.match(vue, /Admin\.resendCode/);
+    assert.match(vue, /id: 'admin-code'/);
+    assert.match(vue, /autocomplete: 'one-time-code'/);
+    assert.match(vue, /inputmode: 'numeric'/);
+    assert.match(vue, /maxlength: '6'/);
+    assert.match(vue, /Renvoyer un code/);
+    // Le jeton n'est posé qu'après le code : la fonction de fin est la seule à écrire auth.set.
+    const poses = [...vue.matchAll(/auth\.set\(/g)];
+    assert.equal(poses.length, 1, 'un seul point d’écriture du jeton');
+    assert.equal(vue.includes('deviceId()'), true, 'le code est lié à l’appareil');
+  });
+
+  test('l’adresse du code se règle dans la console, avec un test d’envoi', async () => {
+    const vue = await read('public/js/views/admin/appareils.js');
+    assert.match(vue, /Admin\.testMail/);
+    assert.match(vue, /adminEmail/);
+    assert.match(vue, /id: 'admin-email'/);
+    assert.match(vue, /STREAMTV_SMTP_HOST/, 'l’écran explique quoi configurer');
+    assert.match(vue, /Envoyer un test/);
+    const api = await read('public/js/api.js');
+    for (const appel of ['loginCode', 'resendCode', 'testMail']) assert.ok(api.includes(appel), `${appel} absent`);
+  });
+
+  test('l’icône enveloppe existe et reste une icône de trait', async () => {
+    const ui = await read('public/js/ui.js');
+    assert.match(ui, /^\s+mail: '/m);
+    assert.equal(/sparkles/.test(ui), false);
+  });
+});
