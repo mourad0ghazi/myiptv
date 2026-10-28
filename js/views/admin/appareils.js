@@ -17,8 +17,9 @@ export async function renderAppareils(panel, ctx) {
   panel.replaceChildren(spinner('Chargement des appareils…'));
 
   let data = null;
+  let reglages = null;
   try {
-    data = await Admin.devices();
+    [data, reglages] = await Promise.all([Admin.devices(), Admin.settings()]);
   } catch (error) {
     if (apiGuard(ctx, error, { silent: true })) return;
     panel.replaceChildren(emptyState({
@@ -35,6 +36,7 @@ export async function renderAppareils(panel, ctx) {
 
   const reload = () => renderAppareils(panel, ctx);
   const actuel = data.devices.find((device) => device.current);
+  const messagerie = reglages?.mail || { ready: false, destination: '', host: '', from: '' };
 
   // Retirer un appareil : geste rare, donc confirmation explicite.
   const retirer = async (device) => {
@@ -112,6 +114,41 @@ export async function renderAppareils(panel, ctx) {
     }
   });
 
+  const courriel = h('input', {
+    type: 'email', id: 'admin-email', maxlength: '120', autocomplete: 'email', spellcheck: 'false',
+    'aria-describedby': 'courriel-aide', placeholder: 'vous@exemple.com',
+    value: messagerie.destination || '',
+  });
+  const enregistrerCourriel = h('button', { class: 'btn btn-primary', type: 'button' }, 'Enregistrer l’adresse');
+  enregistrerCourriel.addEventListener('click', async () => {
+    enregistrerCourriel.disabled = true;
+    try {
+      const valeur = courriel.value.trim();
+      await Admin.saveSettings({ adminEmail: valeur });
+      toast(valeur ? `Code de connexion activé vers ${valeur}.` : 'Code de connexion désactivé.', {
+        tone: 'success', duration: 6000,
+      });
+      reload();
+    } catch (error) {
+      toast(error.message || 'Adresse refusée.', { tone: 'error', duration: 8000 });
+      enregistrerCourriel.disabled = false;
+    }
+  });
+
+  const testerEnvoi = h('button', { class: 'btn btn-ghost', type: 'button', disabled: !messagerie.ready || !messagerie.destination },
+    icon('mail', 15), 'Envoyer un test');
+  testerEnvoi.addEventListener('click', async () => {
+    testerEnvoi.disabled = true;
+    try {
+      const reponse = await Admin.testMail();
+      toast(reponse.message || 'Message de contrôle envoyé.', { tone: 'success', duration: 8000 });
+    } catch (error) {
+      toast(error.message || 'Envoi impossible.', { tone: 'error', duration: 10_000 });
+    } finally {
+      testerEnvoi.disabled = !messagerie.ready || !messagerie.destination;
+    }
+  });
+
   const listes = data.devices.length
     ? data.devices.map((device) => h('div', { class: 'device-row', dataset: { courant: String(device.current) } },
       h('span', { class: 'device-mark', 'aria-hidden': 'true' }, icon('phone', 16)),
@@ -154,6 +191,22 @@ export async function renderAppareils(panel, ctx) {
         h('label', { for: 'verrou-appareil' },
           h('strong', {}, 'N’accepter que les appareils listés'),
           h('span', { class: 'muted' }, ' Le verrou se pose après l’enregistrement d’au moins un appareil, pour ne jamais vous enfermer dehors.')))),
+
+    h('div', { class: 'console-block' },
+      h('h3', {}, 'Code de connexion par e-mail'),
+      h('p', { class: 'muted' }, messagerie.destination
+        ? `Chaque connexion depuis un appareil autorisé demande un code à six chiffres envoyé à ${messagerie.destination}. Le mot de passe seul n’ouvre plus la console.`
+        : 'Facultatif, et recommandé : un code à six chiffres envoyé à votre adresse. Le mot de passe seul ne suffira plus.'),
+      h('div', { class: 'console-toolbar' },
+        h('div', { class: 'field' },
+          h('label', { for: 'admin-email' }, 'Adresse qui reçoit le code'),
+          courriel),
+        h('div', { class: 'field', style: { alignSelf: 'end' } }, enregistrerCourriel),
+        h('div', { class: 'field', style: { alignSelf: 'end' } }, testerEnvoi)),
+      h('p', { class: 'help', id: 'courriel-aide' },
+        messagerie.ready
+          ? `Serveur d’envoi configuré : ${messagerie.host}${messagerie.from ? ` (expéditeur ${messagerie.from})` : ''}.`
+          : 'Aucun serveur d’envoi configuré : renseignez STREAMTV_SMTP_HOST, STREAMTV_SMTP_USER et STREAMTV_SMTP_PASS sur le serveur, puis redémarrez.')),
 
     h('div', { class: 'console-block' },
       h('h3', {}, 'Appareils autorisés'),

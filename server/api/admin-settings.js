@@ -17,6 +17,13 @@ export function registerSettingsRoutes(base, app) {
       adminPath: app.store.settings.adminPath,
       deviceLock: Boolean(app.store.settings.adminDeviceLock),
       deviceCount: app.store.devices.length,
+      // État de l'envoi : jamais le mot de passe, seulement de quoi comprendre un refus.
+      mail: {
+        ready: app.smtpReady(),
+        destination: app.store.settings.adminEmail,
+        host: app.mail.host || '',
+        from: app.mail.from || '',
+      },
     },
     cache: 'no-store',
   }));
@@ -38,6 +45,12 @@ export function registerSettingsRoutes(base, app) {
     if (next.adminDeviceLock && !app.store.settings.adminDeviceLock && !app.store.devices.length) {
       throw new AppError('ERR-16', { params: { raison: 'aucun appareil enregistré' } });
     }
+    // Un code par e-mail sans serveur d'envoi enfermerait le propriétaire dehors.
+    if (next.adminEmail && !app.smtpReady()) {
+      throw new AppError('ERR-16', {
+        params: { raison: 'aucun serveur d’envoi n’est configuré sur ce serveur (STREAMTV_SMTP_HOST manquant)' },
+      });
+    }
     const cheminChange = next.adminPath !== app.store.settings.adminPath;
     await app.store.saveSettings(next, 'settings.update');
     await app.store.audit('settings.update', { ip, requestId, detail: Object.keys(patch).join(',') });
@@ -52,6 +65,24 @@ export function registerSettingsRoutes(base, app) {
       },
       cache: 'no-store',
     };
+  });
+
+  // Envoi d'un message de contrôle vers l'adresse enregistrée : aucun code dedans.
+  base.post('/api/admin/mail/test', async ({ ip }) => {
+    const adresse = String(app.store.settings.adminEmail || '').trim();
+    if (!adresse) throw new AppError('ERR-16', { params: { raison: 'aucune adresse de destination n’est enregistrée' } });
+    if (!app.smtpReady()) throw new AppError('ERR-16', { params: { raison: 'aucun serveur d’envoi n’est configuré' } });
+    try {
+      const result = await app.mailer.test();
+      await app.store.audit('mail.test', { ip, result: 'envoyé' });
+      return {
+        body: { ok: true, latencyMs: result.latencyMs, message: `Message de contrôle envoyé à ${adresse}.` },
+        cache: 'no-store',
+      };
+    } catch (error) {
+      await app.store.audit('mail.test', { ip, result: error.message });
+      throw new AppError('ERR-16', { params: { raison: `l’envoi a échoué : ${error.message}` } });
+    }
   });
 
   // Réinitialisation complète.

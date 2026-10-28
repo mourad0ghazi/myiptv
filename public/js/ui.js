@@ -48,6 +48,7 @@ const SVG = {
   pray: '<path d="M12 3v18"></path><path d="M6 8h12"></path><path d="M6 21V8M18 21V8"></path>',
   phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M11 18.5h2"></path>',
   pin: '<path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z"></path><circle cx="12" cy="10" r="2.6"></circle>',
+  mail: '<rect x="3" y="5.5" width="18" height="13" rx="2"></rect><path d="m3.6 7 8.4 6 8.4-6"></path>',
   lock: '<rect x="4.5" y="10" width="15" height="10.5" rx="2"></rect><path d="M8 10V7.5a4 4 0 0 1 8 0V10"></path>',
   shop: '<path d="M5 8h14l-1.2 12H6.2z"></path><path d="M9 8V6.5a3 3 0 0 1 6 0V8"></path>',
   series: '<rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="m8 3 4 3 4-3"></path>',

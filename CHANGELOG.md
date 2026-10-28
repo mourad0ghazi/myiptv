@@ -3,6 +3,41 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.12.0] - 2026-10-28
+
+Une troisième serrure sur la console : après le chemin privé et le verrou d'appareil, un code
+à six chiffres envoyé à votre adresse e-mail. Et le chiffrement natif du serveur, sans
+intermédiaire.
+
+### Ajouté
+
+- **Code de connexion par e-mail** (réglage `adminEmail`). Le mot de passe juste n'ouvre plus de
+  session : un code de six chiffres part vers l'adresse enregistrée, vaut dix minutes, cinq
+  essais, un seul usage, et reste lié à l'appareil qui a fait la demande. Le renvoi attend une
+  minute ; dix codes par heure et par adresse réseau au maximum.
+- **Client SMTP intégré**, sans dépendance : EHLO, STARTTLS ou TLS direct, AUTH PLAIN ou LOGIN,
+  message en base64, en-têtes complets. Configuré par l'environnement, jamais par le dépôt.
+- **Onglet Appareils** : section « Code de connexion par e-mail » avec l'adresse de réception,
+  l'état du serveur d'envoi et un message de contrôle pour vérifier que la boîte reçoit bien.
+- **TLS natif** : `STREAMTV_TLS_CERT` et `STREAMTV_TLS_KEY` font parler le serveur en HTTPS
+  directement ; le cookie d'entrée devient `Secure`.
+
+### Sécurité
+
+- Le code n'est jamais stocké en clair : condensé salé, comparaison en temps constant.
+- Impossible de s'enfermer dehors : l'adresse est refusée si aucun serveur d'envoi n'est
+  configuré, et un envoi en panne ne délivre aucune session.
+- Ni l'adresse, ni le mot de passe d'application ne sortent par l'API : la configuration
+  publique est vérifiée sans eux.
+
+### Vérifié
+
+- `npm test` : **293/293**, dont 16 nouveaux tests, serveur SMTP local réel à l'appui
+  (protocole parlé, code lu dans le message, renvoi, expiration, appareil lié).
+- Connexion en deux étapes rendue dans un vrai DOM contre le serveur : écran du code affiché,
+  adresse masquée, compte à rebours, code validé, session ouverte, retour sur le chemin privé.
+- TLS vérifié avec un certificat auto-signé : 200 en HTTPS et cookie marqué `Secure`.
+
 ## [3.11.0] - 2026-10-28
 
 La console devient privée : une adresse qui n'appartient qu'à vous, et un accès réservé

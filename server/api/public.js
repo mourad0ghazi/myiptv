@@ -8,6 +8,7 @@ import { buildPredicate, paginate, sortChannels } from '../core/search.js';
 import { normalizeQuery, normalizeKey } from '../core/text.js';
 import { checkMemberPassword, findMember, publicMember, ROLES } from '../core/team.js';
 import { deviceDigest, isDeviceAllowed, normalizeDeviceId } from '../core/devices.js';
+import { maskEmail } from '../core/twofactor.js';
 import { buildEpg } from '../core/epg.js';
 import { catalogForClient } from '../core/messages.js';
 import { reportThreshold } from '../core/reports.js';
@@ -116,6 +117,60 @@ function findAlternatives(app, channel, settings, limit = 6) {
     if (sortie.length >= limit) break;
   }
   return sortie;
+}
+
+/** Texte de l'e-mail : court, sans lien, sans donnée personnelle au-delà du code. */
+function codeMessage(code, minutes) {
+  return [
+    'Votre code de connexion StreamTV',
+    '',
+    `Code : ${code}`,
+    '',
+    `Il est valable ${minutes} minutes et ne sert qu'une fois.`,
+    'Si vous n’êtes pas à l’origine de cette demande, ignorez ce message : sans ce code,',
+    'aucune connexion ne peut aboutir.',
+    '',
+    'Ce message est envoyé automatiquement, ne répondez pas.',
+  ].join('\n');
+}
+
+/** Ouvre la session et rend la charge utile attendue par le client. */
+async function openSession(app, { member, identite, ip, req }) {
+  app.loginGuard.success(ip);
+  const session = app.sessions.create({
+    ip,
+    userAgent: req.headers['user-agent'] || '',
+    role: identite.role,
+    memberId: identite.memberId,
+    memberName: identite.memberName,
+  });
+  if (member) {
+    member.lastLoginAt = new Date().toISOString();
+    await app.store.saveTeam('connexion');
+  }
+  await app.store.audit('login.success', { ip, role: session.role, membre: session.memberName });
+  return {
+    body: {
+      token: session.token,
+      expiresAt: new Date(session.expiresAt).toISOString(),
+      defaultPassword: member ? false : app.auth.isDefaultPasswordActive(),
+      role: session.role,
+      roleLabel: ROLES[session.role]?.label || 'Propriétaire',
+      member: member ? publicMember(member) : { name: 'Propriétaire', role: 'proprietaire', email: '' },
+      // Destination juste après la connexion : le chemin privé de la console.
+      entry: `/${app.store.settings.adminPath}`,
+      message: 'Connexion réussie.',
+    },
+    cache: 'no-store',
+  };
+}
+
+/** Refus homogène quand la limite de tentatives est atteinte. */
+function guardRefusal(guard) {
+  return new AppError('ERR-17', {
+    params: { n: Math.max(1, Math.ceil(guard.retryAfterSeconds / 60)) },
+    headers: { 'Retry-After': String(guard.retryAfterSeconds) },
+  });
 }
 
 export function registerPublicRoutes(router, app) {
@@ -524,30 +579,122 @@ export function registerPublicRoutes(router, app) {
         app.store.saveDevices('connexion').catch(() => {});
       }
     }
-    app.loginGuard.success(ip);
-    const session = app.sessions.create({
-      ip,
-      userAgent: req.headers['user-agent'] || '',
-      role: member ? member.role : 'proprietaire',
-      memberId: member ? member.id : '',
-      memberName: member ? member.name : 'Propriétaire',
-    });
-    if (member) {
-      member.lastLoginAt = new Date().toISOString();
-      await app.store.saveTeam('connexion');
+    const identite = member
+      ? { role: member.role, memberId: member.id, memberName: member.name }
+      : { role: 'proprietaire', memberId: '', memberName: 'Propriétaire' };
+
+    // Second facteur : le mot de passe juste n'ouvre encore rien, un code part par e-mail.
+    const adresse = String(app.store.settings.adminEmail || '').trim();
+    if (adresse && ['proprietaire', 'administrateur'].includes(identite.role) && app.mailReady()) {
+      const challenge = app.twoFactor.issue({ ...identite, deviceId, email: adresse, ip });
+      if (!challenge) {
+        await app.store.audit('login.code.fail', { ip, result: 'plafond horaire atteint' });
+        throw new AppError('ERR-17', { params: { n: 15 } });
+      }
+      try {
+        await app.mailer.send({
+          to: adresse,
+          subject: 'Votre code de connexion StreamTV',
+          text: codeMessage(challenge.code, Math.round((challenge.expiresAt - Date.now()) / 60_000)),
+        });
+      } catch (error) {
+        await app.store.audit('login.code.fail', { ip, result: error.message });
+        throw new AppError('ERR-16', { params: { raison: 'l’e-mail contenant le code n’a pas pu être envoyé' } });
+      }
+      await app.store.audit('login.code.sent', { ip, role: identite.role });
+      return {
+        body: {
+          requiresCode: true,
+          challengeId: challenge.id,
+          email: maskEmail(adresse),
+          expiresIn: Math.max(1, Math.round((challenge.expiresAt - Date.now()) / 1000)),
+          resendAfter: challenge.resendAfter,
+          message: 'Code envoyé par e-mail.',
+        },
+        cache: 'no-store',
+      };
     }
-    await app.store.audit('login.success', { ip, role: session.role, membre: session.memberName });
+
+    return openSession(app, { member, identite, ip, req });
+  });
+
+  // Second facteur : le code reçu par e-mail, lié à cet appareil et à ce challenge.
+  router.post('/api/login/code', async ({ body, ip, req }) => {
+    const guard = app.loginGuard.check(ip);
+    if (!guard.allowed) throw guardRefusal(guard);
+    const challengeId = typeof body?.challengeId === 'string' ? body.challengeId : '';
+    const code = typeof body?.code === 'string' ? body.code : '';
+    const deviceId = normalizeDeviceId(body?.deviceId);
+    const check = app.twoFactor.verify(challengeId, code, { deviceId });
+    if (!check.ok) {
+      const refus = ['code', 'format'].includes(check.reason);
+      if (refus) app.loginGuard.fail(ip);
+      await app.store.audit('login.code.fail', { ip, result: check.reason, restants: check.restants ?? null });
+      if (refus) {
+        const restants = check.restants ?? 0;
+        throw new AppError('ERR-08', {
+          message: restants > 0
+            ? `Code refusé. Il reste ${restants} tentative${restants > 1 ? 's' : ''}.`
+            : 'Code refusé. Demandez un nouveau code.',
+        });
+      }
+      throw new AppError('ERR-08', {
+        message: check.reason === 'appareil'
+          ? 'Ce code a été demandé depuis un autre appareil.'
+          : 'Ce code a expiré. Demandez-en un nouveau.',
+      });
+    }
+    const { challenge } = check;
+    const member = challenge.memberId ? app.store.team.find((item) => item.id === challenge.memberId) || null : null;
+    if (challenge.memberId && (!member || member.disabled)) {
+      await app.store.audit('login.code.fail', { ip, result: 'compte fermé pendant la saisie' });
+      throw new AppError('ERR-08', { message: 'Ce compte n’est plus actif.' });
+    }
+    const reponse = await openSession(app, {
+      member,
+      identite: { role: challenge.role, memberId: challenge.memberId, memberName: challenge.memberName },
+      ip,
+      req,
+    });
+    return reponse;
+  });
+
+  // Renvoi du code : un par minute au plus, plafond horaire par adresse réseau.
+  router.post('/api/login/code/resend', async ({ body, ip }) => {
+    const guard = app.loginGuard.check(ip);
+    if (!guard.allowed) throw guardRefusal(guard);
+    const challengeId = typeof body?.challengeId === 'string' ? body.challengeId : '';
+    const reissue = app.twoFactor.reissue(challengeId);
+    if (!reissue.ok) {
+      if (reissue.reason === 'trop-tot') {
+        throw new AppError('ERR-17', {
+          params: { n: 1 },
+          message: `Patientez ${reissue.retryAfter} secondes avant de demander un nouveau code.`,
+          headers: { 'Retry-After': String(reissue.retryAfter) },
+        });
+      }
+      throw new AppError('ERR-08', { message: 'Ce code a expiré. Recommencez la connexion.' });
+    }
+    const adresse = String(app.store.settings.adminEmail || '').trim();
+    try {
+      await app.mailer.send({
+        to: adresse,
+        subject: 'Votre nouveau code de connexion StreamTV',
+        text: codeMessage(reissue.code, Math.round((reissue.expiresAt - Date.now()) / 60_000)),
+      });
+    } catch (error) {
+      await app.store.audit('login.code.fail', { ip, result: error.message });
+      throw new AppError('ERR-16', { params: { raison: 'l’e-mail contenant le code n’a pas pu être envoyé' } });
+    }
+    await app.store.audit('login.code.sent', { ip, result: 'renvoi' });
     return {
       body: {
-        token: session.token,
-        expiresAt: new Date(session.expiresAt).toISOString(),
-        defaultPassword: member ? false : app.auth.isDefaultPasswordActive(),
-        role: session.role,
-        roleLabel: ROLES[session.role]?.label || 'Propriétaire',
-        member: member ? publicMember(member) : { name: 'Propriétaire', role: 'proprietaire', email: '' },
-        // Destination juste après la connexion : le chemin privé de la console.
-        entry: `/${app.store.settings.adminPath}`,
-        message: 'Connexion réussie.',
+        requiresCode: true,
+        challengeId: reissue.id,
+        email: maskEmail(adresse),
+        expiresIn: Math.max(1, Math.round((reissue.expiresAt - Date.now()) / 1000)),
+        resendAfter: reissue.resendAfter,
+        message: 'Nouveau code envoyé.',
       },
       cache: 'no-store',
     };

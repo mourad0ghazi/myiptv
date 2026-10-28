@@ -138,6 +138,10 @@ export const Admin = {
   addDevice: (label) => api('/api/admin/devices', { method: 'POST', body: { deviceId: deviceId(), label } }),
   removeDevice: (id) => api(`/api/admin/devices/${encodeURIComponent(id)}`, { method: 'DELETE', body: {} }),
   logout: () => api('/api/logout', { method: 'POST', body: {} }),
+  // Second facteur : le code part vers l'e-mail du propriétaire, la session n'existe qu'après.
+  loginCode: (challengeId, code) => api('/api/login/code', { method: 'POST', body: { challengeId, code, deviceId: deviceId() } }),
+  resendCode: (challengeId) => api('/api/login/code/resend', { method: 'POST', body: { challengeId, deviceId: deviceId() } }),
+  testMail: () => api('/api/admin/mail/test', { method: 'POST', body: {} }),
   channels: (params) => api(`/api/admin/channels?${new URLSearchParams(params)}`),
   channel: (id) => api(`/api/admin/channels/${id}`),
   update: (id, patch) => api(`/api/admin/channels/${id}`, { method: 'PATCH', body: patch }),

@@ -99,6 +99,7 @@ function makeEntry({ name, url, urlNormalized, logo = '', group = '', quality, t
 export function permissionFor(method, pattern) {
   if (pattern.includes('/team')) return 'team';
   if (pattern.includes('/device')) return 'team';
+  if (pattern.includes('/mail')) return 'team';
   if (pattern.includes('/password') || pattern.includes('/sessions')) return 'team';
   if (pattern.includes('/backup') || pattern.includes('/restore')) return 'backup';
   if (pattern.includes('/settings') || pattern.includes('/rules')) return 'settings';
