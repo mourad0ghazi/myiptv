@@ -2,8 +2,9 @@
 // Chaque élément produit ici est vérifié par tests/client.test.js (styles présents, ARIA).
 
 import { COPY } from '../../copy.js';
+import { loginHref } from '../../console.js';
 import { h, icon, modal, toast } from '../../ui.js';
-import { ApiError } from '../../api.js';
+import { ApiError, auth } from '../../api.js';
 
 function field(label, control, help = '') {
   const id = control.id || `f-${Math.random().toString(36).slice(2, 8)}`;
@@ -46,7 +47,7 @@ function apiGuard(ctx, error, { silent = false } = {}) {
   if (error instanceof ApiError && error.status === 401) {
     auth.clear();
     toast('Votre session a expiré. Reconnectez-vous.', { tone: 'error' });
-    ctx.navigate('/connexion?next=/admin', { replace: true });
+    ctx.navigate(loginHref(), { replace: true });
     return true;
   }
   if (!silent) toast(error.message || 'L’action n’a pas abouti.', { tone: 'error', duration: 7000 });

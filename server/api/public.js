@@ -7,6 +7,7 @@ import { isPublic, projectCard, projectDetail } from '../core/channels.js';
 import { buildPredicate, paginate, sortChannels } from '../core/search.js';
 import { normalizeQuery, normalizeKey } from '../core/text.js';
 import { checkMemberPassword, findMember, publicMember, ROLES } from '../core/team.js';
+import { deviceDigest, isDeviceAllowed, normalizeDeviceId } from '../core/devices.js';
 import { buildEpg } from '../core/epg.js';
 import { catalogForClient } from '../core/messages.js';
 import { reportThreshold } from '../core/reports.js';
@@ -461,6 +462,23 @@ export function registerPublicRoutes(router, app) {
   });
 
   // Connexion.
+  // EP-31 — porte de la console : le navigateur demande s'il est entré par l'adresse secrète.
+  // La réponse ne dit jamais quelle est cette adresse.
+  // Porte de la console : ne dit rien à qui n'a jamais ouvert le chemin secret.
+  // Le chemin lui-même n'est révélé qu'au navigateur qui porte déjà le cookie d'entrée.
+  router.get('/api/admin/gate', ({ req }) => {
+    const cookie = String(req.headers.cookie || '');
+    const ouvert = /(?:^|;\s*)stv_entry=1(?:;|$)/.test(cookie);
+    return {
+      body: {
+        admin: ouvert,
+        deviceLock: Boolean(app.store.settings.adminDeviceLock),
+        path: ouvert ? app.store.settings.adminPath : '',
+      },
+      cache: 'no-store',
+    };
+  });
+
   router.post('/api/login', async ({ body, ip, req }) => {
     const password = typeof body?.password === 'string' ? body.password : '';
     const email = typeof body?.email === 'string' ? body.email.trim() : '';
@@ -486,6 +504,26 @@ export function registerPublicRoutes(router, app) {
       await app.store.audit('login.fail', { ip, result: member?.disabled ? 'compte désactivé' : 'refus' });
       throw new AppError('ERR-08');
     }
+    // Verrou d'appareil : quand il est actif, un mot de passe volé ne suffit pas.
+    // Le refus est explicite et ne dit jamais si le mot de passe était bon.
+    const role = member ? member.role : 'proprietaire';
+    const demandeVerrou = Boolean(app.store.settings.adminDeviceLock) && ['proprietaire', 'administrateur'].includes(role);
+    const deviceId = normalizeDeviceId(body?.deviceId);
+    if (demandeVerrou && !isDeviceAllowed(app.store.devices, deviceId)) {
+      app.loginGuard.fail(ip);
+      await app.store.audit('login.fail', { ip, result: 'appareil non autorisé' });
+      throw new AppError('ERR-09', {
+        message: 'Cet appareil n’est pas autorisé. Ouvrez la console depuis un appareil enregistré, ou ajoutez celui-ci depuis la console.',
+      });
+    }
+    if (deviceId) {
+      const digest = deviceDigest(deviceId);
+      const appareil = app.store.devices.find((item) => item.digest === digest);
+      if (appareil) {
+        appareil.lastSeenAt = new Date().toISOString();
+        app.store.saveDevices('connexion').catch(() => {});
+      }
+    }
     app.loginGuard.success(ip);
     const session = app.sessions.create({
       ip,
@@ -507,6 +545,8 @@ export function registerPublicRoutes(router, app) {
         role: session.role,
         roleLabel: ROLES[session.role]?.label || 'Propriétaire',
         member: member ? publicMember(member) : { name: 'Propriétaire', role: 'proprietaire', email: '' },
+        // Destination juste après la connexion : le chemin privé de la console.
+        entry: `/${app.store.settings.adminPath}`,
         message: 'Connexion réussie.',
       },
       cache: 'no-store',

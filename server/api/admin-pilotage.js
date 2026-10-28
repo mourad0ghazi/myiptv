@@ -8,7 +8,8 @@ import { isPublic } from '../core/channels.js';
 import {
   buildMember, checkMemberPassword, findMember, PERMISSIONS, publicMember, ROLES, ROLE_IDS,
 } from '../core/team.js';
-import { queryInt } from '../http/router.js';
+import { queryInt, queryString } from '../http/router.js';
+import { cleanLabel, deviceDigest, newDeviceId, normalizeDeviceId, publicDevice } from '../core/devices.js';
 
 /** Nom lisible d'une chaîne, y compris retirée : les compteurs d'usage la retrouvent. */
 function channelName(app, id) {
@@ -17,6 +18,57 @@ function channelName(app, id) {
 }
 
 export function registerPilotageRoutes(base, app) {
+  /* ------------------------------------------------------------- appareils (3.11.0)
+     Le propriétaire voit, ajoute et retire les appareils qui peuvent ouvrir la console.
+     L'identifiant complet n'est jamais renvoyé : seul son état et son étiquette le sont. */
+
+  base.get('/api/admin/devices', ({ query }) => {
+    const courant = normalizeDeviceId(queryString(query, 'current', { max: 64 }));
+    const digestCourant = courant ? deviceDigest(courant) : '';
+    return {
+      body: {
+        devices: app.store.devices.map((device) => ({
+          ...publicDevice(device),
+          current: Boolean(digestCourant) && device.digest === digestCourant,
+        })),
+        lock: Boolean(app.store.settings.adminDeviceLock),
+        path: app.store.settings.adminPath,
+      },
+      cache: 'no-store',
+    };
+  });
+
+  base.post('/api/admin/devices', async ({ body, ip }) => {
+    const demandé = normalizeDeviceId(body?.deviceId) || newDeviceId();
+    const digest = deviceDigest(demandé);
+    if (app.store.devices.some((device) => device.digest === digest)) {
+      return { body: { ok: true, deviceId: demandé, already: true }, cache: 'no-store' };
+    }
+    if (app.store.devices.length >= 8) {
+      throw new AppError('ERR-16', { params: { raison: 'huit appareils sont déjà enregistrés' } });
+    }
+    app.store.devices.push({
+      id: `d-${digest.slice(0, 10)}`,
+      digest,
+      label: cleanLabel(body?.label, 'Appareil'),
+      addedAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+      addedFrom: String(ip || '').slice(0, 60),
+    });
+    await app.store.saveDevices('ajout appareil');
+    await app.store.audit('device.added', { ip, appareil: cleanLabel(body?.label, 'Appareil') });
+    return { body: { ok: true, deviceId: demandé }, cache: 'no-store' };
+  });
+
+  base.delete('/api/admin/devices/:id', async ({ params, ip }) => {
+    const appareil = app.store.devices.find((device) => device.id === params.id);
+    if (!appareil) throw new AppError('ERR-10');
+    app.store.devices = app.store.devices.filter((device) => device.id !== params.id);
+    await app.store.saveDevices('retrait appareil');
+    await app.store.audit('device.removed', { ip, appareil: appareil.label });
+    return { body: { ok: true, devices: app.store.devices.map(publicDevice) }, cache: 'no-store' };
+  });
+
   /* ------------------------------------------------------------------ équipe (3.9.0)
      Le propriétaire crée des comptes, choisit le rôle et ferme l'accès d'un membre.
      Aucun mot de passe n'est jamais renvoyé : seulement l'empreinte est conservée. */

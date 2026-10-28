@@ -154,8 +154,9 @@ règles personnalisées.
 | `/guide` | conforme | en-tête « Zapping », saut au numéro, compteurs par catégorie, colonne programme chargée après la liste (aucun blocage) |
 | `/favoris` | conforme | deux sections, état vide avec action |
 | `/connexion` | conforme | formulaire, mention du mot de passe unique |
-| `/admin` (sans jeton) | conforme | écran de verrouillage, aucun contenu protégé |
-| `/admin` (avec jeton) | conforme | 5 onglets fonctionnels : Catalogue (60 lignes), Importation, Configuration (17 réglages), Santé (12 seuils d’alerte affichés avec valeur, seuil et action), Sauvegardes |
+| `/consolette-secrete` (sans jeton) | conforme | écran de verrouillage, aucun contenu protégé |
+| `/consolette-secrete` (avec jeton) | conforme | 10 onglets fonctionnels : Pilotage, Catalogue (60 lignes), Chaînes et liens, Signalements, Importation, Réglages (19 réglages), Santé (12 seuils d’alerte avec valeur, seuil et action), Sauvegardes, Équipe, Appareils |
+| `/admin` | conforme | page inconnue, aucun cookie d’entrée, aucun indice sur le chemin privé |
 | Modale « Ajouter une chaîne » | conforme | ouverture, champs, focus sur le premier champ |
 | `/chaine/de127beab63f` | conforme | fiche complète, rareté, actions |
 | `/mentions-legales`, `/confidentialite`, `/signaler`, `/aide`, `/erreurs` | conformes | contenus complets, date de mise à jour |

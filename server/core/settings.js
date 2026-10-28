@@ -8,6 +8,7 @@ export const SETTING_KEYS = [
   'brand', 'tagline', 'accent', 'logoUrl', 'pageSize', 'defaultSort', 'showAdult',
   'autoHideAdult', 'featuredIds', 'heroMode', 'showHealthBadge', 'epgUrl', 'footerNote',
   'maintenanceMode', 'targetTable', 'confidenceFloor', 'pageTitleSuffix',
+  'adminPath', 'adminDeviceLock',
 ];
 
 export const DEFAULTS = Object.freeze({
@@ -28,9 +29,20 @@ export const DEFAULTS = Object.freeze({
   targetTable: 0,
   confidenceFloor: 0.45,
   pageTitleSuffix: '',
+  // Entrée secrète de la console : le chemin n'est pas devinable et n'est jamais publié.
+  adminPath: 'console-privee',
+  // Quand ce verrou est actif, seul un appareil enregistré peut ouvrir une session.
+  adminDeviceLock: false,
 });
 
 const HERO_MODES = ['featured', 'random', 'first'];
+
+// Chemins déjà pris par le site : une entrée secrète ne peut pas s'y installer.
+export const RESERVED_PATHS = new Set([
+  'api', 'guide', 'favoris', 'connexion', 'admin', 'chaine', 'recherche', 'aide', 'erreurs',
+  'signaler', 'mentions-legales', 'confidentialite', 'films', 'animes', 'css', 'js', 'icons',
+  'vendor', 'demo', 'sw.js', 'manifest.webmanifest', 'index.html',
+]);
 
 export const SCHEMA = [
   { key: 'brand', type: 'text', label: 'Nom du site', minLength: 1, maxLength: 24, help: 'Affiché dans l’en-tête, le pied de page et les titres d’onglet.' },
@@ -60,6 +72,10 @@ export const SCHEMA = [
   { key: 'targetTable', type: 'number', label: 'Objectif de catalogue', min: 0, max: 100000, help: '0 = automatique. L’objectif de démonstration du cahier des charges est 12 181 chaînes.' },
   { key: 'confidenceFloor', type: 'number', label: 'Seuil de confiance', min: 0, max: 0.9, step: 0.05, help: 'Sous ce seuil, la chaîne entre dans la file « à vérifier ».' },
   { key: 'pageTitleSuffix', type: 'text', label: 'Suffixe de titre d’onglet', maxLength: 30, help: 'Ajouté après « · Nom du site » dans le titre du navigateur.' },
+  { key: 'adminPath', type: 'slug', label: 'Adresse secrète de la console', minLength: 8, maxLength: 40,
+    help: 'Lettres minuscules, chiffres et tirets. Exemple : atelier-7f3k. La console n’existe qu’à cette adresse.' },
+  { key: 'adminDeviceLock', type: 'boolean', label: 'Réserver la console aux appareils enregistrés',
+    help: 'Une fois activé, un mot de passe seul ne suffit plus : l’appareil doit avoir été enregistré depuis la console.' },
 ];
 
 const SCHEMA_BY_KEY = Object.fromEntries(SCHEMA.map((item) => [item.key, item]));
@@ -104,6 +120,23 @@ export function validateSettings(input, { existingIds = null, base = DEFAULTS } 
             errors.push(fail(key, 'ERR-04', { champ: spec.label }));
             break;
           }
+        }
+        settings[key] = text;
+        break;
+      }
+      case 'slug': {
+        const text = cleanText(value).toLowerCase();
+        if (spec.minLength && text.length < spec.minLength) {
+          errors.push(fail(key, 'ERR-03', { champ: spec.label, min: spec.minLength, max: spec.maxLength }));
+          break;
+        }
+        if (text.length > spec.maxLength || !/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(text)) {
+          errors.push(fail(key, 'ERR-04', { champ: spec.label }));
+          break;
+        }
+        if (RESERVED_PATHS.has(text)) {
+          errors.push(fail(key, 'ERR-04', { champ: `${spec.label} (mot réservé par le site)` }));
+          break;
         }
         settings[key] = text;
         break;

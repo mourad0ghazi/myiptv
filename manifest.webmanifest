@@ -54,12 +54,6 @@
       "short_name": "Favoris",
       "url": "favoris",
       "description": "Vos chaînes enregistrées sur cet appareil"
-    },
-    {
-      "name": "Administration",
-      "short_name": "Admin",
-      "url": "admin",
-      "description": "Gérer le catalogue et les réglages"
     }
   ]
 }

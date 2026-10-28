@@ -111,7 +111,11 @@ la licence, la date et le décompte. Voir `SOURCES.md` §2 pour la comparaison d
 
 ### Première connexion
 
-- Adresse : `/connexion` (ou `/admin`, qui redirige vers la connexion).
+- Adresse : le chemin privé de la console, fixé par le réglage `adminPath` et livré par
+  défaut à `/console-privee`. Aucun lien public n'y mène : il n'apparaît que pour un
+  navigateur déjà entré. `/admin` et `/administration` n'existent pas et répondent 404.
+- Verrou d'appareil : une fois les appareils de travail enregistrés (onglet Appareils),
+  la connexion refuse tout appareil inconnu, même avec le bon mot de passe.
 - Mot de passe par défaut : `admin` — la console affiche un bandeau rouge tant qu’il n’a pas changé.
 - Politique : au moins 12 caractères, une lettre et un chiffre, hors liste noire, différent de
   l’actuel. Le changement ferme **toutes** les sessions ouvertes.
@@ -127,8 +131,8 @@ la licence, la date et le décompte. Voir `SOURCES.md` §2 pour la comparaison d
 | Guide | `/guide` | zapping numéroté, saut direct au numéro, filtres, une page = 60 lignes |
 | Fiche chaîne | `/chaine/:id` | métadonnées complètes, raisons du classement, variantes, chaînes liées, lecture |
 | Favoris & historique | `/favoris` | stockage local uniquement, aucune requête serveur |
-| Connexion | `/connexion` | mot de passe unique, verrouillage après 8 échecs |
-| Console | `/admin` | 5 onglets : Catalogue, Importation, Réglages, Santé, Sauvegardes |
+| Connexion | `/connexion` | mot de passe unique, verrouillage après 8 échecs, verrou d'appareil |
+| Console | `/{adminPath}` | 10 onglets : Pilotage, Catalogue, Chaînes et liens, Signalements, Importation, Réglages, Santé, Sauvegardes, Équipe, Appareils |
 | Pages légales | `/mentions-legales`, `/confidentialite`, `/signaler`, `/aide`, `/erreurs` | cadre juridique, procédure de retrait, raccourcis, catalogue des messages |
 
 Le lecteur est une couche plein écran (dialogue modal) : 7 états
@@ -278,6 +282,29 @@ curl -s 'localhost:3000/api/channels?category=sport&pageSize=3&sort=number' | he
 TOKEN=$(curl -s -X POST localhost:3000/api/login -H 'Content-Type: application/json' \
   -d '{"password":"admin"}' | sed -E 's/.*"token":"([a-f0-9]+)".*/\1/')
 curl -s -X POST localhost:3000/api/admin/backup -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}'
+```
+
+---
+
+### Console privée (3.11.0)
+
+La console n'a pas d'adresse publique. Le réglage `adminPath` fixe son chemin (par défaut
+`/console-privee`) ; le site n'y répond qu'à ce chemin, y pose un cookie d'entrée `HttpOnly`,
+et `/admin` répond exactement comme une page inconnue.
+
+Le verrou d'appareil ajoute une seconde serrure : l'onglet Appareils enregistre les appareils
+de travail (huit au maximum, identifiant local aléatoire, empreinte SHA-256 tronquée, jamais
+l'adresse réseau). Verrou actif, une connexion depuis un appareil inconnu est refusée même
+avec le bon mot de passe, sans dire si le mot de passe était juste.
+
+```bash
+# ouvrir la console depuis un appareil neuf
+curl -i localhost:3000/console-privee        # Set-Cookie: stv_entry=1
+# enregistrer cet appareil (jeton de propriétaire), puis poser le verrou
+curl -s -X POST localhost:3000/api/admin/devices -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"deviceId":"0101…","label":"Téléphone"}'
+curl -s -X PATCH localhost:3000/api/admin/settings -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"adminDeviceLock":true}'
 ```
 
 ---

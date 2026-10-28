@@ -3,6 +3,40 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.11.0] - 2026-10-28
+
+La console devient privée : une adresse qui n'appartient qu'à vous, et un accès réservé
+aux appareils que vous avez autorisés. Le reste du site n'en montre plus rien.
+
+### Ajouté
+
+- **Adresse secrète de la console** (réglage `adminPath`, 8 à 40 caractères, mots réservés
+  refusés). Le site y sert la console et y pose un cookie d'entrée `HttpOnly` `SameSite=Strict`.
+  Changer l'adresse ferme immédiatement l'ancienne : elle répond comme une page inconnue.
+- **Verrou d'appareil** (réglage `adminDeviceLock`). Chaque appareil de travail est enregistré
+  (identifiant local aléatoire, empreinte SHA-256 tronquée, huit appareils au maximum).
+  Verrou actif, un mot de passe correct ne suffit plus depuis un appareil inconnu : la
+  connexion répond `ERR-09` sans révéler si le mot de passe était juste.
+- **Onglet Appareils** : lien direct de la console copiable, changement de l'adresse secrète,
+  activation du verrou, ajout de l'appareil courant, retrait avec confirmation, dates de
+  dernier accès. Le verrou ne peut pas être activé sans appareil enregistré.
+- **Porte discrète** `GET /api/admin/gate` : un visiteur sans cookie n'apprend ni l'existence
+  ni l'adresse de la console.
+
+### Modifié
+
+- `/admin` et `/administration` n'existent plus, côté serveur comme côté routeur : réponse
+  identique à une page inconnue. Tous les liens publics vers l'administration ont été
+  retirés (accueil, bannières, page d'erreur, lecteur, raccourcis du manifeste).
+- L'entrée « Console » de l'en-tête n'apparaît qu'à un navigateur déjà entré **et** connecté.
+- Les réglages sont séparés de `server/api/admin.js` (`server/api/admin-settings.js`), et le
+  verrou d'appareil est validé avant toute écriture.
+
+### Vérifié
+
+- `npm test` : 277 tests, dont 9 nouveaux sur le chemin secret, la porte, les appareils et
+  le verrou ; 5 nouveaux tests d'interface sur l'absence de lien public et l'onglet Appareils.
+
 ## [3.10.0] — 2026-10-26
 
 L'expérience du visiteur, du téléphone à l'ordinateur : même soin, mêmes options, aucune

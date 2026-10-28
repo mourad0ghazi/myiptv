@@ -300,8 +300,8 @@ test('A4 : visibilité adulte calculée par les réglages', () => {
 
 /* ------------------------------------------------------------------ réglages */
 
-test('Réglages : 17 clés, validation globale, aucune écriture partielle', () => {
-  assert.equal(Object.keys(DEFAULTS).length, 17);
+test('Réglages : 19 clés, validation globale, aucune écriture partielle', () => {
+  assert.equal(Object.keys(DEFAULTS).length, 19);
   const good = validateSettings({ brand: 'Ma TV', pageSize: 24, accent: '#123abc' });
   assert.equal(good.errors.length, 0);
   assert.equal(good.settings.brand, 'Ma TV');

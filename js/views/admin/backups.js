@@ -2,6 +2,7 @@
 // Toute restauration exige le mot « RESTAURER » et une empreinte SHA-256 valide.
 
 import { Admin, auth, download } from '../../api.js';
+import { loginHref } from '../../console.js';
 import { h, icon, modal, toast, emptyState, fmtDate, fmtNumber } from '../../ui.js';
 import { statCard } from '../../components.js';
 import { field, confirmModal, apiGuard } from './common.js';
@@ -116,7 +117,7 @@ async function renderBackups(host, ctx, { refreshStats, stats }) {
       const result = await Admin.password(currentPwd.value, nextPwd.value, confirmPwd.value);
       toast(result.message, { tone: 'success', duration: 9000 });
       auth.clear();
-      setTimeout(() => ctx.navigate('/connexion?next=/admin', { replace: true }), 1200);
+      setTimeout(() => ctx.navigate(loginHref(), { replace: true }), 1200);
     } catch (error) { apiGuard(ctx, error); }
   });
 
@@ -148,7 +149,7 @@ async function renderBackups(host, ctx, { refreshStats, stats }) {
               const result = await Admin.revokeSessions();
               auth.clear();
               toast(result.message, { tone: 'info' });
-              ctx.navigate('/connexion?next=/admin', { replace: true });
+              ctx.navigate(loginHref(), { replace: true });
             } catch (error) { apiGuard(ctx, error); }
           },
         }),

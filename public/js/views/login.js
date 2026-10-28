@@ -3,12 +3,13 @@
 
 import { auth, api, ApiError } from '../api.js';
 import { COPY } from '../copy.js';
+import { consoleHref, rememberConsole } from '../console.js';
 import { h, icon, toast } from '../ui.js';
 
 export function renderLogin(container, ctx) {
   const { navigate } = ctx;
   const params = new URLSearchParams(location.search);
-  const next = params.get('next') && params.get('next').startsWith('/') ? params.get('next') : '/admin';
+  const next = params.get('next') && params.get('next').startsWith('/') ? params.get('next') : consoleHref();
 
   const view = h('div', { class: 'view' });
   const form = h('form', { class: 'login-shell', novalidate: true, autocomplete: 'on' });
@@ -79,13 +80,14 @@ export function renderLogin(container, ctx) {
     try {
       const session = await api('/api/login', { method: 'POST', body: { password, email: email.value.trim() } });
       auth.set(session.token);
+      if (session.entry) rememberConsole(session.entry);
       toast(session.role && session.role !== 'proprietaire'
         ? `Connexion réussie : ${session.roleLabel}.`
         : 'Connexion réussie.', { tone: 'success', duration: 3000 });
       if (session.defaultPassword) {
         toast('Mot de passe par défaut actif : changez-le dans l’onglet Sauvegardes.', { tone: 'info', duration: 8000 });
       }
-      navigate(next, { replace: true });
+      navigate(session.entry && next === '/connexion' ? session.entry : next, { replace: true });
     } catch (error) {
       if (error instanceof ApiError && error.status === 429) {
         const minutes = Math.max(1, Math.ceil((Number(error.retryAfter || error.headers?.['retry-after'] || 900) / 60)));

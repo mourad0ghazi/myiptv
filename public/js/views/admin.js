@@ -15,6 +15,7 @@ import { renderLiens } from './admin/liens.js';
 import { renderSignalements } from './admin/signalements.js';
 import { renderPilotage } from './admin/pilotage.js';
 import { renderEquipe } from './admin/equipe.js';
+import { renderAppareils } from './admin/appareils.js';
 
 const TABS = [
   ['pilotage', 'Pilotage'],
@@ -26,6 +27,7 @@ const TABS = [
   ['sante', 'Santé'],
   ['sauvegardes', 'Sauvegardes'],
   ['equipe', 'Équipe'],
+  ['appareils', 'Appareils'],
 ];
 
 export async function renderAdmin(container, ctx) {
@@ -37,7 +39,7 @@ export async function renderAdmin(container, ctx) {
       h('span', { class: 'brand-mark', 'aria-hidden': 'true' }, icon('lock', 24)),
       h('h1', {}, 'Administration verrouillée'),
       h('p', { class: 'muted' }, 'Connectez-vous pour gérer le catalogue, les réglages et les sauvegardes.'),
-      h('a', { class: 'btn btn-primary btn-block', href: '/connexion?next=/admin', 'data-link': '' }, icon('lock', 16), COPY.actions.signIn),
+      h('a', { class: 'btn btn-primary btn-block', href: `/connexion?next=${encodeURIComponent(location.pathname)}`, 'data-link': '' }, icon('lock', 16), COPY.actions.signIn),
       h('a', { class: 'btn btn-quiet btn-sm', href: '/', 'data-link': '' }, 'Revenir au catalogue')));
     return () => {};
   }
@@ -97,7 +99,7 @@ export async function renderAdmin(container, ctx) {
       'aria-controls': 'admin-panel',
       onClick: () => {
         state.tab = id;
-        history.replaceState(history.state, '', `/admin?onglet=${id}`);
+        history.replaceState(history.state, '', `${location.pathname.replace(/\/$/, '')}?onglet=${id}`);
         renderTabs();
         renderPanel();
       },
@@ -110,6 +112,7 @@ export async function renderAdmin(container, ctx) {
     try {
       if (state.tab === 'pilotage') await renderPilotage(panel, ctx);
       else if (state.tab === 'equipe') await renderEquipe(panel, ctx);
+      else if (state.tab === 'appareils') await renderAppareils(panel, ctx);
       else if (state.tab === 'catalogue') await renderCatalogue(panel, ctx, state, { refreshStats, stats: () => stats });
       else if (state.tab === 'liens') await renderLiens(panel, ctx, state, { stats: () => stats });
       else if (state.tab === 'signalements') await renderSignalements(panel, ctx, state, { stats: () => stats });

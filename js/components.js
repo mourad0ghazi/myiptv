@@ -64,12 +64,6 @@ export function stateLabel(channel) {
 
 export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {}) {
   const fav = prefs.isFavorite(channel.id);
-  const play = h('button', {
-    class: 'card-play', type: 'button', tabIndex: -1,
-    'aria-label': `Regarder ${channel.name}`,
-    onClick: (event) => { event.stopPropagation(); onPlay?.(channel); },
-  }, h('span', {}, icon('play', 20)));
-
   const favBtn = h('button', {
     class: 'card-fav', type: 'button',
     'aria-label': fav ? COPY.actions.removeFavorite : COPY.actions.addFavorite,
@@ -133,7 +127,7 @@ export function channelCard(channel, { onOpen, onPlay, showHealth = true } = {})
     onPointerEnter: remplirProgramme,
     onFocus: remplirProgramme,
   },
-  h('div', { class: 'card-media' }, logoNode(channel), play, favBtn, ...flags),
+  h('div', { class: 'card-media' }, logoNode(channel), favBtn, ...flags),
   h('div', { class: 'card-body' },
     h('span', { class: 'card-num' },
       showHealth ? h('span', { class: 'health-dot', dataset: { state: channel.blocked ? 'down' : (channel.health || 'unknown') }, title: healthLabel(channel.health), 'aria-hidden': 'true' }) : null,

@@ -2,6 +2,7 @@
 // Une seule instance d'application : #main est le seul point de montage des vues.
 
 import { api, ApiError, auth } from './api.js';
+import { consoleHref, loginHref, rememberConsole } from './console.js';
 import { COPY } from './copy.js';
 import { h, icon, toast, modal, spinner, debounce } from './ui.js';
 import { createRouter } from './router.js';
@@ -110,9 +111,7 @@ function renderBanners() {
   }
   if (config) {
     if (config.defaultPassword) {
-      nodes.push(banner('password', 'warn', COPY.banners.defaultPassword, [
-        h('a', { class: 'btn btn-ghost btn-sm', href: '/admin?tab=backups', 'data-link': '' }, 'Changer le mot de passe'),
-      ]));
+      nodes.push(banner('password', 'warn', COPY.banners.defaultPassword));
     }
     if (config.maintenanceMode) {
       nodes.push(banner('maintenance', 'info', COPY.banners.maintenance));
@@ -131,8 +130,7 @@ function renderBanners() {
               h('p', { text: config.totals.adultHidden
                 ? `${config.totals.adultHidden} chaînes adultes sont masquées par défaut.`
                 : 'Des chaînes sont masquées par une décision du propriétaire.' }),
-              h('p', { class: 'muted', text: 'Les réglages se trouvent dans l’administration, onglet Réglages.' })),
-            actions: [h('a', { class: 'btn btn-primary', href: '/admin?tab=settings', 'data-link': '' }, 'Ouvrir les réglages')],
+              h('p', { class: 'muted', text: 'Le propriétaire les règle depuis la console, onglet Réglages.' })),
           }),
         }, 'En savoir plus'),
       ]));
@@ -312,7 +310,7 @@ function maintenanceNotice(container) {
       h('p', { class: 'muted' }, 'Le catalogue est momentanément fermé. Revenez dans quelques minutes.'),
       h('div', { class: 'error-actions' },
         h('button', { class: 'btn btn-primary', type: 'button', onClick: () => renderRoute(state.route) }, icon('retry', 16), COPY.actions.retry),
-        h('a', { class: 'btn btn-ghost', href: '/admin', 'data-link': '' }, COPY.actions.admin))));
+        h('a', { class: 'btn btn-ghost', href: consoleHref(), 'data-link': '' }, COPY.actions.admin))));
   container.replaceChildren(view);
   return () => {};
 }
@@ -323,7 +321,7 @@ function handleApiFailure(error, container = null, route = null) {
   if (isAuth) {
     if (state.route?.name === 'admin') {
       toast(COPY.login.expired, { tone: 'error' });
-      router.navigate('/connexion?next=/admin', { replace: true });
+      router.navigate(loginHref(), { replace: true });
       return;
     }
     auth.clear();
@@ -367,11 +365,17 @@ function syncHeader(config) {
   if (input && config) {
     input.setAttribute('placeholder', `Rechercher parmi ${config.totals?.visible ?? 0} chaînes, un pays, une catégorie…`);
   }
+  // L'entrée de la console reste invisible : elle n'apparaît qu'au navigateur qui a déjà
+  // franchi le chemin privé, et seulement s'il a une session ouverte.
   const adminLink = document.querySelector('[data-nav="admin"]');
   if (adminLink) {
-    const signed = auth.isSignedIn();
-    adminLink.textContent = signed ? 'Administration' : 'Administration';
-    adminLink.setAttribute('aria-label', signed ? 'Administration, session ouverte' : 'Administration, connexion requise');
+    const ouvert = auth.isSignedIn() && Boolean(state.gate?.admin);
+    adminLink.hidden = !ouvert;
+    if (ouvert) {
+      adminLink.setAttribute('href', consoleHref());
+      adminLink.textContent = 'Console';
+      adminLink.setAttribute('aria-label', 'Console, session ouverte');
+    }
   }
 }
 
@@ -652,7 +656,7 @@ function wireAuthEvents() {
   window.addEventListener('auth:expired', () => {
     if (state.route?.name === 'admin') {
       toast(COPY.login.expired, { tone: 'error', duration: 6000 });
-      router.navigate('/connexion?next=/admin', { replace: true });
+      router.navigate(loginHref(), { replace: true });
     }
   });
   window.addEventListener('unhandledrejection', (event) => {
@@ -668,13 +672,28 @@ function wireAuthEvents() {
 
 /* ------------------------------------------------------------------ démarrage */
 
+/**
+ * Lit la porte de la console : si ce navigateur a déjà ouvert le chemin privé, le serveur
+ * le lui rend et le routeur reconnaît la page. Un visiteur quelconque n'obtient rien.
+ */
+async function readGate() {
+  try {
+    const gate = await api('/api/admin/gate', { timeout: 6000 });
+    state.gate = { admin: Boolean(gate.admin), deviceLock: Boolean(gate.deviceLock) };
+    if (gate.admin && gate.path) rememberConsole(gate.path);
+  } catch {
+    state.gate = state.gate || { admin: false, deviceLock: false };
+  }
+  return state.gate;
+}
+
 async function boot() {
   const main = $main();
   if (main) {
     main.replaceChildren(spinner('Chargement du catalogue…'));
   }
   try {
-    const config = await loadConfig();
+    const [config] = await Promise.all([loadConfig(), readGate()]);
     applyBrand(config);
     syncHeader(config);
     state.booted = true;

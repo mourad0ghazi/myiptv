@@ -1,10 +1,12 @@
 // public/js/player.js · lecteur : 7 états, détection de cause, 12 mires (§8).
 // Invariants : une seule reprise automatique, hls.destroy() à chaque sortie, aucun minuteur orphelin.
 
+import { consoleHref } from './console.js';
 import { api } from './api.js';
 import { COPY } from './copy.js';
 import { h, icon, toast, copyText, logoNode } from './ui.js';
 import { openPlayerOptions, openShortcuts } from './player-menu.js';
+import { leaveFullscreen, toggleFullscreen } from './player-fullscreen.js';
 import { prefs } from './prefs.js';
 import { nowFor, heureCourte, progression } from './epg-now.js';
 
@@ -156,8 +158,10 @@ class Player {
         h('div', { style: { display: 'flex', gap: '8px' } }, favBtn, this.closeBtn)),
       this.osd,
       this.mireHost,
-      this.liveRegion = h('p', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' }),
-      h('div', { class: 'player-controls' },
+      this.liveRegion = h('p', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' }));
+
+    // La barre est un frère de la scène : la vidéo ne peut plus la rogner ni la sortir de l'écran.
+    this.controls = h('div', { class: 'player-controls' },
         h('button', { class: 'player-btn', type: 'button', 'aria-label': COPY.actions.previous, disabled: this.queue.length < 2, onClick: () => this.zap(-1) }, icon('prev', 18)),
         this.playBtn,
         h('button', { class: 'player-btn', type: 'button', 'aria-label': COPY.actions.next, disabled: this.queue.length < 2, onClick: () => this.zap(1) }, icon('next', 18)),
@@ -173,14 +177,14 @@ class Player {
         h('button', { class: 'player-btn', type: 'button', 'aria-label': 'Plein écran', onClick: () => this.fullscreen() }, icon('full', 18)),
         h('button', { class: 'player-btn player-inline', type: 'button', 'aria-label': 'Raccourcis du lecteur', onClick: () => this.showShortcuts() }, icon('settings', 18)),
         // Au téléphone, les commandes rares passent dans ce menu : une rangée lisible au pouce.
-        h('button', { class: 'player-btn player-more', type: 'button', 'aria-label': 'Plus d’options de lecture', onClick: () => this.showOptions() }, icon('dots', 18))));
+        h('button', { class: 'player-btn player-more', type: 'button', 'aria-label': 'Plus d’options de lecture', onClick: () => this.showOptions() }, icon('dots', 18)));
 
     this.dock = h('div', { class: 'player-dock', hidden: true, 'aria-label': 'Chaînes proches' },
       h('div', { class: 'player-similar', id: 'player-similar' }));
     this.overlay = h('div', {
       class: 'player-overlay', role: 'dialog', 'aria-modal': 'true',
       'aria-label': `Lecteur : ${channel.name}`, dataset: { skin: prefs.skin() },
-    }, stage, this.dock);
+    }, stage, this.controls, this.dock);
     this.ensureRoot().replaceChildren(this.overlay);
 
     this.loadProgramme(channel);
@@ -582,7 +586,7 @@ class Player {
         if (action === 'retry' || action === 'play') { this.attempts = 0; this.hideMire(); this.releaseEngine(); this.setState('PREPARING'); this.startPlayback(this.channel.url); }
         if (action === 'copy') copyText(this.channel.url).then((ok) => toast(ok ? 'Lien copié.' : 'Copie impossible sur ce navigateur.', { tone: ok ? 'success' : 'error' }));
         if (action === 'report') window.location.assign(`/signaler?chaine=${encodeURIComponent(this.channel.name)}&id=${this.channel.id}`);
-        if (action === 'admin') window.location.assign('/admin');
+        if (action === 'admin') window.location.assign(consoleHref());
         if (action === 'reload') window.location.reload();
       },
     }, label);
@@ -621,6 +625,7 @@ class Player {
       prefs.setVolume(video.volume);
       prefs.setMuted(video.muted);
       this.muteBtn?.setAttribute('aria-pressed', String(video.muted));
+      this.muteBtn?.setAttribute('aria-label', video.muted ? 'Rétablir le son' : 'Couper le son');
       this.muteBtn?.replaceChildren(icon(video.muted ? 'mute' : 'volume', 18));
       if (this.volumeRange) this.volumeRange.value = String(video.volume);
     });
@@ -631,7 +636,7 @@ class Player {
 
   bindKeys() {
     this.onKeyDown = (event) => {
-      if (event.key === 'Escape') { event.preventDefault(); if (document.fullscreenElement) document.exitFullscreen?.(); else this.close(); return; }
+      if (event.key === 'Escape') { event.preventDefault(); if (leaveFullscreen()) return; this.close(); return; }
       const target = event.target;
       const typing = target && (target.closest('input, textarea, select, [contenteditable="true"]'));
       if (typing) return; // BUG-03 : aucun raccourci dans un champ
@@ -727,9 +732,16 @@ class Player {
     this.video.muted = false;
   }
 
+  /** Le retour est immédiat : icône, état annoncé et repère à l'écran, sans attendre un événement. */
   toggleMute() {
     if (!this.video) return;
     this.video.muted = !this.video.muted;
+    const coupe = this.video.muted;
+    this.muteBtn?.setAttribute('aria-pressed', String(coupe));
+    this.muteBtn?.setAttribute('aria-label', coupe ? 'Rétablir le son' : 'Couper le son');
+    this.muteBtn?.replaceChildren(icon(coupe ? 'mute' : 'volume', 18));
+    if (this.volumeRange) this.volumeRange.value = String(this.video.volume);
+    this.showOsd(coupe ? 'Son coupé' : 'Son rétabli');
   }
 
   toggle() {
@@ -816,11 +828,7 @@ class Player {
     }
   }
 
-  fullscreen() {
-    if (!this.overlay) return;
-    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    else this.overlay.requestFullscreen?.().catch(() => toast('Le plein écran est refusé par le navigateur.', { tone: 'info' }));
-  }
+  fullscreen() { toggleFullscreen(this); }
 
   showShortcuts() {
     openShortcuts();

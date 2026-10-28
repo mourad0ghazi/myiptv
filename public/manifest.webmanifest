@@ -21,7 +21,6 @@
   ],
   "shortcuts": [
     { "name": "Guide des chaînes", "short_name": "Guide", "url": "/guide", "description": "Parcourir les chaînes par catégorie" },
-    { "name": "Favoris", "short_name": "Favoris", "url": "/favoris", "description": "Vos chaînes enregistrées sur cet appareil" },
-    { "name": "Administration", "short_name": "Admin", "url": "/admin", "description": "Gérer le catalogue et les réglages" }
+    { "name": "Favoris", "short_name": "Favoris", "url": "/favoris", "description": "Vos chaînes enregistrées sur cet appareil" }
   ]
 }

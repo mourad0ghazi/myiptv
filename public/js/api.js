@@ -109,10 +109,34 @@ export const Public = {
   reportStatus: (ref) => api(`/api/report/${encodeURIComponent(ref)}`),
 };
 
+/**
+ * Identifiant de cet appareil : 32 caractères tirés au hasard, conservés localement.
+ * Il ne contient aucune information personnelle et ne quitte le navigateur qu'à la
+ * connexion ou à l'enregistrement d'un appareil.
+ */
+const DEVICE_KEY = 'streamtv.device';
+export function deviceId() {
+  try {
+    const connu = localStorage.getItem(DEVICE_KEY);
+    if (connu && /^[a-f0-9]{32}$/.test(connu)) return connu;
+    const octets = new Uint8Array(16);
+    crypto.getRandomValues(octets);
+    const neuf = [...octets].map((octet) => octet.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem(DEVICE_KEY, neuf);
+    return neuf;
+  } catch {
+    return '';
+  }
+}
+
 /** API admin : objet unique, testé par tests/api.test.js. */
 export const Admin = {
   session: () => api('/api/session'),
-  login: (password, email = '') => api('/api/login', { method: 'POST', body: { password, email } }),
+  login: (password, email = '') => api('/api/login', { method: 'POST', body: { password, email, deviceId: deviceId() } }),
+  gate: () => api('/api/admin/gate'),
+  devices: () => api(`/api/admin/devices?current=${deviceId()}`),
+  addDevice: (label) => api('/api/admin/devices', { method: 'POST', body: { deviceId: deviceId(), label } }),
+  removeDevice: (id) => api(`/api/admin/devices/${encodeURIComponent(id)}`, { method: 'DELETE', body: {} }),
   logout: () => api('/api/logout', { method: 'POST', body: {} }),
   channels: (params) => api(`/api/admin/channels?${new URLSearchParams(params)}`),
   channel: (id) => api(`/api/admin/channels/${id}`),
