@@ -10,6 +10,7 @@ import { getPlayer } from './player.js';
 import { applyTvMode, wireTvKeys, wireInstall } from './tv.js';
 import { prefs } from './prefs.js';
 import { BASE, withBase } from './base.js';
+import { PLAFOND_AMORCAGE, avecPlafond } from './amorcage.js';
 
 import { renderHome } from './views/home.js';
 import { renderGuide } from './views/guide.js';
@@ -758,13 +759,55 @@ const router = createRouter({
   },
 });
 
+/**
+ * Sortie de secours : quand la page n'a rien reçu au bout du plafond, elle cesse d'attendre
+ * et propose deux gestes utiles. Aucun écran de chargement ne reste définitif.
+ */
+function ecranDeSecours() {
+  const main = $main();
+  if (!main) return;
+  const bouton = (libelle, action, principale = false) => h('button', {
+    class: principale ? 'btn btn-primary' : 'btn btn-ghost', type: 'button', onClick: action,
+  }, libelle);
+  main.replaceChildren(h('div', { class: 'view' }, h('div', { class: 'empty' },
+    h('div', { class: 'empty-icon' }, icon('alert', 24)),
+    h('h3', {}, 'Le catalogue n’est pas arrivé'),
+    h('p', {
+      text: `La page a attendu ${Math.round(PLAFOND_AMORCAGE / 1000)} secondes sans recevoir les données. `
+        + 'Le plus souvent, le navigateur garde une copie ancienne du site : le second bouton la retire.',
+    }),
+    h('div', { class: 'empty-actions' },
+      bouton('Réessayer', () => window.location.reload(), true),
+      bouton('Forcer la mise à jour', () => { forcerMiseAJour(); })))));
+}
+
+/** Retire les service workers et leurs caches, puis recharge : le site repart du réseau. */
+async function forcerMiseAJour() {
+  try {
+    const enregistrements = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(enregistrements.map((enregistrement) => enregistrement.unregister().catch(() => false)));
+  } catch { /* navigateur sans service worker */ }
+  try {
+    const noms = await caches.keys();
+    await Promise.all(noms.map((nom) => caches.delete(nom).catch(() => false)));
+  } catch { /* stockage de caches indisponible */ }
+  window.location.reload();
+}
+
 async function main() {
   wireHeader();
   wireKeyboard();
   wireNetwork();
   wireAuthEvents();
-  const ready = await boot();
-  if (ready) router.start();
+  // L'amorçage est borné : au-delà du plafond, on montre une issue au lieu d'attendre.
+  const issue = await avecPlafond(boot(), { ms: PLAFOND_AMORCAGE });
+  if (issue === 'depasse') {
+    document.documentElement.classList.remove('is-booting');
+    document.documentElement.classList.add('is-ready');
+    ecranDeSecours();
+    return;
+  }
+  if (issue) router.start();
   document.getElementById('boot-screen')?.remove();
   document.documentElement.classList.remove('is-booting');
   document.documentElement.classList.add('is-ready');

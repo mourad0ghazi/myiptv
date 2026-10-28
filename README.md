@@ -315,6 +315,20 @@ STREAMTV_TLS_CERT=/etc/streamtv/cert.pem STREAMTV_TLS_KEY=/etc/streamtv/key.pem 
 
 Le cookie d'entrée de la console est alors marqué `Secure`, et le site n'accepte plus le HTTP.
 
+### Mise à jour et sortie de secours (3.16.0)
+
+Un navigateur peut garder le code d'une version précédente : la page vient du réseau, le
+JavaScript vient du cache. Trois garde-fous rendent ce mélange impossible ou sans effet.
+
+| Garde-fou | Ce qu'il fait |
+|---|---|
+| `js/coquille.js`, chargé avant l'application | compare la version de la page à celle de la dernière visite ; si elles diffèrent, retire workers et caches, puis recharge une fois |
+| `<meta name="streamtv-version">` | déclare la version dans la page ; un test la tient égale à celle du serveur et du worker |
+| Plafond d'amorçage de 15 s | au-delà, écran de secours avec « Réessayer » et « Forcer la mise à jour » |
+
+En cas de doute sur un appareil : ouvrir le site dans un onglet privé. Si le catalogue
+apparaît, c'est le cache ; le garde-fou le nettoiera à la visite suivante, sans manipulation.
+
 ### Le site publié et ses données (3.15.0)
 
 Le catalogue public n'est pas servi par le serveur Node : il est figé en deux fichiers, et

@@ -3,6 +3,38 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.16.0] - 2026-10-28
+
+Un écran de chargement ne peut plus être définitif, et une page neuve ne peut plus tourner
+avec le code d'une version ancienne. C'est la leçon d'un téléphone resté sur « Chargement du
+catalogue… » alors que le site en ligne était à jour : la page venait du réseau, le
+JavaScript venait du cache d'un service worker précédent.
+
+### Ajouté
+
+- **Coquille de version** (`js/coquille.js`) : script classique chargé avant l'application,
+  il compare la version inscrite dans la page à celle de la dernière visite. Si elles
+  diffèrent, il retire les service workers, supprime leurs caches et recharge **une seule
+  fois**. La page rechargeée retrouve la bonne version et ne boucle pas.
+- **Plafond d'amorçage** : quinze secondes maximum. Au-delà, la page cesse d'attendre et
+  affiche un écran de secours avec « Réessayer » et « Forcer la mise à jour », ce dernier
+  retirant workers et caches avant de recharger.
+- **Version déclarée dans la page** (`<meta name="streamtv-version">`), tenue égale à celle
+  du serveur et du service worker par un test : trois sources, une seule vérité.
+
+### Modifié
+
+- L'écran d'amorçage annonce qu'une solution arrive au bout de quinze secondes : l'attente
+  n'est plus muette même avant le plafond.
+- `js/coquille.js` et `js/amorcage.js` entrent dans la coquille mise en cache par le worker.
+
+### Vérifié
+
+- 344 tests, dont 12 nouveaux : coquille jouée dans un faux navigateur (même version, version
+  différente, première visite, stockage refusé, absence de boucle), plafond d'amorçage
+  (valeur rendue, échec propagé, dépassement, réponse tardive ignorée), et égalité de version
+  entre la page, le worker et le serveur.
+
 ## [3.15.0] - 2026-10-28
 
 Les chaînes ne s'affichaient plus sur le site public : l'écran restait sur « Recherche en

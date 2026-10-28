@@ -7,7 +7,7 @@
    Le chemin de publication est lu dans la portée du worker : le même fichier sert à la racine
    du serveur Node et dans le sous-dossier de GitHub Pages, sans réécriture à la construction. */
 
-const VERSION = 'streamtv-v3.15.0';
+const VERSION = 'streamtv-v3.16.0';
 const CACHE_COQUILLE = `${VERSION}-coquille`;
 const CACHE_FICHIERS = `${VERSION}-fichiers`;
 
@@ -16,7 +16,7 @@ const PORTEE = new URL(self.registration.scope);
 
 /** Fichiers indispensables au premier écran, résolus contre la portée. */
 const COQUILLE = [
-  '', 'offline.html', 'css/app.css', 'js/base.js', 'js/app.js', 'js/router.js', 'js/api.js',
+  '', 'offline.html', 'css/app.css', 'js/coquille.js', 'js/amorcage.js', 'js/base.js', 'js/app.js', 'js/router.js', 'js/api.js',
   'js/copy.js', 'js/ui.js', 'js/prefs.js', 'js/console.js', 'js/player.js', 'js/player-fullscreen.js',
   'js/player-menu.js', 'js/components.js', 'js/tv.js', 'js/epg-now.js', 'js/preview.js',
   'js/views/home.js', 'js/views/guide.js', 'js/views/channel.js', 'js/views/favorites.js',
