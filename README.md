@@ -315,6 +315,22 @@ STREAMTV_TLS_CERT=/etc/streamtv/cert.pem STREAMTV_TLS_KEY=/etc/streamtv/key.pem 
 
 Le cookie d'entrée de la console est alors marqué `Secure`, et le site n'accepte plus le HTTP.
 
+### Accès par lien (3.13.0)
+
+Pour ouvrir la console sans transmettre de mot de passe : onglet **Accès**, créer un lien,
+choisir le rôle, la durée et le nombre d'ouvertures, puis copier le lien affiché.
+
+```
+https://votre-serveur/acces/3f9c…            un lien, un rôle, une durée
+```
+
+- Le lien complet n'est affiché qu'une fois : le serveur ne garde qu'une empreinte du jeton.
+- Un lien à un seul usage s'épuise à la première ouverture ; un lien révoqué ferme l'entrée
+  immédiatement, y compris pour la personne qui l'a déjà utilisé.
+- Le rôle du lien est celui de la console : administrateur (tout sauf l'équipe), éditeur,
+  modérateur ou analyste.
+- Le verrou d'appareil s'applique aux liens administrateur, pas aux liens de collaboration.
+
 ### Code de connexion par e-mail (3.12.0)
 
 Avec Yahoo, un mot de passe d'application est nécessaire (compte → Sécurité → Mots de passe

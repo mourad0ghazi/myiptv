@@ -9,6 +9,7 @@ import { normalizeQuery, normalizeKey } from '../core/text.js';
 import { checkMemberPassword, findMember, publicMember, ROLES } from '../core/team.js';
 import { deviceDigest, isDeviceAllowed, normalizeDeviceId } from '../core/devices.js';
 import { maskEmail } from '../core/twofactor.js';
+import { isLinkToken, linkDigest, linkUsable, sameDigest } from '../core/access-links.js';
 import { buildEpg } from '../core/epg.js';
 import { catalogForClient } from '../core/messages.js';
 import { reportThreshold } from '../core/reports.js';
@@ -156,7 +157,11 @@ async function openSession(app, { member, identite, ip, req }) {
       defaultPassword: member ? false : app.auth.isDefaultPasswordActive(),
       role: session.role,
       roleLabel: ROLES[session.role]?.label || 'Propriétaire',
-      member: member ? publicMember(member) : { name: 'Propriétaire', role: 'proprietaire', email: '' },
+      member: member ? publicMember(member) : {
+        name: String(app.store.settings.adminName || '').trim() || 'Propriétaire',
+        role: 'proprietaire',
+        email: String(app.store.settings.adminEmail || ''),
+      },
       // Destination juste après la connexion : le chemin privé de la console.
       entry: `/${app.store.settings.adminPath}`,
       message: 'Connexion réussie.',
@@ -581,7 +586,7 @@ export function registerPublicRoutes(router, app) {
     }
     const identite = member
       ? { role: member.role, memberId: member.id, memberName: member.name }
-      : { role: 'proprietaire', memberId: '', memberName: 'Propriétaire' };
+      : { role: 'proprietaire', memberId: '', memberName: String(app.store.settings.adminName || '').trim() || 'Propriétaire' };
 
     // Second facteur : le mot de passe juste n'ouvre encore rien, un code part par e-mail.
     const adresse = String(app.store.settings.adminEmail || '').trim();
@@ -698,6 +703,49 @@ export function registerPublicRoutes(router, app) {
       },
       cache: 'no-store',
     };
+  });
+
+
+  // Lien d'accès : quiconque possède le lien entre, avec le rôle prévu par son auteur.
+  // Le jeton est vérifié par condensé, jamais conservé en clair ; l'usage est décompté.
+  router.post('/api/access/redeem', async ({ body, ip, req }) => {
+    const guard = app.loginGuard.check(ip);
+    if (!guard.allowed) throw guardRefusal(guard);
+    const jeton = typeof body?.token === 'string' ? body.token : '';
+    if (!isLinkToken(jeton)) {
+      app.loginGuard.fail(ip);
+      await app.store.audit('access.redeem.fail', { ip, result: 'jeton invalide' });
+      throw new AppError('ERR-08', { message: 'Ce lien n’est pas valable.' });
+    }
+    const digest = linkDigest(jeton);
+    const link = app.store.accessLinks.find((item) => sameDigest(item.digest, digest));
+    if (!linkUsable(link)) {
+      app.loginGuard.fail(ip);
+      await app.store.audit('access.redeem.fail', { ip, result: link ? 'lien fermé' : 'lien inconnu' });
+      throw new AppError('ERR-08', { message: 'Ce lien a expiré ou a été révoqué. Demandez-en un nouveau.' });
+    }
+    const deviceId = normalizeDeviceId(body?.deviceId);
+    const demandeVerrou = Boolean(app.store.settings.adminDeviceLock)
+      && ['proprietaire', 'administrateur'].includes(link.role);
+    if (demandeVerrou && !isDeviceAllowed(app.store.devices, deviceId)) {
+      app.loginGuard.fail(ip);
+      await app.store.audit('access.redeem.fail', { ip, result: 'appareil non autorisé' });
+      throw new AppError('ERR-09', {
+        message: 'Le verrou d’appareil est actif : ce lien ne s’ouvre que sur un appareil enregistré.',
+      });
+    }
+    link.uses += 1;
+    link.lastUsedAt = new Date().toISOString();
+    await app.store.saveAccessLinks('usage lien');
+    const reponse = await openSession(app, {
+      member: null,
+      identite: { role: link.role, memberId: `lien:${link.id}`, memberName: link.label },
+      ip,
+      req,
+    });
+    await app.store.audit('access.redeem', { ip, lien: link.label, role: link.role, usages: link.uses });
+    reponse.body.lien = { label: link.label, uses: link.uses, maxUses: link.maxUses };
+    return reponse;
   });
 
   // Déconnexion.

@@ -146,9 +146,9 @@ describe('Contrat de données (§4)', () => {
     assert.equal(errorMessage('ERR-16', { raison: 'test' }), 'Impossible d’appliquer : test.');
   });
 
-  test('20 réglages, schéma complet, bornes documentées', () => {
-    assert.equal(Object.keys(DEFAULTS).length, 20);
-    assert.equal(SCHEMA.length, 20);
+  test('21 réglages, schéma complet, bornes documentées', () => {
+    assert.equal(Object.keys(DEFAULTS).length, 21);
+    assert.equal(SCHEMA.length, 21);
     const keys = new Set(SCHEMA.map((item) => item.key));
     for (const key of Object.keys(DEFAULTS)) assert.ok(keys.has(key), `schéma sans ${key}`);
     const schema = Object.fromEntries(SCHEMA.map((item) => [item.key, item]));
@@ -159,7 +159,7 @@ describe('Contrat de données (§4)', () => {
     assert.equal(DEFAULTS.pageSize, 48);
     assert.equal(DEFAULTS.confidenceFloor, 0.45);
     assert.equal(DEFAULTS.targetTable, 0);
-    assert.equal(depthUiSchema(schema), 20);
+    assert.equal(depthUiSchema(schema), 21);
   });
 
   test('limites techniques conformes au cahier des charges', () => {
@@ -171,7 +171,7 @@ describe('Contrat de données (§4)', () => {
     assert.equal(LIMITS.backupDaily, 7);
     assert.equal(LIMITS.backupWeekly, 4);
     assert.equal(LIMITS.importMaxMs, 120000);
-    assert.equal(VERSION, '3.12.0');
+    assert.equal(VERSION, '3.13.0');
   });
 });
 

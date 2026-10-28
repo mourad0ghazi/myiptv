@@ -574,3 +574,44 @@ describe('Code de connexion par e-mail (3.12.0)', () => {
     assert.equal(/sparkles/.test(ui), false);
   });
 });
+
+describe('Accès par lien (3.13.0)', () => {
+  test('le lien ouvre la console sans mot de passe, une seule fois', async () => {
+    const vue = await read('public/js/views/access.js');
+    assert.match(vue, /redeemAccess/);
+    assert.match(vue, /auth\.set\(session\.token\)/);
+    assert.match(vue, /replace: true/, 'le jeton disparaît de la barre d’adresse');
+    assert.match(vue, /rememberConsole/);
+    assert.match(vue, /Lien non valable/);
+
+    const router = await read('public/js/router.js');
+    assert.match(router, /\/\^\\\/acces\\\/\(\[a-f0-9\]\{64\}\)/, 'la route du lien accepte un jeton de 64 caractères');
+    const api = await read('public/js/api.js');
+    assert.match(api, /api\/access\/redeem/);
+    assert.match(api, /createAccessLink/);
+    assert.match(api, /revokeAccessLink/);
+  });
+
+  test('l’onglet Accès crée, copie et révoque', async () => {
+    const admin = await read('public/js/views/admin.js');
+    const ordered = [...admin.matchAll(/\['(\w+)',\s*'/g)].map((found) => found[1]);
+    assert.ok(ordered.includes('acces'), 'onglet Accès absent');
+    const vue = await read('public/js/views/admin/acces.js');
+    assert.match(vue, /Admin\.createAccessLink/);
+    assert.match(vue, /Admin\.revokeAccessLink/);
+    assert.match(vue, /Copier le lien/);
+    assert.match(vue, /afficheUneFois|une seule fois/, 'l’écran prévient que le lien ne se relit pas');
+    assert.match(vue, /confirm\(/, 'la révocation demande confirmation');
+    assert.equal(vue.includes('—'), false, 'cadratin dans la copie');
+  });
+
+  test('le serveur ne stocke que l’empreinte du jeton', async () => {
+    const serveur = await read('server/api/admin-access.js');
+    assert.match(serveur, /linkDigest\(token\)/);
+    assert.match(serveur, /afficheUneFois: true/);
+    const publicApi = await read('server/api/public.js');
+    assert.match(publicApi, /api\/access\/redeem/);
+    assert.match(publicApi, /linkUsable/);
+    assert.equal(/accessLinks\.push\(\{[^}]*token:/.test(publicApi), false, 'aucun jeton écrit en clair');
+  });
+});

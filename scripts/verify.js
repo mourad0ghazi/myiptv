@@ -44,13 +44,13 @@ async function main() {
   await store.init();
 
   /* ---------------------------------------------------- contrat des données */
-  check('version du logiciel', VERSION === '3.12.0', VERSION);
+  check('version du logiciel', VERSION === '3.13.0', VERSION);
   check('20 codes d’erreur', Object.keys(ERRORS).length === 20, `${Object.keys(ERRORS).length} codes`);
   check('82 messages du §9', MESSAGES.length === 82, `${MESSAGES.length} messages`);
   check('6 familles de messages', FAMILIES.length === 6, `${FAMILIES.length} familles`);
   check('codes opposables tous reliés', Object.keys(ERR_TO_MESSAGE).length === 20
     && Object.values(ERR_TO_MESSAGE).every((id) => MESSAGE_BY_ID.has(id)), 'table ERR → message');
-  check('20 réglages', Object.keys(DEFAULTS).length === 20, `${Object.keys(DEFAULTS).length} réglages`);
+  check('21 réglages', Object.keys(DEFAULTS).length === 21, `${Object.keys(DEFAULTS).length} réglages`);
   check('18 catégories', CATEGORY_IDS.length === 18, `${CATEGORY_IDS.length} catégories`);
   const settingsCheck = validateSettings(store.settings);
   check('réglages valides', settingsCheck.errors.length === 0, settingsCheck.errors.map((error) => error.message).join('; '));

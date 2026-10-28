@@ -10,6 +10,7 @@ const ROUTES = [
   { name: 'guide', pattern: /^\/guide\/?$/, title: 'Guide' },
   { name: 'channel', pattern: /^\/chaine\/([A-Za-z0-9_-]{1,32})\/?$/, title: 'Fiche chaîne', keys: ['id'] },
   { name: 'favorites', pattern: /^\/favoris\/?$/, title: 'Favoris et historique' },
+  { name: 'access', pattern: /^\/acces\/([a-f0-9]{64})\/?$/, title: 'Connexion par lien', keys: ['token'] },
   { name: 'login', pattern: /^\/(?:connexion|login)\/?$/, title: 'Connexion administration' },
   { name: 'legal', pattern: /^\/mentions-legales\/?$/, title: 'Mentions légales' },
   { name: 'privacy', pattern: /^\/confidentialite\/?$/, title: 'Confidentialité' },
