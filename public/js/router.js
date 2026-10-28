@@ -2,6 +2,7 @@
 // Aucun rechargement complet : une seule coquille HTML, des vues montées puis démontées.
 
 import { BASE, resolve, withoutBase } from './base.js';
+import { consolePath } from './console.js';
 
 const ROUTES = [
   { name: 'home', pattern: /^\/$/, title: 'Catalogue' },
@@ -10,7 +11,6 @@ const ROUTES = [
   { name: 'channel', pattern: /^\/chaine\/([A-Za-z0-9_-]{1,32})\/?$/, title: 'Fiche chaîne', keys: ['id'] },
   { name: 'favorites', pattern: /^\/favoris\/?$/, title: 'Favoris et historique' },
   { name: 'login', pattern: /^\/(?:connexion|login)\/?$/, title: 'Connexion administration' },
-  { name: 'admin', pattern: /^\/(?:admin|administration)\/?$/, title: 'Administration' },
   { name: 'legal', pattern: /^\/mentions-legales\/?$/, title: 'Mentions légales' },
   { name: 'privacy', pattern: /^\/confidentialite\/?$/, title: 'Confidentialité' },
   { name: 'report', pattern: /^\/signaler\/?$/, title: 'Signaler un contenu' },
@@ -31,6 +31,11 @@ export function parseQuery(search = '') {
 
 export function matchRoute(pathname) {
   const path = pathname || '/';
+  // La console vit sur un chemin privé, connu seulement de ce navigateur.
+  const consoleSegment = consolePath();
+  if (consoleSegment && path.replace(/^\/+|\/+$/g, '') === consoleSegment) {
+    return { name: 'admin', title: 'Console', params: {}, path };
+  }
   for (const route of ROUTES) {
     const found = route.pattern.exec(path);
     if (!found) continue;

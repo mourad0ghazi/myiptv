@@ -227,7 +227,7 @@ node scripts/backup.js --list
 sha256sum data/backups/catalogue-20261025-113924.json
 cat data/backups/catalogue-20261025-113924.json.sha256
 
-# 3. restaurer depuis l’interface (/admin → Sauvegardes) ou par l’API
+# 3. restaurer depuis la console (onglet Sauvegardes) ou par l’API
 TOKEN=$(curl -s -X POST localhost:3000/api/login -H 'Content-Type: application/json' \
   -d '{"password":"…"}' | sed -E 's/.*"token":"([a-f0-9]+)".*/\1/')
 curl -s -X POST localhost:3000/api/admin/restore \
@@ -272,7 +272,7 @@ node scripts/ingest.js --url https://exemple.com/liste.m3u
 node scripts/ingest.js --url https://exemple.com/liste.m3u --commit
 ```
 
-Par l’interface : `/admin` → Importation → coller une URL ou choisir un fichier →
+Par l’interface : console privée → Importation → coller une URL ou choisir un fichier →
 *Aperçu* → vérifier les compteurs → *Confirmer*.
 
 Règles :
@@ -320,7 +320,7 @@ Règles :
 
 ### 5.5 Trop de chaînes mal classées
 
-1. `stats.lowConfidence` > 10 % : consulter `/admin` → Catalogue → filtre « à vérifier ».
+1. `stats.lowConfidence` > 10 % : consulter la console → Catalogue → filtre « à vérifier ».
 2. Corriger les groupes de la source, ajouter des règles (`PATCH /api/admin/rules`).
 3. Relancer `POST /api/admin/autotag-all` : les décisions manuelles ne sont jamais écrasées.
 4. Mesurer : `node scripts/measure-tagger.js` ; viser « autre » = 0 %.
@@ -329,7 +329,7 @@ Règles :
 
 1. Repérer l’IP : `grep '"action":"login.fail"' data/audit.log | tail -50`.
 2. Le verrouillage automatique bloque déjà 15 minutes après 8 échecs.
-3. Si l’attaque continue : restreindre l’accès à `/api/login` et `/admin` au réseau
+3. Si l’attaque continue : restreindre l’accès à `/api/login` et au chemin `adminPath` au réseau
    d’administration (pare-feu ou reverse proxy), puis changer le mot de passe (§5.6.1).
 
 #### 5.6.1 Changer le mot de passe
@@ -436,7 +436,7 @@ d’exécution, interdite par le cahier des charges. Le déclencheur reste humai
 4. Vérifier `package.json` (version) et `public/sw.js` (`CACHE_NAME` doit changer, sinon les
    navigateurs gardent l’ancienne coquille).
 5. Démarrer, puis exécuter `npm test` et `node scripts/verify.js --base http://127.0.0.1:3000`.
-6. Contrôler l’accueil, `/guide`, une fiche, `/admin` (connexion + Réglages + Sauvegardes).
+6. Contrôler l’accueil, `/guide`, une fiche, puis la console (connexion + Réglages + Appareils).
 
 Retour arrière : arrêter, restaurer le code précédent et la sauvegarde créée à l’étape 1.
 
@@ -453,7 +453,7 @@ Retour arrière : arrêter, restaurer le code précédent et la sauvegarde cré�
 - [ ] Sauvegarde récente (< 26 h) et restauration testée sur recette.
 - [ ] Sauvegarde des données hors du serveur (copie quotidienne).
 - [ ] Journalisation et rotation actives ; disque surveillé.
-- [ ] Accès à `/admin` restreint au réseau d’administration si exposition publique.
+- [ ] Verrou d’appareil actif et chemin `adminPath` tenu secret si exposition publique.
 - [ ] Mentions légales, confidentialité et procédure de retrait à jour.
 - [ ] `CONFORMITE.md` et `docs/PV-RECETTE.md` signés pour la version déployée.
 

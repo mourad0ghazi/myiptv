@@ -17,6 +17,7 @@ import { buildTags, detectCountry, detectLanguage, detectQuality, groupKind, nor
 import { buildPredicate, paginate, sortChannels } from '../core/search.js';
 import { queryInt, queryString } from '../http/router.js';
 import { registerPilotageRoutes } from './admin-pilotage.js';
+import { registerSettingsRoutes } from './admin-settings.js';
 
 const now = () => new Date().toISOString();
 
@@ -97,6 +98,7 @@ function makeEntry({ name, url, urlNormalized, logo = '', group = '', quality, t
 /** Table de permissions : chaque route d'administration nomme l'action qu'elle autorise. */
 export function permissionFor(method, pattern) {
   if (pattern.includes('/team')) return 'team';
+  if (pattern.includes('/device')) return 'team';
   if (pattern.includes('/password') || pattern.includes('/sessions')) return 'team';
   if (pattern.includes('/backup') || pattern.includes('/restore')) return 'backup';
   if (pattern.includes('/settings') || pattern.includes('/rules')) return 'settings';
@@ -505,48 +507,7 @@ export function registerAdminRoutes(base, app) {
   }), auth);
 
   /* ---------------------------------------------------------------- réglages */
-
-  // EP-24 — lecture des réglages.
-  router.get('/api/admin/settings', () => ({
-    body: {
-      settings: app.store.settings,
-      schema: schemaForClient(),
-      defaults: DEFAULTS,
-      licenseNotes: LICENSE_NOTES,
-    },
-    cache: 'no-store',
-  }), auth);
-
-  // EP-25 — écriture des réglages (validation globale, A5).
-  router.patch('/api/admin/settings', async ({ body, ip, requestId }) => {
-    const patch = body && typeof body === 'object' ? body : {};
-    const unknown = Object.keys(patch).filter((key) => !(key in DEFAULTS));
-    if (unknown.length) throw new AppError('ERR-04', { field: unknown[0], params: { champ: unknown[0] } });
-    const existingIds = new Set(app.store.channels.filter((channel) => !channel.deleted).map((channel) => channel.id));
-    const { settings, errors } = validateSettings(patch, { existingIds, base: app.store.settings });
-    if (errors.length) {
-      const first = errors[0];
-      throw new AppError(first.code, { field: first.field, message: first.message });
-    }
-    const next = { ...app.store.settings, ...settings };
-    await app.store.saveSettings(next, 'settings.update');
-    await app.store.audit('settings.update', { ip, requestId, detail: Object.keys(patch).join(',') });
-    return {
-      body: {
-        settings: app.store.settings,
-        message: 'Réglages enregistrés.',
-        requiresReload: false,
-      },
-      cache: 'no-store',
-    };
-  }, auth);
-
-  // EP-26 — réinitialisation.
-  router.post('/api/admin/settings/reset', async ({ ip }) => {
-    await app.store.saveSettings({ ...DEFAULTS }, 'settings.reset');
-    await app.store.audit('settings.reset', { ip });
-    return { body: { settings: app.store.settings, message: 'Les 17 réglages ont retrouvé leurs valeurs par défaut.' }, cache: 'no-store' };
-  }, auth);
+  registerSettingsRoutes(router, app);
 
   /* ---------------------------------------------------------------- règles */
 

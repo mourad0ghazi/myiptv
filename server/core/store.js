@@ -15,6 +15,7 @@ const FILES = {
   reports: 'reports.json',
   team: 'team.json',
   plays: 'plays.json',
+  devices: 'devices.json',
   audit: 'audit.log',
 };
 
@@ -96,6 +97,7 @@ export class Store {
     await this.loadReports();
     await this.loadTeam();
     await this.loadPlays();
+    await this.loadDevices();
     return this;
   }
 
@@ -204,6 +206,22 @@ export class Store {
     const { data } = await this.readJson(this.file('plays'), null);
     this.plays = data && typeof data === 'object' && data.counts ? data : { totals: {}, hours: {} };
     return this.plays;
+  }
+
+  /**
+   * Registre des appareils autorisés. Quand le verrou est actif, un mot de passe seul
+   * ne suffit plus : l'appareil doit figurer ici.
+   */
+  async loadDevices() {
+    const { data } = await this.readJson(this.file('devices'), null);
+    this.devices = Array.isArray(data?.devices) ? data.devices : [];
+    return this.devices;
+  }
+
+  async saveDevices(reason = 'devices') {
+    return this.enqueue(async () => {
+      await this.atomicWriteJson(this.file('devices'), { version: 1, reason, devices: this.devices });
+    });
   }
 
   async savePlays(reason = 'plays') {

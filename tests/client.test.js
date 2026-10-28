@@ -299,7 +299,8 @@ describe('Routage client et rendu', () => {
     // Sur un écran sans survol, la pastille de lecture est visible : aucun tap manqué.
     const coarse = css.slice(css.indexOf('@media (hover:none), (pointer:coarse)'));
     assert.ok(css.includes('@media (hover:none), (pointer:coarse)'), 'bloc tactile absent');
-    assert.match(coarse, /\.card-play\{opacity:1/);
+    // Aucune commande ne recouvre l'affiche : la carte n'expose que son contenu.
+    assert.equal(/\.card-play\{/.test(css), false, 'plus de bouton posé sur le logo');
     assert.match(coarse, /\.chip\{min-height:44px\}/);
     assert.match(coarse, /\.btn-sm\{min-height:44px/);
     assert.match(coarse, /\.player-btn\{width:46px; height:46px\}/);
@@ -411,9 +412,11 @@ describe('Console de pilotage et équipe (3.9.0)', () => {
     assert.match(css, /\.card-media img\{[^}]*object-fit:contain/);
   });
 
-  test('téléphone : une colonne, cœur de 44 px, aucune information au survol seul', async () => {
-    assert.match(css, /@media \(max-width:519px\)\{[\s\S]{0,120}\.grid\{grid-template-columns:minmax\(0,1fr\)/);
-    assert.match(css, /@media \(hover:none\), \(pointer:coarse\)\{[\s\S]{0,160}\.card-fav\{[^}]*width:44px; height:44px/);
+  test('téléphone : trois chaînes par ligne, cible d’appui suffisante, rien au survol seul', async () => {
+    assert.match(css, /@media \(max-width:619px\)\{[\s\S]{0,160}\.grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+    // Le cœur garde 32 px visuels mais 48 px de zone d'appui.
+    assert.match(css, /\.card-fav\{top:-2px; right:-2px; width:32px; height:32px/);
+    assert.match(css, /\.card-fav::before\{content:""; position:absolute; inset:-8px\}/);
     // L'entrée des cartes respecte le mouvement réduit.
     assert.match(css, /@media \(prefers-reduced-motion:reduce\)\{[\s\S]{0,120}\.card\{animation:none\}/);
   });
@@ -421,13 +424,11 @@ describe('Console de pilotage et équipe (3.9.0)', () => {
   test('expérience visiteur : carte propre, fiche façon plateforme', async () => {
     const components = await read('public/js/components.js');
     const fiche = await read('public/js/views/channel.js');
-    // Le bouton de lecture ne recouvre plus l'affiche : il est posé dans l'angle.
-    const play = /\.card-play\{([^}]*)\}/.exec(css);
-    assert.ok(play, 'règle .card-play absente');
-    assert.equal(/inset:\s*0/.test(css.split('.card-play{')[1].split('}')[0]), false,
-      'le bouton de lecture ne doit plus couvrir toute l’affiche');
-    // Sur téléphone, la carte est couchée : affiche à gauche, texte à droite.
-    assert.match(css, /@media \(max-width:519px\)\{[\s\S]{0,400}\.card\{display:grid; grid-template-columns:104px/);
+    // Aucune commande sur l'affiche : ni voile, ni disque, ni bouton flottant.
+    assert.equal(/card-play/.test(css), false, 'aucune commande posée sur le logo');
+    assert.equal(/class: 'card-play'/.test(components), false, 'aucun bouton de lecture dans la carte');
+    // Sur téléphone, trois colonnes et une affiche carrée.
+    assert.match(css, /@media \(max-width:619px\)\{[\s\S]{0,120}\.grid\{grid-template-columns:repeat\(3/);
     // La fiche porte un bandeau de programme et un « à suivre ».
     assert.match(fiche, /feature-now/);
     assert.match(fiche, /À suivre/);
@@ -475,5 +476,66 @@ describe('PWA et résilience hors ligne', () => {
       }
       assert.equal(/require\(/.test(source), false, `${file} utilise require`);
     }
+  });
+});
+
+describe('Console privée (3.11.0)', () => {
+  test('aucun lien public ne mène à l’administration', async () => {
+    const files = await listFiles('public/js', (file) => file.endsWith('.js'));
+    for (const file of files) {
+      const source = await read(file);
+      assert.equal(/href:\s*['"]\/(?:admin|administration)/.test(source), false, `${file} expose /admin`);
+      assert.equal(/navigate\(\s*['"]\/(?:admin|administration)/.test(source), false, `${file} navigue vers /admin`);
+      assert.equal(/location\.assign\(\s*['"]\/(?:admin|administration)/.test(source), false, `${file} redirige vers /admin`);
+      assert.equal(/next=\/(?:admin|administration)/.test(source), false, `${file} ramène vers /admin après connexion`);
+    }
+    const html = await read('public/index.html');
+    assert.equal(/href="\/(?:admin|administration)"/.test(html), false, 'index.html ne lie pas /admin');
+    assert.match(html, /data-nav="admin"[^>]*hidden/, 'l’entrée de la console est masquée par défaut');
+  });
+
+  test('le routeur ne reconnaît la console que sur le chemin retenu', async () => {
+    const router = await read('public/js/router.js');
+    assert.match(router, /consolePath\(\)/);
+    assert.equal(/pattern:\s*\/\^\\\/\(\?:admin\|administration\)/.test(router), false, 'plus de route /admin publique');
+    const consoleModule = await read('public/js/console.js');
+    assert.match(consoleModule, /streamtv\.console/);
+    assert.match(consoleModule, /\[a-z0-9-\]\{8,40\}/);
+    assert.match(consoleModule, /export function consoleHref/);
+  });
+
+  test('l’identifiant d’appareil est local, aléatoire et envoyé à la connexion', async () => {
+    const api = await read('public/js/api.js');
+    assert.match(api, /crypto\.getRandomValues/);
+    assert.match(api, /streamtv\.device/);
+    assert.match(api, /\^\[a-f0-9\]\{32\}\$/);
+    assert.match(api, /deviceId: deviceId\(\)/, 'la connexion porte l’identifiant');
+  });
+
+  test('onglet Appareils : verrou, chemin secret et lien direct', async () => {
+    const admin = await read('public/js/views/admin.js');
+    const ordered = [...admin.matchAll(/\['(\w+)',\s*'/g)].map((found) => found[1]);
+    assert.ok(ordered.includes('appareils'), 'onglet appareils absent');
+    assert.match(admin, /renderAppareils/);
+
+    const vue = await read('public/js/views/admin/appareils.js');
+    for (const appel of ['Admin.devices', 'Admin.addDevice', 'Admin.removeDevice', 'Admin.saveSettings']) {
+      assert.ok(vue.includes(appel), `${appel} non utilisé`);
+    }
+    assert.match(vue, /id: 'chemin-console'/);
+    assert.match(vue, /id: 'verrou-appareil'/);
+    assert.match(vue, /Copier le lien/);
+    assert.match(vue, /adminPath/);
+    assert.match(vue, /adminDeviceLock/);
+    assert.equal(vue.includes('—'), false, 'cadratin dans la vue Appareils');
+    assert.equal(/confirm\(/.test(vue), true, 'le retrait d’un appareil demande confirmation');
+  });
+
+  test('le serveur ne sert le site sur le chemin secret qu’avec son cookie', async () => {
+    const index = await read('server/index.js');
+    assert.match(index, /stv_entry=1/);
+    assert.match(index, /HttpOnly/);
+    assert.match(index, /SameSite=Strict/);
+    assert.equal(/'\/(?:admin|administration)'/.test(index), false, 'plus de route /admin côté serveur');
   });
 });

@@ -3,7 +3,7 @@
    navigation avec repli sur /offline.html. Aucune réponse d'API n'est mise en cache
    au-delà de la session : le catalogue doit rester frais. */
 
-const VERSION = 'streamtv-v3.10.0';
+const VERSION = 'streamtv-v3.11.0';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -19,12 +19,15 @@ const SHELL = [
   'js/copy.js',
   'js/ui.js',
   'js/prefs.js',
+  'js/console.js',
   'js/player.js',
+  'js/player-fullscreen.js',
   'js/player-menu.js',
   'js/components.js',
   'js/tv.js',
   'js/views/admin/pilotage.js',
   'js/views/admin/equipe.js',
+  'js/views/admin/appareils.js',
   'js/epg-now.js',
   'js/preview.js',
   'js/views/home.js',

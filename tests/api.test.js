@@ -343,7 +343,7 @@ describe('Administration', () => {
       const { token } = await login();
       const current = await client('/api/admin/settings', { token });
       assert.equal(current.status, 200);
-      assert.equal(Object.keys(current.json.settings).length, 17);
+      assert.equal(Object.keys(current.json.settings).length, 19);
       assert.ok(Array.isArray(current.json.schema));
       assert.equal(current.json.schema.length >= 17, true);
 

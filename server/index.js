@@ -219,7 +219,7 @@ function acceptsHtml(req) {
   return String(req.headers.accept || '').includes('text/html');
 }
 
-async function serveSpa(req, res, { status = 200 } = {}) {
+async function serveSpa(req, res, { status = 200, headers = {} } = {}) {
   const file = path.join(PUBLIC_DIR, 'index.html');
   let buffer;
   try {
@@ -229,6 +229,7 @@ async function serveSpa(req, res, { status = 200 } = {}) {
     return;
   }
   res.statusCode = status;
+  for (const [key, value] of Object.entries(headers)) res.setHeader(key, value);
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Content-Length', String(buffer.length));
@@ -268,7 +269,17 @@ export async function main(options = {}) {
         if (target && await serveStatic(req, res, pathname, { publicDir: PUBLIC_DIR })) return;
 
         if (!hasExtension && !pathname.startsWith('/api/')) {
-          const known = ['/', '/guide', '/favoris', '/connexion', '/admin', '/mentions-legales', '/confidentialite',
+          // Entrée secrète : la console n'existe qu'à cette adresse. Partout ailleurs, et
+          // notamment sur /admin, la réponse est la même qu'une page inconnue.
+          const secretPath = `/${app.store.settings.adminPath}`;
+          if (pathname === secretPath || pathname === `${secretPath}/`) {
+            await serveSpa(req, res, {
+              status: 200,
+              headers: { 'Set-Cookie': `stv_entry=1; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict${https ? '; Secure' : ''}` },
+            });
+            return;
+          }
+          const known = ['/', '/guide', '/favoris', '/connexion', '/mentions-legales', '/confidentialite',
             '/signaler', '/aide', '/erreurs', '/recherche'];
           // Une fiche de chaîne n'est servie en 200 que si l'identifiant existe réellement :
           // une adresse inventée répond 404, jamais le catalogue (BUG-06).

@@ -60,7 +60,7 @@ export function renderMaintenance(container, ctx) {
       h('p', { class: 'muted' }, COPY.banners.maintenance),
       h('div', { class: 'error-actions' },
         h('button', { class: 'btn btn-primary', type: 'button', onClick: () => ctx.navigate('/') }, icon('retry', 16), COPY.actions.retry),
-        h('a', { class: 'btn btn-ghost', href: '/admin', 'data-link': '' }, COPY.actions.admin))));
+        h('a', { class: 'btn btn-ghost', href: consoleHref(), 'data-link': '' }, COPY.actions.admin))));
   container.replaceChildren(view);
   return () => {};
 }

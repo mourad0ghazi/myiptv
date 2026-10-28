@@ -42,7 +42,7 @@ function heroBlock(hero, { config, openChannel, openPlayer }) {
           h('p', { text: config.tagline }),
           h('div', { class: 'hero-actions' },
             h('a', { class: 'btn btn-primary', href: '/guide', 'data-link': '' }, icon('list', 16), 'Parcourir le guide'),
-            h('a', { class: 'btn btn-ghost', href: '/admin', 'data-link': '' }, icon('settings', 16), 'Gérer le catalogue')))));
+            h('a', { class: 'btn btn-ghost', href: '/favoris', 'data-link': '' }, icon('heart', 16), 'Mes favoris')))));
   }
   const rail = (hero.channels || []).slice(1, 6);
   return h('section', { class: 'hero', 'aria-label': 'Chaîne mise en avant' },
@@ -161,8 +161,7 @@ export async function renderHome(container, ctx) {
         h('p', { text: config.totals.adultHidden
           ? `${fmtNumber(config.totals.adultHidden)} chaînes de catégorie adulte sont masquées par défaut (réglage « autoHideAdult »).`
           : 'Certaines chaînes sont masquées par une décision du propriétaire.' }),
-        h('p', { class: 'muted', text: 'Vous pouvez les afficher depuis l’administration, onglet Réglages.' })),
-      actions: [h('a', { class: 'btn btn-primary', href: '/admin', 'data-link': '' }, 'Ouvrir les réglages')],
+        h('p', { class: 'muted', text: 'Le propriétaire les affiche depuis la console, onglet Réglages.' })),
     })),
     h('button', {
       class: 'btn btn-ghost btn-sm fav-filter', type: 'button', id: 'fav-filter',
@@ -356,7 +355,7 @@ export async function renderHome(container, ctx) {
           title: COPY.states.emptyCatalog.title,
           message: COPY.states.emptyCatalog.message,
           actionLabel: COPY.states.emptyCatalog.action,
-          onAction: () => navigate('/admin'),
+          onAction: () => navigate('/guide'),
         }));
       }
       return;
