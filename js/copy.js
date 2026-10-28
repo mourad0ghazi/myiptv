@@ -56,6 +56,11 @@ export const COPY = {
       message: 'Essayez un autre mot ou effacez les filtres.',
       action: 'Effacer les filtres',
     },
+    filterEmpty: {
+      title: 'Aucune chaîne ne passe ces filtres',
+      message: 'Le catalogue contient des chaînes, mais aucune ne réunit le pays, la langue et la qualité demandés.',
+      action: 'Retirer les filtres',
+    },
     categoryEmpty: {
       title: 'Cette catégorie est vide pour le moment',
       message: 'Revenez au catalogue complet.',

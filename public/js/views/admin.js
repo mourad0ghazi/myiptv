@@ -17,6 +17,7 @@ import { renderPilotage } from './admin/pilotage.js';
 import { renderEquipe } from './admin/equipe.js';
 import { renderAppareils } from './admin/appareils.js';
 import { renderAcces } from './admin/acces.js';
+import { renderPremierLancement } from './admin/premier-lancement.js';
 
 const TABS = [
   ['pilotage', 'Pilotage'],
@@ -44,6 +45,25 @@ export async function renderAdmin(container, ctx) {
       h('a', { class: 'btn btn-primary btn-block', href: `/connexion?next=${encodeURIComponent(location.pathname)}`, 'data-link': '' }, icon('lock', 16), COPY.actions.signIn),
       h('a', { class: 'btn btn-quiet btn-sm', href: '/', 'data-link': '' }, 'Revenir au catalogue')));
     return () => {};
+  }
+
+  // Premier lancement : un nom et un mot de passe à soi avant tout travail.
+  // Le passage est proposé une fois par session : la console reste utilisable, mais le
+  // rappel demeure dans le pilotage tant que les deux étapes obligatoires ne sont pas faites.
+  // État du premier lancement lu une seule fois : il sert au passage obligé et au nom affiché.
+  let etatSetup = null;
+  try {
+    etatSetup = await Admin.setup();
+  } catch {
+    etatSetup = null;
+  }
+
+  const passageIgnore = (() => {
+    try { return sessionStorage.getItem('streamtv.setup.ignore') === '1'; } catch { return false; }
+  })();
+  if (!passageIgnore) {
+    const passage = await renderPremierLancement(container, ctx, etatSetup).catch(() => false);
+    if (passage) return () => {};
   }
 
   let stats = null;
@@ -138,7 +158,7 @@ export async function renderAdmin(container, ctx) {
   view.append(
     h('div', { class: 'admin-head' },
       h('div', {},
-        h('p', { class: 'eyebrow' }, 'Console'),
+        h('p', { class: 'eyebrow' }, etatSetup?.nom ? `Console de ${etatSetup.nom}` : 'Console'),
         h('h1', { style: { fontSize: 'clamp(26px,3.4vw,34px)' } }, 'Administration')),
       h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' } },
         h('span', { class: 'badge', dataset: { tone: stats.sessions ? 'ok' : 'warn' } }, icon('shield', 12), `${stats.sessions} session${stats.sessions > 1 ? 's' : ''}`),

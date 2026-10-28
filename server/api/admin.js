@@ -19,6 +19,7 @@ import { queryInt, queryString } from '../http/router.js';
 import { registerPilotageRoutes } from './admin-pilotage.js';
 import { registerSettingsRoutes } from './admin-settings.js';
 import { registerAccessRoutes } from './admin-access.js';
+import { registerSetupRoutes } from './admin-setup.js';
 
 const now = () => new Date().toISOString();
 
@@ -101,6 +102,7 @@ export function permissionFor(method, pattern) {
   if (pattern.includes('/team')) return 'team';
   if (pattern.includes('/device')) return 'team';
   if (pattern.includes('/access-links')) return 'team';
+  if (pattern.includes('/setup')) return 'team';
   if (pattern.includes('/mail')) return 'team';
   if (pattern.includes('/password') || pattern.includes('/sessions')) return 'team';
   if (pattern.includes('/backup') || pattern.includes('/restore')) return 'backup';
@@ -780,6 +782,7 @@ export function registerAdminRoutes(base, app) {
   // EP-36 — changement de mot de passe.
   registerPilotageRoutes(router, app);
   registerAccessRoutes(router, app);
+  registerSetupRoutes(router, app);
 
   router.post('/api/admin/password', async ({ body, session, ip, requestId }) => {
     const current = String(body?.current || '');

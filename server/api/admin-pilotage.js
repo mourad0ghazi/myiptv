@@ -10,6 +10,7 @@ import {
 } from '../core/team.js';
 import { queryInt, queryString } from '../http/router.js';
 import { cleanLabel, deviceDigest, newDeviceId, normalizeDeviceId, publicDevice } from '../core/devices.js';
+import { describeAudit } from '../core/journal.js';
 
 /** Nom lisible d'une chaîne, y compris retirée : les compteurs d'usage la retrouvent. */
 function channelName(app, id) {
@@ -194,7 +195,16 @@ export function registerPilotageRoutes(base, app) {
 
   base.get('/api/admin/audit', async ({ query }) => {
     const entries = await app.store.readAudit(queryInt(query, 'lines', { min: 10, max: 200, fallback: 60 }));
-    return { body: { entries, total: entries.length }, cache: 'no-store' };
+    // Deux lectures du même journal : les lignes brutes pour chercher, les phrases pour décider.
+    const phrases = describeAudit(entries);
+    return {
+      body: {
+        entries: entries.map((entry, index) => ({ ...entry, phrase: phrases[index].phrase, ton: phrases[index].ton })),
+        resume: phrases,
+        total: entries.length,
+      },
+      cache: 'no-store',
+    };
   });
 
   /* ------------------------------------------------------------------- agent de diagnostic

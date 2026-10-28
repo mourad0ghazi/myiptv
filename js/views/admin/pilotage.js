@@ -87,14 +87,14 @@ export async function renderPilotage(panel, ctx) {
         h('span', { class: 'badge tabular' }, `${fmtNumber(item.count)} lecture${item.count > 1 ? 's' : ''}`)))
       : h('p', { class: 'muted' }, analytics?.exemple || 'Aucune lecture enregistrée pour le moment.'));
 
-  const activite = h('div', { class: 'rows' },
+  // Journal lisible : une phrase par ligne, l'heure, l'auteur. Aucun code technique affiché
+  // quand le serveur sait la traduire ; sinon il reste tel quel, sans jargon ajouté.
+  const activite = h('div', { class: 'journal' },
     journal.entries.length
-      ? journal.entries.slice(0, 12).map((entry) => h('div', { class: 'variant' },
-        h('span', { class: 'muted tabular', text: String(entry.at || '').slice(11, 16) }),
-        h('span', {}, ACTION_LABEL[entry.action] || entry.action),
-        h('span', { class: 'spacer' }),
-        h('span', { class: 'muted', text: entry.actor || 'admin' }),
-        entry.result && entry.result !== 'ok' ? h('span', { class: 'badge', dataset: { tone: 'warn' } }, entry.result) : null))
+      ? journal.entries.slice(0, 14).map((entry) => h('div', { class: 'journal-row', dataset: { ton: entry.ton || 'info' } },
+        h('span', { class: 'journal-heure tabular', text: String(entry.at || '').slice(11, 16) }),
+        h('span', { class: 'journal-phrase', dir: 'auto', text: entry.phrase || ACTION_LABEL[entry.action] || entry.action }),
+        h('span', { class: 'journal-acteur muted', text: entry.actor || 'admin' })))
       : h('p', { class: 'muted' }, 'Le journal est vide : la première action apparaîtra ici.'));
 
   panel.replaceChildren(
@@ -138,7 +138,9 @@ export async function renderPilotage(panel, ctx) {
         sparkline(analytics?.parHeure || []),
         top),
       h('div', { class: 'console-block' },
-        h('h3', {}, 'Dernières actions'),
+        h('div', { class: 'block-head' },
+          h('h3', {}, 'Dernières actions'),
+          h('span', { class: 'muted', text: 'en clair' })),
         activite)),
     h('p', { class: 'muted', style: { fontSize: '12px' } },
       `Analyse du ${new Date(diagnostic.genereLe).toLocaleString('fr-FR')} · les compteurs de lecture sont anonymes : un identifiant de chaîne, aucune adresse.`));

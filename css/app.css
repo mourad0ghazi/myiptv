@@ -873,6 +873,37 @@ body.tv-mode .header-inner{padding:var(--s4) var(--s5)}
   .device-row{grid-template-columns:36px minmax(0,1fr) auto}
   .device-row > .btn{grid-column:2 / -1; justify-self:start}
 }
+.journal{display:grid; gap:1px}
+.journal-row{display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:var(--s3); align-items:baseline;
+  padding:var(--s2) 0; border-bottom:1px solid var(--line); min-width:0}
+.journal-row:last-child{border-bottom:0}
+.journal-heure{font-size:var(--fs-xs); color:var(--muted)}
+.journal-phrase{font-size:var(--fs-sm); overflow-wrap:anywhere}
+.journal-acteur{font-size:var(--fs-xs); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px}
+.journal-row[data-ton="danger"] .journal-phrase{color:var(--danger)}
+.journal-row[data-ton="warn"] .journal-phrase{color:var(--warn)}
+@media (max-width:619px){
+  .journal-row{grid-template-columns:40px minmax(0,1fr)}
+  .journal-acteur{grid-column:2 / 3; max-width:none}
+}
+.block-head{display:flex; align-items:baseline; justify-content:space-between; gap:var(--s2)}
+.page-setup{display:grid; place-items:start center; padding-block:var(--s6)}
+.setup-shell{width:100%; max-width:780px; display:grid; gap:var(--s4)}
+.setup-shell h1{font-size:clamp(24px,3.2vw,32px)}
+.setup-progress{display:flex; flex-wrap:wrap; gap:var(--s3); list-style:none; margin:0; padding:0}
+.setup-progress li{display:inline-flex; align-items:center; gap:var(--s2); font-size:var(--fs-xs); color:var(--muted);
+  padding:var(--s1) var(--s3); border:1px solid var(--line); border-radius:var(--r-sm); background:var(--bg-2)}
+.setup-progress li[data-fait="true"]{color:var(--text)}
+.etape{display:grid; gap:var(--s3); padding:var(--s4); border:1px solid var(--line); border-radius:var(--r-sm);
+  background:var(--panel)}
+.etape[data-fait="true"]{background:var(--bg-2)}
+.etape-tete{display:grid; grid-template-columns:24px minmax(0,1fr); gap:var(--s3); align-items:start}
+.etape-tete h3{font-size:var(--fs-base); margin-bottom:2px}
+.etape-marque{display:grid; place-items:center; width:24px; height:24px; border-radius:50%;
+  border:1px solid var(--line); background:var(--bg-2); color:var(--muted)}
+.etape-marque[data-etat="fait"]{background:var(--accent); border-color:var(--accent); color:var(--ink)}
+.setup-pied{display:flex; flex-wrap:wrap; gap:var(--s3); align-items:center; justify-content:space-between;
+  padding-top:var(--s2); border-top:1px solid var(--line)}
 .perm-ok{display:inline-flex; color:var(--ok)}
 .perm-no{font-size:var(--fs-xs); color:var(--muted)}
 
