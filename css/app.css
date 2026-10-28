@@ -904,6 +904,8 @@ body.tv-mode .header-inner{padding:var(--s4) var(--s5)}
 .etape-marque[data-etat="fait"]{background:var(--accent); border-color:var(--accent); color:var(--ink)}
 .setup-pied{display:flex; flex-wrap:wrap; gap:var(--s3); align-items:center; justify-content:space-between;
   padding-top:var(--s2); border-top:1px solid var(--line)}
+.empty-actions{display:flex; flex-wrap:wrap; gap:var(--s2); justify-content:center; margin-top:var(--s2)}
+.boot-help{font-size:var(--fs-xs); max-width:34ch; margin:var(--s2) auto 0; text-align:center}
 .perm-ok{display:inline-flex; color:var(--ok)}
 .perm-no{font-size:var(--fs-xs); color:var(--muted)}
 

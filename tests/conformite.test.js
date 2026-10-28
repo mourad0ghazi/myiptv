@@ -171,7 +171,19 @@ describe('Contrat de données (§4)', () => {
     assert.equal(LIMITS.backupDaily, 7);
     assert.equal(LIMITS.backupWeekly, 4);
     assert.equal(LIMITS.importMaxMs, 120000);
-    assert.equal(VERSION, '3.15.0');
+    assert.equal(VERSION, '3.16.0');
+  });
+
+  test('une seule version partout : serveur, page, worker', async () => {
+    const page = await fsp.readFile(path.join(ROOT, 'public', 'index.html'), 'utf8');
+    const meta = page.match(/<meta name="streamtv-version" content="([^"]+)">/);
+    assert.ok(meta, 'la page déclare sa version');
+    assert.equal(meta[1], VERSION, 'la page et le serveur annoncent la même version');
+    const worker = await fsp.readFile(path.join(ROOT, 'public', 'sw.js'), 'utf8');
+    const versionWorker = worker.match(/const VERSION = 'streamtv-v([\d.]+)';/);
+    assert.ok(versionWorker, 'le worker déclare sa version');
+    assert.equal(versionWorker[1], VERSION, 'le worker et le serveur annoncent la même version');
+    assert.match(worker, /js\/coquille\.js/, 'la coquille est mise en cache avec le site');
   });
 });
 

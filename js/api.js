@@ -37,7 +37,7 @@ export const auth = {
 const cache = new Map();
 
 /** Version de la publication, remplacée à la construction : elle périme toute copie ancienne. */
-const PUBLICATION = '3.15.0';
+const PUBLICATION = '3.16.0';
 
 /** Délai au-delà duquel une donnée manquante est dite manquante, plutôt qu'attendue sans fin. */
 const DELAI_DONNEES = Number(globalThis.STREAMTV_DELAI_DONNEES) > 0
