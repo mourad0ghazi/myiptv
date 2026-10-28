@@ -3,6 +3,48 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.15.0] - 2026-10-28
+
+Les chaînes ne s'affichaient plus sur le site public : l'écran restait sur « Recherche en
+cours… ». Cette version répare le chemin des données, et le rend impossible à rompre de la
+même manière.
+
+### Corrigé
+
+- **Cause du blocage** : les fichiers de données du site publié (`demo/*.json`) étaient
+  traités par le service worker comme des fichiers ordinaires, donc mis en cache et
+  resservis indéfiniment sous une adresse qui ne changeait jamais. Une copie de catalogue
+  abîmée pendant une publication laissait la lecture en attente, sans erreur et sans fin.
+- **Les données ne passent plus par un cache** : `demo/*.json` est servi par le réseau,
+  seulement, avec un délai maximum de dix secondes. Une panne devient un message clair au
+  lieu d'une attente muette.
+- **L'adresse des données porte la version** (`demo/cards.json?v=3.15.0`) : une copie
+  ancienne ne peut plus être resservie, même dans un navigateur qui n'a rien nettoyé.
+- **Une attente a une fin** : la couche de lecture interrompt la demande au bout de douze
+  secondes et propose « Réessayer ». Un échec est oublié au lieu d'être mémorisé, donc le
+  nouvel essai redemande vraiment le fichier.
+- **Un JSON tronqué est dit incomplet** : le message ne laisse pas croire à un catalogue vide.
+- **Le service worker n'est plus réécrit à la construction** : il lit sa portée de
+  publication. La réécriture aveugle des chemins avait déjà transformé `'/api/'` en `'api/'`,
+  désactivant une règle de sécurité sans que rien ne le signale.
+- **Une nouvelle version prend la main immédiatement** (`skipWaiting`, `clients.claim`) et
+  la page se recharge une fois : une coquille ancienne ne peut plus servir un site nouveau.
+
+### Accéléré
+
+- **Le premier écran est trois fois plus léger** : les cartes et l'index de recherche vivent
+  dans `demo/cards.json` (684 Ko) ; les détails, flux compris, restent dans
+  `demo/catalog.json` (2,4 Mo) et ne sont téléchargés qu'à l'ouverture d'une fiche.
+- Mesuré sur le catalogue réel : 48 chaînes affichées en 86 ms hors navigateur, contre un
+  fichier unique de 2,4 Mo auparavant.
+
+### Vérifié
+
+- 332 tests, dont 12 nouveaux : conduite du service worker évaluée hors navigateur (données,
+  API, fichiers, autres origines, portée de publication), délai d'attente réellement
+  dépassé, échec suivi d'un succès, adresse versionnée, JSON tronqué, poids et contenu des
+  fichiers publiés, égalité entre le worker source et le worker publié.
+
 ## [3.14.0] - 2026-10-28
 
 La console parle français et commence par vous. Un journal qui dit ce qui s'est passé,

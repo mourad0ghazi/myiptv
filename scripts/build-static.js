@@ -162,6 +162,10 @@ async function main() {
 
   const demoDir = path.join(outDir, 'demo');
   await fsp.mkdir(demoDir, { recursive: true });
+  // Deux fichiers, deux usages : « cards.json » suffit au premier écran (cartes et index de
+  // recherche), « catalog.json » garde les détails et n'est ouvert qu'à l'ouverture d'une fiche.
+  const cartes = catalog.map((entree) => ({ card: entree.card, hay: entree.hay }));
+  await fsp.writeFile(path.join(demoDir, 'cards.json'), JSON.stringify(cartes));
   await fsp.writeFile(path.join(demoDir, 'catalog.json'), JSON.stringify(catalog));
   await fsp.writeFile(path.join(demoDir, 'config.json'), JSON.stringify({
     ...config,
@@ -202,16 +206,15 @@ async function main() {
   manifest.shortcuts = (manifest.shortcuts || []).map((shortcut) => ({ ...shortcut, url: shortcut.url.replace(/^\//, '') }));
   await fsp.writeFile(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
 
-  // Service worker : mêmes stratégies, chemins relatifs au script.
-  const swFile = path.join(outDir, 'sw.js');
-  const sw = await fsp.readFile(swFile, 'utf8');
-  await fsp.writeFile(swFile, sw.replace(/'(\/[^']*)'/g, (_match, target) => `'${target.replace(/^\//, '') || './'}'`));
+  // Le service worker lit sa portée de publication : il n'est plus réécrit ici. La réécriture
+  // aveugle des chemins avait déjà transformé « /api/ » en « api/ », désactivant une règle.
 
-  // Couche de lecture : instantané JSON au lieu de l'API.
+  // Couche de lecture : instantané JSON au lieu de l'API, avec la version de la publication
+  // inscrite dans les adresses de données (aucune copie ancienne ne peut être resservie).
   const demoApi = await fsp.readFile(path.join(ROOT, 'scripts', 'templates', 'demo-api.js'), 'utf8');
-  await fsp.writeFile(path.join(outDir, 'js', 'api.js'), demoApi);
+  await fsp.writeFile(path.join(outDir, 'js', 'api.js'), demoApi.replaceAll('__BUILD_VERSION__', health.version));
 
-  const sizes = await Promise.all(['index.html', 'js/api.js', 'demo/catalog.json'].map(async (name) => {
+  const sizes = await Promise.all(['index.html', 'js/api.js', 'demo/cards.json', 'demo/catalog.json'].map(async (name) => {
     const stat = await fsp.stat(path.join(outDir, name));
     return `${name} ${(stat.size / 1024).toFixed(0)} Ko`;
   }));
