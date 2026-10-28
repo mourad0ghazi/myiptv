@@ -16,6 +16,7 @@ import { renderSignalements } from './admin/signalements.js';
 import { renderPilotage } from './admin/pilotage.js';
 import { renderEquipe } from './admin/equipe.js';
 import { renderAppareils } from './admin/appareils.js';
+import { renderAcces } from './admin/acces.js';
 
 const TABS = [
   ['pilotage', 'Pilotage'],
@@ -28,6 +29,7 @@ const TABS = [
   ['sauvegardes', 'Sauvegardes'],
   ['equipe', 'Équipe'],
   ['appareils', 'Appareils'],
+  ['acces', 'Accès'],
 ];
 
 export async function renderAdmin(container, ctx) {
@@ -113,6 +115,7 @@ export async function renderAdmin(container, ctx) {
       if (state.tab === 'pilotage') await renderPilotage(panel, ctx);
       else if (state.tab === 'equipe') await renderEquipe(panel, ctx);
       else if (state.tab === 'appareils') await renderAppareils(panel, ctx);
+      else if (state.tab === 'acces') await renderAcces(panel, ctx);
       else if (state.tab === 'catalogue') await renderCatalogue(panel, ctx, state, { refreshStats, stats: () => stats });
       else if (state.tab === 'liens') await renderLiens(panel, ctx, state, { stats: () => stats });
       else if (state.tab === 'signalements') await renderSignalements(panel, ctx, state, { stats: () => stats });

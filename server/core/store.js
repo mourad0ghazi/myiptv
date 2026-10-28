@@ -16,6 +16,7 @@ const FILES = {
   team: 'team.json',
   plays: 'plays.json',
   devices: 'devices.json',
+  accessLinks: 'access-links.json',
   audit: 'audit.log',
 };
 
@@ -98,6 +99,7 @@ export class Store {
     await this.loadTeam();
     await this.loadPlays();
     await this.loadDevices();
+    await this.loadAccessLinks();
     return this;
   }
 
@@ -216,6 +218,19 @@ export class Store {
     const { data } = await this.readJson(this.file('devices'), null);
     this.devices = Array.isArray(data?.devices) ? data.devices : [];
     return this.devices;
+  }
+
+  /** Liens d'accès : le condensé du jeton, jamais le jeton lui-même. */
+  async loadAccessLinks() {
+    const { data } = await this.readJson(this.file('accessLinks'), null);
+    this.accessLinks = Array.isArray(data?.links) ? data.links : [];
+    return this.accessLinks;
+  }
+
+  async saveAccessLinks(reason = 'access-links') {
+    return this.enqueue(async () => {
+      await this.atomicWriteJson(this.file('accessLinks'), { version: 1, reason, links: this.accessLinks });
+    });
   }
 
   async saveDevices(reason = 'devices') {

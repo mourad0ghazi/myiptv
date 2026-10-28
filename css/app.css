@@ -843,6 +843,18 @@ body.tv-mode .header-inner{padding:var(--s4) var(--s5)}
 .lien-console{display:block; padding:var(--s2) var(--s3); border:1px solid var(--line);
   border-radius:var(--r-sm); background:var(--bg-2); overflow-x:auto; white-space:nowrap}
 .lien-console code{font-size:var(--fs-sm)}
+.lien-liste{display:grid; gap:var(--s2)}
+.lien-row{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:var(--s3); align-items:center;
+  padding:var(--s3); border:1px solid var(--line); border-radius:var(--r-sm); background:var(--bg-2); min-width:0}
+.lien-row[data-etat="revoque"],.lien-row[data-etat="expire"],.lien-row[data-etat="epuise"]{opacity:.62}
+.lien-id{display:grid; gap:1px; min-width:0}
+.lien-id strong{font-size:var(--fs-sm); font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.lien-id span{font-size:var(--fs-xs); overflow-wrap:anywhere}
+.lien-vide{font-size:var(--fs-xs)}
+@media (max-width:619px){
+  .lien-row{grid-template-columns:minmax(0,1fr) auto}
+  .lien-row > .btn{grid-column:1 / -1; justify-self:start}
+}
 .device-row{display:grid; grid-template-columns:36px minmax(0,1fr) auto auto; gap:var(--s3);
   align-items:center; padding:var(--s3); border:1px solid var(--line); border-radius:var(--r-sm);
   background:var(--bg-2); min-width:0}

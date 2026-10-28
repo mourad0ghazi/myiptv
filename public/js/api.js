@@ -130,10 +130,17 @@ export function deviceId() {
 }
 
 /** API admin : objet unique, testé par tests/api.test.js. */
+export const redeemAccess = (token) => api('/api/access/redeem', {
+  method: 'POST', body: { token, deviceId: deviceId() },
+});
+
 export const Admin = {
   session: () => api('/api/session'),
   login: (password, email = '') => api('/api/login', { method: 'POST', body: { password, email, deviceId: deviceId() } }),
   gate: () => api('/api/admin/gate'),
+  accessLinks: () => api('/api/admin/access-links'),
+  createAccessLink: (payload) => api('/api/admin/access-links', { method: 'POST', body: payload }),
+  revokeAccessLink: (id) => api(`/api/admin/access-links/${encodeURIComponent(id)}`, { method: 'DELETE', body: {} }),
   devices: () => api(`/api/admin/devices?current=${deviceId()}`),
   addDevice: (label) => api('/api/admin/devices', { method: 'POST', body: { deviceId: deviceId(), label } }),
   removeDevice: (id) => api(`/api/admin/devices/${encodeURIComponent(id)}`, { method: 'DELETE', body: {} }),

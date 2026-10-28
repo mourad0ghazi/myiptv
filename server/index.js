@@ -319,7 +319,9 @@ export async function main(options = {}) {
             ? app.store.channels.some((channel) => channel.id === channelMatch[1]
               && !channel.deleted && isPublic(channel, app.store.settings))
             : false;
-          const isKnown = known.includes(pathname) || channelExists;
+          // Lien d'accès : la page est servie, le jeton est vérifié par l'API côté client.
+          const lienAcces = /^\/acces\/[a-f0-9]{64}\/?$/.test(pathname);
+          const isKnown = known.includes(pathname) || channelExists || lienAcces;
           await serveSpa(req, res, { status: isKnown ? 200 : 404 });
           return;
         }

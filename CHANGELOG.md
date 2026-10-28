@@ -3,6 +3,40 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.13.0] - 2026-10-28
+
+La console s'ouvre par un lien. Vous créez un lien, vous choisissez le rôle et la durée,
+vous l'envoyez : la personne entre sans mot de passe, et vous refermez quand vous voulez.
+
+### Ajouté
+
+- **Liens d'accès** (onglet Accès). Jeton de 32 octets, jamais stocké en clair : le serveur
+  ne garde qu'une empreinte. Le lien complet est affiché **une seule fois**, à la création.
+- **Rôle porté par le lien** : administrateur, éditeur, modérateur ou analyste. Le serveur
+  applique réellement ce rôle, il ne l'affiche pas seulement.
+- **Durée et usages** : de 15 minutes à 7 jours, de 1 à 50 ouvertures. Un lien s'épuise à la
+  dernière ouverture, expire à l'heure dite, et se révoque immédiatement.
+- **Page `/acces/<jeton>`** : le jeton est échangé une fois contre une session, puis l'adresse
+  est nettoyée pour qu'il ne reste pas dans l'historique du navigateur.
+- **Nom du propriétaire** (réglage `adminName`) : la console et le journal disent qui agit.
+- Le verrou d'appareil s'applique aussi aux liens administrateur ; les liens éditeur,
+  modérateur et analyste restent utilisables pour inviter quelqu'un à collaborer.
+
+### Sécurité
+
+- Jeton de 64 caractères hexadécimaux, comparaison en temps constant, 20 liens actifs au plus.
+- Un jeton inventé reçoit le même refus qu'un lien fermé : impossible de deviner l'existence.
+- Création, révocation et chaque ouverture sont inscrites au journal.
+- Seul le propriétaire crée et révoque les liens ; la liste ne montre jamais ni jeton ni empreinte.
+
+### Vérifié
+
+- `npm test` : **307/307**, dont 14 nouveaux tests (création, usage, épuisement, révocation,
+  expiration réelle, rôle appliqué, verrou d'appareil, page servie, refus d'un jeton inventé).
+- Onglet Accès rendu dans un vrai DOM contre le serveur : formulaire, lien créé, avertissement
+  « affiché une seule fois », ligne ajoutée à la liste.
+- `npm run verify` : 42/43, seul avertissement volontaire (mot de passe par défaut).
+
 ## [3.12.0] - 2026-10-28
 
 Une troisième serrure sur la console : après le chemin privé et le verrou d'appareil, un code

@@ -16,6 +16,7 @@ import { renderGuide } from './views/guide.js';
 import { renderChannel } from './views/channel.js';
 import { renderFavorites } from './views/favorites.js';
 import { renderLogin } from './views/login.js';
+import { renderAccess } from './views/access.js';
 
 /**
  * Chargements différés : la console d'administration et les pages légales ne sont
@@ -267,6 +268,9 @@ async function renderRoute(route) {
         break;
       case 'login':
         cleanup = await renderLogin(container, ctx);
+        break;
+      case 'access':
+        cleanup = await renderAccess(container, ctx, route.params.token);
         break;
       case 'admin': {
         const { renderAdmin } = await loadAdmin();

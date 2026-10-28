@@ -8,7 +8,7 @@ export const SETTING_KEYS = [
   'brand', 'tagline', 'accent', 'logoUrl', 'pageSize', 'defaultSort', 'showAdult',
   'autoHideAdult', 'featuredIds', 'heroMode', 'showHealthBadge', 'epgUrl', 'footerNote',
   'maintenanceMode', 'targetTable', 'confidenceFloor', 'pageTitleSuffix',
-  'adminPath', 'adminDeviceLock', 'adminEmail',
+  'adminPath', 'adminDeviceLock', 'adminEmail', 'adminName',
 ];
 
 export const DEFAULTS = Object.freeze({
@@ -35,6 +35,8 @@ export const DEFAULTS = Object.freeze({
   adminDeviceLock: false,
   // Adresse qui reçoit le code à six chiffres. Vide : le second facteur est désactivé.
   adminEmail: '',
+  // Nom affiché du propriétaire : la console dit qui agit.
+  adminName: '',
 });
 
 const HERO_MODES = ['featured', 'random', 'first'];
@@ -42,7 +44,7 @@ const HERO_MODES = ['featured', 'random', 'first'];
 // Chemins déjà pris par le site : une entrée secrète ne peut pas s'y installer.
 export const RESERVED_PATHS = new Set([
   'api', 'guide', 'favoris', 'connexion', 'admin', 'chaine', 'recherche', 'aide', 'erreurs',
-  'signaler', 'mentions-legales', 'confidentialite', 'films', 'animes', 'css', 'js', 'icons',
+  'signaler', 'mentions-legales', 'confidentialite', 'films', 'animes', 'css', 'js', 'icons', 'acces',
   'vendor', 'demo', 'sw.js', 'manifest.webmanifest', 'index.html',
 ]);
 
@@ -80,6 +82,8 @@ export const SCHEMA = [
     help: 'Une fois activé, un mot de passe seul ne suffit plus : l’appareil doit avoir été enregistré depuis la console.' },
   { key: 'adminEmail', type: 'email', label: 'Code de connexion envoyé par e-mail', maxLength: 120,
     help: 'Vide : second facteur désactivé. Sinon, chaque connexion à la console reçoit un code de six chiffres à cette adresse.' },
+  { key: 'adminName', type: 'text', label: 'Nom du propriétaire', maxLength: 60,
+    help: 'Affiché dans la console et dans le journal. Vide : « Propriétaire ».' },
 ];
 
 const SCHEMA_BY_KEY = Object.fromEntries(SCHEMA.map((item) => [item.key, item]));
