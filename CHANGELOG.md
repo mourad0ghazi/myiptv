@@ -3,6 +3,31 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Versionnement sémantique. Toutes les dates sont au format `AAAA-MM-JJ`.
 
+## [3.17.0] - 2026-10-31
+
+La version du logiciel entre dans l'adresse de chaque module. Une page neuve ne peut plus
+être exécutée avec un `js/app.js` ancien, quel que soit ce que le navigateur garde en mémoire :
+l'adresse qu'elle demande n'a jamais été vue. C'est le correctif définitif du défaut raconté
+en 3.16.0, dont les garde-fous ne couvraient que le cache du service worker.
+
+### Ajouté
+
+- **`scripts/versionner-modules.js`** : inscrit la version dans chaque import relatif
+  (`./api.js?v=3.17.0`) et dans les balises de `index.html`. Idempotent : il remplace la
+  version existante au lieu d'en ajouter une. Mode `--check` pour la vérification.
+- **`tests/versioning.test.js`** (12 tests) : version inscrite, remplacement sans doublon,
+  adresses extérieures et `vendor/` intacts, aucun module du dépôt sans version, version
+  égale à celle de `package.json`, page et module servis par le serveur Node aux adresses
+  versionnées, version périmée servie sans erreur.
+- Le worker applique `ignoreSearch` : la coquille reste mise en cache sans version, la page
+  la demande avec. Une version demandée différente de la sienne passe par le réseau d'abord.
+
+### Modifié
+
+- `scripts/build-static.js` versionne la sortie avant publication : la copie servie par
+  GitHub Pages porte les mêmes adresses versionnées que le serveur Node.
+- `sw.js` : `streamtv-v3.17.0`, nouvelle génération de caches.
+
 ## [3.16.0] - 2026-10-28
 
 Un écran de chargement ne peut plus être définitif, et une page neuve ne peut plus tourner

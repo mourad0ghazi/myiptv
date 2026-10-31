@@ -1,10 +1,10 @@
 // public/js/views/legal.js · pages d'information : mentions, confidentialité, signalement, aide, messages.
 // Aucune de ces pages ne modifie l'état du site : elles sont lisibles hors connexion après un premier passage.
 
-import { Public } from '../api.js';
-import { COPY } from '../copy.js';
-import { h, icon, fmtDate, toast, copyText } from '../ui.js';
-import { ERRORS_CODES, catalogCount, loadMessageCatalog } from './error-codes.js';
+import { Public } from '../api.js?v=3.17.0';
+import { COPY } from '../copy.js?v=3.17.0';
+import { h, icon, fmtDate, toast, copyText } from '../ui.js?v=3.17.0';
+import { ERRORS_CODES, catalogCount, loadMessageCatalog } from './error-codes.js?v=3.17.0';
 
 const UPDATED = '2026-10-25';
 

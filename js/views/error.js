@@ -1,8 +1,8 @@
 // public/js/views/error.js · page introuvable, panne de chargement, hors ligne.
 // Règle d'or : jamais de message d'erreur sans action concrète.
 
-import { COPY } from '../copy.js';
-import { h, icon, emptyState } from '../ui.js';
+import { COPY } from '../copy.js?v=3.17.0';
+import { h, icon, emptyState } from '../ui.js?v=3.17.0';
 
 export function renderNotFound(container, ctx) {
   const { navigate } = ctx;

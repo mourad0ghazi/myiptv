@@ -218,7 +218,8 @@ describe('API publique', () => {
       assert.match(home.text, /<html lang="fr"/);
       assert.ok(home.headers.get('content-type').startsWith('text/html'));
       assert.match(home.text, /rel="manifest"/);
-      assert.match(home.text, /<script type="module" src="\/js\/app.js">/);
+      // Le module est demandé avec sa version : un cache ancien ne peut pas le servir (3.17.0).
+      assert.match(home.text, /<script type="module" src="\/js\/app\.js\?v=\d+\.\d+\.\d+">/);
 
       const css = await client('/css/app.css');
       assert.equal(css.status, 200);

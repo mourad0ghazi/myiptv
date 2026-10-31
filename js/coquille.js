@@ -1,4 +1,4 @@
-/* public/js/coquille.js · script classique, exécuté avant le module de l'application (3.16.0).
+/* public/js/coquille.js · script classique, exécuté avant le module de l'application (3.17.0).
    Rôle unique : empêcher qu'une page neuve tourne avec le code d'une version ancienne.
    Le service worker d'une publication précédente peut servir du JavaScript mis en cache ;
    la page, elle, vient du réseau. Ce script compare la version inscrite dans la page à celle

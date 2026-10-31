@@ -2,9 +2,9 @@
 // Le lien reçu par message porte un jeton : il est échangé une fois contre une session,
 // puis l'adresse est nettoyée pour que le jeton ne reste pas dans l'historique du navigateur.
 
-import { auth, ApiError, redeemAccess } from '../api.js';
-import { consolePath, rememberConsole } from '../console.js';
-import { h, icon, spinner } from '../ui.js';
+import { auth, ApiError, redeemAccess } from '../api.js?v=3.17.0';
+import { consolePath, rememberConsole } from '../console.js?v=3.17.0';
+import { h, icon, spinner } from '../ui.js?v=3.17.0';
 
 export async function renderAccess(container, ctx, token) {
   const view = h('div', { class: 'view' });

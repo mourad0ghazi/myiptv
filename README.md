@@ -315,6 +315,17 @@ STREAMTV_TLS_CERT=/etc/streamtv/cert.pem STREAMTV_TLS_KEY=/etc/streamtv/key.pem 
 
 Le cookie d'entrée de la console est alors marqué `Secure`, et le site n'accepte plus le HTTP.
 
+### Une adresse par version (3.17.0)
+
+Chaque module est demandé avec sa version : `js/app.js?v=3.17.0`, `js/api.js?v=3.17.0`.
+Une page neuve ne peut donc pas être exécutée avec un fichier ancien, même si le navigateur
+en garde une copie : l'adresse est inédite, la réponse vient du réseau.
+
+`npm run versionner` inscrit la version (le script est idempotent), `npm run versionner:check`
+vérifie sans écrire et sort en erreur si un module a été oublié. La construction statique
+applique le même geste à la sortie publiée, et un test refuse toute version différente de
+celle de `package.json`.
+
 ### Mise à jour et sortie de secours (3.16.0)
 
 Un navigateur peut garder le code d'une version précédente : la page vient du réseau, le
