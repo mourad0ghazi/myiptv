@@ -1,4 +1,4 @@
-// public/js/amorcage.js · plafond d'attente de l'amorçage (3.16.0).
+// public/js/amorcage.js · plafond d'attente de l'amorçage (3.17.0).
 // Un écran de chargement n'a pas le droit d'être définitif. Ce module borne l'attente et
 // laisse l'appelant décider de ce qu'il montre ensuite. Il est testé seul, sans navigateur.
 

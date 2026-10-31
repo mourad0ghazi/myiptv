@@ -7,7 +7,7 @@
    Le chemin de publication est lu dans la portée du worker : le même fichier sert à la racine
    du serveur Node et dans le sous-dossier de GitHub Pages, sans réécriture à la construction. */
 
-const VERSION = 'streamtv-v3.16.0';
+const VERSION = 'streamtv-v3.17.0';
 const CACHE_COQUILLE = `${VERSION}-coquille`;
 const CACHE_FICHIERS = `${VERSION}-fichiers`;
 
@@ -100,9 +100,30 @@ async function reseauSeulement(request, timeout = TIMEOUT_RESEAU) {
   }
 }
 
+/** Version du logiciel que ce worker connaît, sans le préfixe de ses caches. */
+const VERSION_LOGICIEL = VERSION.replace(/^streamtv-v/, '');
+
+/**
+ * Une page neuve demande ses modules avec la version en clair : js/app.js?v=3.17.0.
+ * Si la version demandée n'est pas celle que ce worker garde, sa copie est plus ancienne que
+ * la page : la servir reproduirait exactement le défaut réparé ici. Dans ce cas, le réseau
+ * passe devant, et le cache ne sert qu'en secours quand il n'y a plus de réseau du tout.
+ */
+function versionEtrangere(url) {
+  let demandee;
+  try {
+    demandee = new URL(url, PORTEE).searchParams.get('v');
+  } catch {
+    return false;
+  }
+  return Boolean(demandee) && demandee !== VERSION_LOGICIEL;
+}
+
 async function cacheDAbord(request, nomCache) {
   const cache = await caches.open(nomCache);
-  const garde = await cache.match(request);
+  const perimee = versionEtrangere(request.url);
+  // ignoreSearch : la coquille est mise en cache sans version, la page la demande avec.
+  const garde = perimee ? null : await cache.match(request, { ignoreSearch: true });
   if (garde) {
     // Rafraîchissement silencieux : la copie servie reste utilisable même hors ligne.
     fetch(request).then((reponse) => {
@@ -110,8 +131,17 @@ async function cacheDAbord(request, nomCache) {
     }).catch(() => {});
     return garde;
   }
-  const reponse = await fetch(request);
-  if (reponse && reponse.ok) cache.put(request, reponse.clone()).catch(() => {});
+  let reponse;
+  try {
+    reponse = await fetch(request);
+  } catch (erreur) {
+    if (!perimee) throw erreur;
+    // Sans réseau, une copie ancienne vaut mieux qu'une page vide : elle reste utilisable.
+    const secours = await cache.match(request, { ignoreSearch: true });
+    if (secours) return secours;
+    throw erreur;
+  }
+  if (reponse && reponse.ok && !perimee) cache.put(request, reponse.clone()).catch(() => {});
   return reponse;
 }
 
@@ -163,7 +193,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(cacheDAbord(request, CACHE_FICHIERS).catch(async () => {
-    const garde = await caches.match(request);
+    const garde = await caches.match(request, { ignoreSearch: true });
     return garde || new Response('', { status: 504, statusText: 'Hors ligne' });
   }));
 });

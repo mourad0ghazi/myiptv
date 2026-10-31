@@ -1,15 +1,15 @@
 // public/js/views/channel.js · écran 4 : fiche d'une chaîne (détail, variantes, chaînes proches).
 
-import { api } from '../api.js';
-import { COPY } from '../copy.js';
+import { api } from '../api.js?v=3.17.0';
+import { COPY } from '../copy.js?v=3.17.0';
 import {
   h, icon, fmtNumber, fmtRelative, spinner, emptyState, logoNode, healthBadge, toast, copyText,
   countryName, languageName,
-} from '../ui.js';
-import { channelCard, paintNow } from '../components.js';
-import { heureCourte, primeNow } from '../epg-now.js';
-import { getPlayer } from '../player.js';
-import { prefs } from '../prefs.js';
+} from '../ui.js?v=3.17.0';
+import { channelCard, paintNow } from '../components.js?v=3.17.0';
+import { heureCourte, primeNow } from '../epg-now.js?v=3.17.0';
+import { getPlayer } from '../player.js?v=3.17.0';
+import { prefs } from '../prefs.js?v=3.17.0';
 
 const BLOCK_COPY = {
   'mixed-content': {

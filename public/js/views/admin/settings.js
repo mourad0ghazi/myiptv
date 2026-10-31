@@ -1,9 +1,9 @@
 // public/js/views/admin/settings.js · onglet Réglages : 17 valeurs validées avant écriture.
 // Un refus n'applique jamais partiellement les autres champs.
 
-import { Admin } from '../../api.js';
-import { h, icon, modal, toast } from '../../ui.js';
-import { field, confirmModal, apiGuard } from './common.js';
+import { Admin } from '../../api.js?v=3.17.0';
+import { h, icon, modal, toast } from '../../ui.js?v=3.17.0';
+import { field, confirmModal, apiGuard } from './common.js?v=3.17.0';
 
 const FIELD_GROUPS = [
   ['Identité', ['brand', 'tagline', 'accent', 'logoUrl', 'pageTitleSuffix', 'footerNote']],

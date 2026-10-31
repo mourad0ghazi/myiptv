@@ -11,6 +11,8 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
+import { versionnerArbre } from './versionner-modules.js';
+
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 
@@ -214,12 +216,18 @@ async function main() {
   const demoApi = await fsp.readFile(path.join(ROOT, 'scripts', 'templates', 'demo-api.js'), 'utf8');
   await fsp.writeFile(path.join(outDir, 'js', 'api.js'), demoApi.replaceAll('__BUILD_VERSION__', health.version));
 
+  // Dernier geste de la construction : la version inscrite dans l'adresse de chaque module.
+  // Sans elle, un navigateur qui garde un js/app.js ancien exécute du code périmé sur une page
+  // neuve ; c'est ce défaut qui laissait l'écran sur « Chargement du catalogue… » (3.17.0).
+  const versionnes = await versionnerArbre({ dossier: outDir, version: health.version });
+
   const sizes = await Promise.all(['index.html', 'js/api.js', 'demo/cards.json', 'demo/catalog.json'].map(async (name) => {
     const stat = await fsp.stat(path.join(outDir, name));
     return `${name} ${(stat.size / 1024).toFixed(0)} Ko`;
   }));
   process.stdout.write(`Sortie    : ${path.relative(ROOT, outDir)} (${sizes.join(' · ')})\n`);
   process.stdout.write(`Version   : ${health.version} · ${cards.length} chaînes · base ${base}\n`);
+  process.stdout.write(`Adresses  : ${versionnes.length} fichier(s) versionné(s) · v=${health.version}\n`);
 
   if (options.copyTo) {
     const target = path.resolve(ROOT, options.copyTo);
